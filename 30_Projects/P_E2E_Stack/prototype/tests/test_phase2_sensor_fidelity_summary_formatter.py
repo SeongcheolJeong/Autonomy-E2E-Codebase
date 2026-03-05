@@ -103,6 +103,11 @@ class Phase2SensorFidelitySummaryFormatterTests(unittest.TestCase):
             "rig_sweep_best_radar_target_detection_ratio_avg": 0.88,
             "rig_sweep_best_radar_false_positive_rate_avg": 0.00123,
             "rig_sweep_best_radar_clutter_index_avg": 0.13,
+            "rig_sweep_best_radar_track_purity_avg": 0.93,
+            "rig_sweep_best_radar_false_alarm_burden_avg": 0.04,
+            "rig_sweep_best_radar_effective_detection_quality_avg": 0.81,
+            "rig_sweep_best_radar_doppler_resolution_quality_avg": 0.87,
+            "rig_sweep_best_radar_range_coverage_quality_avg": 0.95,
             "rig_sweep_best_camera_visibility_score_max": 0.92,
             "rig_sweep_best_camera_visibility_score_max_batch_id": "BATCH_SWEEP",
             "rig_sweep_best_lidar_detection_ratio_max": 0.95,
@@ -113,6 +118,16 @@ class Phase2SensorFidelitySummaryFormatterTests(unittest.TestCase):
             "rig_sweep_best_radar_false_positive_rate_min_batch_id": "BATCH_SWEEP",
             "rig_sweep_best_radar_clutter_index_min": 0.11,
             "rig_sweep_best_radar_clutter_index_min_batch_id": "BATCH_SWEEP",
+            "rig_sweep_best_radar_track_purity_max": 0.95,
+            "rig_sweep_best_radar_track_purity_max_batch_id": "BATCH_SWEEP",
+            "rig_sweep_best_radar_false_alarm_burden_min": 0.02,
+            "rig_sweep_best_radar_false_alarm_burden_min_batch_id": "BATCH_SWEEP",
+            "rig_sweep_best_radar_effective_detection_quality_max": 0.84,
+            "rig_sweep_best_radar_effective_detection_quality_max_batch_id": "BATCH_SWEEP",
+            "rig_sweep_best_radar_doppler_resolution_quality_max": 0.9,
+            "rig_sweep_best_radar_doppler_resolution_quality_max_batch_id": "BATCH_SWEEP",
+            "rig_sweep_best_radar_range_coverage_quality_max": 0.98,
+            "rig_sweep_best_radar_range_coverage_quality_max_batch_id": "BATCH_SWEEP",
         }
         compact = format_phase2_sensor_fidelity_summary(
             payload,
@@ -128,6 +143,8 @@ class Phase2SensorFidelitySummaryFormatterTests(unittest.TestCase):
         self.assertIn("camera_shroud_states=DYNAMIC:12", compact)
         self.assertIn("rig_sweep_best_camera_visibility_max=0.920(BATCH_SWEEP)", compact)
         self.assertIn("rig_sweep_best_radar_fp_rate_min=0.000910(BATCH_SWEEP)", compact)
+        self.assertIn("rig_sweep_best_radar_track_purity_avg=0.930", compact)
+        self.assertIn("rig_sweep_best_radar_false_alarm_burden_min=0.020(BATCH_SWEEP)", compact)
         self.assertNotIn("0.880 (BATCH_MAIN)", compact)
 
         spaced = format_phase2_sensor_fidelity_summary(
@@ -144,6 +161,8 @@ class Phase2SensorFidelitySummaryFormatterTests(unittest.TestCase):
         self.assertIn("camera_shroud_states=DYNAMIC:12", spaced)
         self.assertIn("rig_sweep_best_camera_visibility_max=0.920 (BATCH_SWEEP)", spaced)
         self.assertIn("rig_sweep_best_radar_fp_rate_min=0.000910 (BATCH_SWEEP)", spaced)
+        self.assertIn("rig_sweep_best_radar_track_purity_avg=0.930", spaced)
+        self.assertIn("rig_sweep_best_radar_false_alarm_burden_min=0.020 (BATCH_SWEEP)", spaced)
         self.assertIn(", rig_sweep_evaluated=1, ", spaced)
 
 

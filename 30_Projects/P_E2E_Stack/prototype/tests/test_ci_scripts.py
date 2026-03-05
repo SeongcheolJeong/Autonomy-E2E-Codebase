@@ -49291,6 +49291,11 @@ class BuildReleaseSummaryArtifactTests(unittest.TestCase):
                                     "radar_target_detection_ratio_avg": 0.75,
                                     "radar_false_positive_rate_avg": 0.25,
                                     "radar_clutter_index_avg": 0.12,
+                                    "radar_track_purity_avg": 0.83,
+                                    "radar_false_alarm_burden_avg": 0.09,
+                                    "radar_effective_detection_quality_avg": 0.71,
+                                    "radar_doppler_resolution_quality_avg": 0.78,
+                                    "radar_range_coverage_quality_avg": 0.95,
                                 },
                             },
                             {
@@ -49708,6 +49713,51 @@ class BuildReleaseSummaryArtifactTests(unittest.TestCase):
                 places=6,
             )
             self.assertAlmostEqual(
+                float(phase2_sensor_fidelity_summary.get("rig_sweep_best_radar_track_purity_avg", 0.0) or 0.0),
+                0.83,
+                places=6,
+            )
+            self.assertAlmostEqual(
+                float(
+                    phase2_sensor_fidelity_summary.get("rig_sweep_best_radar_false_alarm_burden_avg", 0.0) or 0.0
+                ),
+                0.09,
+                places=6,
+            )
+            self.assertAlmostEqual(
+                float(
+                    phase2_sensor_fidelity_summary.get(
+                        "rig_sweep_best_radar_effective_detection_quality_avg",
+                        0.0,
+                    )
+                    or 0.0
+                ),
+                0.71,
+                places=6,
+            )
+            self.assertAlmostEqual(
+                float(
+                    phase2_sensor_fidelity_summary.get(
+                        "rig_sweep_best_radar_doppler_resolution_quality_avg",
+                        0.0,
+                    )
+                    or 0.0
+                ),
+                0.78,
+                places=6,
+            )
+            self.assertAlmostEqual(
+                float(
+                    phase2_sensor_fidelity_summary.get(
+                        "rig_sweep_best_radar_range_coverage_quality_avg",
+                        0.0,
+                    )
+                    or 0.0
+                ),
+                0.95,
+                places=6,
+            )
+            self.assertAlmostEqual(
                 float(phase2_sensor_fidelity_summary.get("rig_sweep_best_camera_visibility_score_max", 0.0) or 0.0),
                 0.88,
                 places=6,
@@ -49772,6 +49822,37 @@ class BuildReleaseSummaryArtifactTests(unittest.TestCase):
                 ),
                 "BATCH_MAP",
             )
+            self.assertAlmostEqual(
+                float(phase2_sensor_fidelity_summary.get("rig_sweep_best_radar_track_purity_max", 0.0) or 0.0),
+                0.83,
+                places=6,
+            )
+            self.assertEqual(
+                str(
+                    phase2_sensor_fidelity_summary.get(
+                        "rig_sweep_best_radar_track_purity_max_batch_id",
+                        "",
+                    )
+                ),
+                "BATCH_MAP",
+            )
+            self.assertAlmostEqual(
+                float(
+                    phase2_sensor_fidelity_summary.get("rig_sweep_best_radar_false_alarm_burden_min", 0.0)
+                    or 0.0
+                ),
+                0.09,
+                places=6,
+            )
+            self.assertEqual(
+                str(
+                    phase2_sensor_fidelity_summary.get(
+                        "rig_sweep_best_radar_false_alarm_burden_min_batch_id",
+                        "",
+                    )
+                ),
+                "BATCH_MAP",
+            )
             assert_text_file_contains(
                 self,
                 file_path=out_text,
@@ -49792,6 +49873,8 @@ class BuildReleaseSummaryArtifactTests(unittest.TestCase):
                     "phase2_sensor_rig_sweep=evaluated:1,tier_counts:high:1,candidate_total:3,candidate_avg:3.000,candidate_max:3(BATCH_MAP),best_score_max:12.500(BATCH_MAP),best_rig_counts:rig_cam_lidar:1",
                     "quality_samples:1,best_camera_visibility_avg:0.880,best_camera_noise_avg_px:1.200,best_lidar_detection_avg:0.850,best_lidar_range_ratio_avg:0.683,best_radar_detect_ratio_avg:0.750,best_radar_fp_rate_avg:0.250000,best_radar_clutter_avg:0.120",
                     "best_camera_visibility_max:0.880(BATCH_MAP),best_lidar_detection_max:0.850(BATCH_MAP),best_radar_detect_max:0.750(BATCH_MAP),best_radar_fp_rate_min:0.250000(BATCH_MAP),best_radar_clutter_min:0.120(BATCH_MAP)",
+                    "best_radar_track_purity_avg:0.830,best_radar_false_alarm_burden_avg:0.090,best_radar_effective_quality_avg:0.710,best_radar_doppler_quality_avg:0.780,best_radar_range_quality_avg:0.950",
+                    "best_radar_track_purity_max:0.830(BATCH_MAP),best_radar_false_alarm_burden_min:0.090(BATCH_MAP),best_radar_effective_quality_max:0.710(BATCH_MAP),best_radar_doppler_quality_max:0.780(BATCH_MAP),best_radar_range_quality_max:0.950(BATCH_MAP)",
                 ],
             )
 
@@ -49818,6 +49901,11 @@ class BuildReleaseSummaryArtifactTests(unittest.TestCase):
                         "radar_target_detection_ratio_avg": 0.72,
                         "radar_false_positive_rate_avg": 0.2,
                         "radar_clutter_index_avg": 0.1,
+                        "radar_track_purity_avg": 0.9,
+                        "radar_false_alarm_burden_avg": 0.05,
+                        "radar_effective_detection_quality_avg": 0.7,
+                        "radar_doppler_resolution_quality_avg": 0.8,
+                        "radar_range_coverage_quality_avg": 0.9,
                     },
                 },
                 {
@@ -49834,6 +49922,11 @@ class BuildReleaseSummaryArtifactTests(unittest.TestCase):
                         "radar_target_detection_ratio_avg": 0.65,
                         "radar_false_positive_rate_avg": 0.35,
                         "radar_clutter_index_avg": 0.3,
+                        "radar_track_purity_avg": 0.6,
+                        "radar_false_alarm_burden_avg": 0.2,
+                        "radar_effective_detection_quality_avg": 0.45,
+                        "radar_doppler_resolution_quality_avg": 0.55,
+                        "radar_range_coverage_quality_avg": 0.7,
                     },
                 },
             ]
@@ -50007,6 +50100,51 @@ class BuildReleaseSummaryArtifactTests(unittest.TestCase):
                 places=6,
             )
             self.assertAlmostEqual(
+                float(phase2_sensor_fidelity_summary.get("rig_sweep_best_radar_track_purity_avg", 0.0) or 0.0),
+                0.75,
+                places=6,
+            )
+            self.assertAlmostEqual(
+                float(
+                    phase2_sensor_fidelity_summary.get("rig_sweep_best_radar_false_alarm_burden_avg", 0.0) or 0.0
+                ),
+                0.125,
+                places=6,
+            )
+            self.assertAlmostEqual(
+                float(
+                    phase2_sensor_fidelity_summary.get(
+                        "rig_sweep_best_radar_effective_detection_quality_avg",
+                        0.0,
+                    )
+                    or 0.0
+                ),
+                0.575,
+                places=6,
+            )
+            self.assertAlmostEqual(
+                float(
+                    phase2_sensor_fidelity_summary.get(
+                        "rig_sweep_best_radar_doppler_resolution_quality_avg",
+                        0.0,
+                    )
+                    or 0.0
+                ),
+                0.675,
+                places=6,
+            )
+            self.assertAlmostEqual(
+                float(
+                    phase2_sensor_fidelity_summary.get(
+                        "rig_sweep_best_radar_range_coverage_quality_avg",
+                        0.0,
+                    )
+                    or 0.0
+                ),
+                0.8,
+                places=6,
+            )
+            self.assertAlmostEqual(
                 float(phase2_sensor_fidelity_summary.get("rig_sweep_best_camera_visibility_score_max", 0.0) or 0.0),
                 0.9,
                 places=6,
@@ -50071,6 +50209,37 @@ class BuildReleaseSummaryArtifactTests(unittest.TestCase):
                 ),
                 "BATCH_A",
             )
+            self.assertAlmostEqual(
+                float(phase2_sensor_fidelity_summary.get("rig_sweep_best_radar_track_purity_max", 0.0) or 0.0),
+                0.9,
+                places=6,
+            )
+            self.assertEqual(
+                str(
+                    phase2_sensor_fidelity_summary.get(
+                        "rig_sweep_best_radar_track_purity_max_batch_id",
+                        "",
+                    )
+                ),
+                "BATCH_A",
+            )
+            self.assertAlmostEqual(
+                float(
+                    phase2_sensor_fidelity_summary.get("rig_sweep_best_radar_false_alarm_burden_min", 0.0)
+                    or 0.0
+                ),
+                0.05,
+                places=6,
+            )
+            self.assertEqual(
+                str(
+                    phase2_sensor_fidelity_summary.get(
+                        "rig_sweep_best_radar_false_alarm_burden_min_batch_id",
+                        "",
+                    )
+                ),
+                "BATCH_A",
+            )
             assert_text_file_contains(
                 self,
                 file_path=out_text,
@@ -50078,6 +50247,8 @@ class BuildReleaseSummaryArtifactTests(unittest.TestCase):
                     "phase2_sensor_rig_sweep=evaluated:2,tier_counts:high:2,candidate_total:7,candidate_avg:3.500,candidate_max:4(BATCH_B),best_score_max:13.000(BATCH_A),best_rig_counts:rig_alpha:1,rig_beta:1",
                     "quality_samples:2,best_camera_visibility_avg:0.750,best_camera_noise_avg_px:1.550,best_lidar_detection_avg:0.650,best_lidar_range_ratio_avg:0.550,best_radar_detect_ratio_avg:0.685,best_radar_fp_rate_avg:0.275000,best_radar_clutter_avg:0.200",
                     "best_camera_visibility_max:0.900(BATCH_A),best_lidar_detection_max:0.800(BATCH_A),best_radar_detect_max:0.720(BATCH_A),best_radar_fp_rate_min:0.200000(BATCH_A),best_radar_clutter_min:0.100(BATCH_A)",
+                    "best_radar_track_purity_avg:0.750,best_radar_false_alarm_burden_avg:0.125,best_radar_effective_quality_avg:0.575,best_radar_doppler_quality_avg:0.675,best_radar_range_quality_avg:0.800",
+                    "best_radar_track_purity_max:0.900(BATCH_A),best_radar_false_alarm_burden_min:0.050(BATCH_A),best_radar_effective_quality_max:0.700(BATCH_A),best_radar_doppler_quality_max:0.800(BATCH_A),best_radar_range_quality_max:0.900(BATCH_A)",
                 ],
             )
 

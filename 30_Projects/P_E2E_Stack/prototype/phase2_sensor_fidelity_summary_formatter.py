@@ -157,6 +157,36 @@ def format_phase2_sensor_fidelity_summary(
     rig_sweep_best_radar_clutter_index_min_batch_id = _to_batch_id(
         payload.get("rig_sweep_best_radar_clutter_index_min_batch_id", "")
     )
+    rig_sweep_best_radar_track_purity_max = _to_float(
+        payload.get("rig_sweep_best_radar_track_purity_max", 0.0)
+    )
+    rig_sweep_best_radar_track_purity_max_batch_id = _to_batch_id(
+        payload.get("rig_sweep_best_radar_track_purity_max_batch_id", "")
+    )
+    rig_sweep_best_radar_false_alarm_burden_min = _to_float(
+        payload.get("rig_sweep_best_radar_false_alarm_burden_min", 0.0)
+    )
+    rig_sweep_best_radar_false_alarm_burden_min_batch_id = _to_batch_id(
+        payload.get("rig_sweep_best_radar_false_alarm_burden_min_batch_id", "")
+    )
+    rig_sweep_best_radar_effective_detection_quality_max = _to_float(
+        payload.get("rig_sweep_best_radar_effective_detection_quality_max", 0.0)
+    )
+    rig_sweep_best_radar_effective_detection_quality_max_batch_id = _to_batch_id(
+        payload.get("rig_sweep_best_radar_effective_detection_quality_max_batch_id", "")
+    )
+    rig_sweep_best_radar_doppler_resolution_quality_max = _to_float(
+        payload.get("rig_sweep_best_radar_doppler_resolution_quality_max", 0.0)
+    )
+    rig_sweep_best_radar_doppler_resolution_quality_max_batch_id = _to_batch_id(
+        payload.get("rig_sweep_best_radar_doppler_resolution_quality_max_batch_id", "")
+    )
+    rig_sweep_best_radar_range_coverage_quality_max = _to_float(
+        payload.get("rig_sweep_best_radar_range_coverage_quality_max", 0.0)
+    )
+    rig_sweep_best_radar_range_coverage_quality_max_batch_id = _to_batch_id(
+        payload.get("rig_sweep_best_radar_range_coverage_quality_max_batch_id", "")
+    )
 
     summary_parts.extend(
         [
@@ -177,6 +207,11 @@ def format_phase2_sensor_fidelity_summary(
             f"rig_sweep_best_radar_detect_ratio_avg={_to_float(payload.get('rig_sweep_best_radar_target_detection_ratio_avg', 0.0)):.3f}",
             f"rig_sweep_best_radar_fp_rate_avg={_to_float(payload.get('rig_sweep_best_radar_false_positive_rate_avg', 0.0)):.6f}",
             f"rig_sweep_best_radar_clutter_avg={_to_float(payload.get('rig_sweep_best_radar_clutter_index_avg', 0.0)):.3f}",
+            f"rig_sweep_best_radar_track_purity_avg={_to_float(payload.get('rig_sweep_best_radar_track_purity_avg', 0.0)):.3f}",
+            f"rig_sweep_best_radar_false_alarm_burden_avg={_to_float(payload.get('rig_sweep_best_radar_false_alarm_burden_avg', 0.0)):.3f}",
+            f"rig_sweep_best_radar_effective_quality_avg={_to_float(payload.get('rig_sweep_best_radar_effective_detection_quality_avg', 0.0)):.3f}",
+            f"rig_sweep_best_radar_doppler_quality_avg={_to_float(payload.get('rig_sweep_best_radar_doppler_resolution_quality_avg', 0.0)):.3f}",
+            f"rig_sweep_best_radar_range_quality_avg={_to_float(payload.get('rig_sweep_best_radar_range_coverage_quality_avg', 0.0)):.3f}",
             "rig_sweep_best_camera_visibility_max="
             f"{_format_with_batch(f'{rig_sweep_best_camera_visibility_score_max:.3f}', rig_sweep_best_camera_visibility_score_max_batch_id, spaced=spaced)}",
             "rig_sweep_best_lidar_detection_max="
@@ -187,6 +222,16 @@ def format_phase2_sensor_fidelity_summary(
             f"{_format_with_batch(f'{rig_sweep_best_radar_false_positive_rate_min:.6f}', rig_sweep_best_radar_false_positive_rate_min_batch_id, spaced=spaced)}",
             "rig_sweep_best_radar_clutter_min="
             f"{_format_with_batch(f'{rig_sweep_best_radar_clutter_index_min:.3f}', rig_sweep_best_radar_clutter_index_min_batch_id, spaced=spaced)}",
+            "rig_sweep_best_radar_track_purity_max="
+            f"{_format_with_batch(f'{rig_sweep_best_radar_track_purity_max:.3f}', rig_sweep_best_radar_track_purity_max_batch_id, spaced=spaced)}",
+            "rig_sweep_best_radar_false_alarm_burden_min="
+            f"{_format_with_batch(f'{rig_sweep_best_radar_false_alarm_burden_min:.3f}', rig_sweep_best_radar_false_alarm_burden_min_batch_id, spaced=spaced)}",
+            "rig_sweep_best_radar_effective_quality_max="
+            f"{_format_with_batch(f'{rig_sweep_best_radar_effective_detection_quality_max:.3f}', rig_sweep_best_radar_effective_detection_quality_max_batch_id, spaced=spaced)}",
+            "rig_sweep_best_radar_doppler_quality_max="
+            f"{_format_with_batch(f'{rig_sweep_best_radar_doppler_resolution_quality_max:.3f}', rig_sweep_best_radar_doppler_resolution_quality_max_batch_id, spaced=spaced)}",
+            "rig_sweep_best_radar_range_quality_max="
+            f"{_format_with_batch(f'{rig_sweep_best_radar_range_coverage_quality_max:.3f}', rig_sweep_best_radar_range_coverage_quality_max_batch_id, spaced=spaced)}",
         ]
     )
     return separator.join(summary_parts)
