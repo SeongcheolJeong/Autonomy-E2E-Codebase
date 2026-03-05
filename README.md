@@ -8,6 +8,12 @@ This repo is organized to run one command pipeline flows across:
 3. validation and release reporting,
 4. runtime lane checks (AWSIM/CARLA contracts and evidence).
 
+## Repository Policies
+
+- License: `MIT` ([LICENSE](LICENSE))
+- Contribution process: [CONTRIBUTING.md](CONTRIBUTING.md)
+- Security reporting: [SECURITY.md](SECURITY.md)
+
 ## Scope
 
 Included:
