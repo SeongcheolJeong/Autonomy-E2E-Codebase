@@ -548,6 +548,336 @@ def _compute_camera_physics(
     }
 
 
+def _resolve_bloom_level(raw: Any) -> str:
+    value = str(raw if raw is not None else "").strip().upper()
+    if value in {"LOW", "HIGH"}:
+        return value
+    return "LOW"
+
+
+def _resolve_camera_postprocess_config(sensor_config: dict[str, Any]) -> dict[str, Any]:
+    standard_params = _as_dict(sensor_config.get("standard_params"))
+    lens_params = _as_dict(sensor_config.get("lens_params"))
+    if not lens_params:
+        lens_params = _as_dict(standard_params.get("lens_params"))
+    sensor_params = _as_dict(sensor_config.get("sensor_params"))
+    if not sensor_params:
+        sensor_params = _as_dict(standard_params.get("sensor_params"))
+    system_params = _as_dict(sensor_config.get("system_params"))
+    if not system_params:
+        system_params = _as_dict(standard_params.get("system_params"))
+    fidelity = _as_dict(sensor_config.get("fidelity"))
+
+    vignetting = _as_dict(lens_params.get("vignetting"))
+    fidelity_bloom = _as_dict(fidelity.get("bloom"))
+
+    explicit_input_present = any(
+        key in lens_params
+        for key in (
+            "chromatic_aberration",
+            "lens_flare",
+            "vignetting",
+            "spot_size",
+        )
+    ) or any(
+        key in system_params
+        for key in (
+            "gain",
+            "gamma",
+            "white_balance",
+        )
+    ) or any(
+        key in fidelity
+        for key in (
+            "bloom",
+            "disable_tonemapper",
+        )
+    ) or any(
+        key in sensor_params for key in ("bloom",)
+    ) or any(
+        key in sensor_config
+        for key in (
+            "chromatic_aberration",
+            "lens_flare",
+            "vignetting_intensity",
+            "vignetting_alpha",
+            "vignetting_radius",
+            "gain",
+            "gamma",
+            "white_balance",
+            "bloom",
+            "bloom_disable",
+            "bloom_level",
+            "disable_tonemapper",
+        )
+    )
+
+    chromatic_aberration_mm = _clamp_float(
+        _to_float(
+            sensor_config.get(
+                "chromatic_aberration",
+                lens_params.get("chromatic_aberration", 0.0),
+            ),
+            default=0.0,
+        ),
+        minimum=0.0,
+        maximum=5.0,
+    )
+    lens_flare = _clamp_float(
+        _to_float(
+            sensor_config.get(
+                "lens_flare",
+                lens_params.get("lens_flare", 0.0),
+            ),
+            default=0.0,
+        ),
+        minimum=0.0,
+        maximum=2.0,
+    )
+    vignetting_intensity = _clamp_float(
+        _to_float(
+            sensor_config.get(
+                "vignetting_intensity",
+                vignetting.get("intensity", 0.0),
+            ),
+            default=0.0,
+        ),
+        minimum=0.0,
+        maximum=2.0,
+    )
+    vignetting_alpha = _clamp_float(
+        _to_float(
+            sensor_config.get(
+                "vignetting_alpha",
+                vignetting.get("alpha", 1.0),
+            ),
+            default=1.0,
+        ),
+        minimum=0.0,
+        maximum=4.0,
+    )
+    vignetting_radius = _clamp_float(
+        _to_float(
+            sensor_config.get(
+                "vignetting_radius",
+                vignetting.get("radius", 1.0),
+            ),
+            default=1.0,
+        ),
+        minimum=0.1,
+        maximum=2.0,
+    )
+    spot_size_rms = _clamp_float(
+        _to_float(
+            sensor_config.get(
+                "spot_size",
+                lens_params.get("spot_size", 0.0),
+            ),
+            default=0.0,
+        ),
+        minimum=0.0,
+        maximum=100.0,
+    )
+    sensor_bloom_intensity = _clamp_float(
+        _to_float(
+            sensor_config.get(
+                "bloom",
+                sensor_params.get("bloom", 0.0),
+            ),
+            default=0.0,
+        ),
+        minimum=0.0,
+        maximum=2.0,
+    )
+    gain_db = _clamp_float(
+        _to_float(
+            sensor_config.get("gain", system_params.get("gain", 0.0)),
+            default=0.0,
+        ),
+        minimum=-24.0,
+        maximum=48.0,
+    )
+    gamma = _clamp_float(
+        _to_float(
+            sensor_config.get("gamma", system_params.get("gamma", 0.4545)),
+            default=0.4545,
+        ),
+        minimum=0.1,
+        maximum=4.0,
+    )
+    white_balance_kelvin = _clamp_float(
+        _to_float(
+            sensor_config.get(
+                "white_balance",
+                system_params.get("white_balance", 6500.0),
+            ),
+            default=6500.0,
+        ),
+        minimum=1000.0,
+        maximum=15000.0,
+    )
+    bloom_disable = _to_bool(
+        sensor_config.get("bloom_disable", fidelity_bloom.get("disable", False)),
+        default=False,
+    )
+    bloom_level = _resolve_bloom_level(
+        sensor_config.get("bloom_level", fidelity_bloom.get("level", "LOW"))
+    )
+    disable_tonemapper = _to_bool(
+        sensor_config.get("disable_tonemapper", fidelity.get("disable_tonemapper", False)),
+        default=False,
+    )
+
+    return {
+        "postprocess_input_present": bool(explicit_input_present),
+        "chromatic_aberration_mm": float(chromatic_aberration_mm),
+        "lens_flare": float(lens_flare),
+        "vignetting_intensity": float(vignetting_intensity),
+        "vignetting_alpha": float(vignetting_alpha),
+        "vignetting_radius": float(vignetting_radius),
+        "spot_size_rms": float(spot_size_rms),
+        "sensor_bloom_intensity": float(sensor_bloom_intensity),
+        "gain_db": float(gain_db),
+        "gamma": float(gamma),
+        "white_balance_kelvin": float(white_balance_kelvin),
+        "bloom_disable": bool(bloom_disable),
+        "bloom_level": bloom_level,
+        "disable_tonemapper": bool(disable_tonemapper),
+    }
+
+
+def _compute_camera_postprocess(
+    *,
+    sensor_config: dict[str, Any],
+    environment: dict[str, float],
+    image_width_px: int,
+    image_height_px: int,
+    camera_physics: dict[str, Any],
+) -> dict[str, Any]:
+    config = _resolve_camera_postprocess_config(sensor_config)
+    chromatic_aberration_mm = float(config["chromatic_aberration_mm"])
+    lens_flare = float(config["lens_flare"])
+    vignetting_intensity = float(config["vignetting_intensity"])
+    vignetting_alpha = float(config["vignetting_alpha"])
+    vignetting_radius = float(config["vignetting_radius"])
+    spot_size_rms = float(config["spot_size_rms"])
+    sensor_bloom_intensity = float(config["sensor_bloom_intensity"])
+    gain_db = float(config["gain_db"])
+    gamma = float(config["gamma"])
+    white_balance_kelvin = float(config["white_balance_kelvin"])
+    bloom_disable = bool(config["bloom_disable"])
+    bloom_level = str(config["bloom_level"])
+    disable_tonemapper = bool(config["disable_tonemapper"])
+
+    ambient_light_lux = float(environment["ambient_light_lux"])
+    precipitation_intensity = float(environment["precipitation_intensity"])
+    image_max_dim = float(max(image_width_px, image_height_px, 1))
+    signal_saturation_ratio = _clamp_float(
+        _to_float(camera_physics.get("signal_saturation_ratio", 0.0), default=0.0),
+        minimum=0.0,
+        maximum=1.0,
+    )
+
+    gain_linear = 10.0 ** (gain_db / 20.0)
+    white_balance_offset_norm = _clamp_float(
+        (white_balance_kelvin - 6500.0) / 6500.0,
+        minimum=-1.0,
+        maximum=1.0,
+    )
+    vignetting_radius_scale = _clamp_float((1.4 - vignetting_radius) / 1.4, minimum=0.0, maximum=1.0)
+    vignetting_edge_darkening = _clamp_float(
+        vignetting_intensity
+        * (0.45 + (0.55 * vignetting_radius_scale))
+        * (0.85 + (0.15 * min(2.0, vignetting_alpha))),
+        minimum=0.0,
+        maximum=0.9,
+    )
+    chromatic_aberration_shift_px = _clamp_float(
+        chromatic_aberration_mm * (image_max_dim / 6000.0),
+        minimum=0.0,
+        maximum=12.0,
+    )
+    flare_glare_ratio = _clamp_float(
+        lens_flare
+        * _clamp_float(ambient_light_lux / 24000.0, minimum=0.0, maximum=1.5)
+        * (1.0 + (0.15 * precipitation_intensity)),
+        minimum=0.0,
+        maximum=2.0,
+    )
+    if bloom_disable:
+        bloom_halo_strength = 0.0
+    else:
+        bloom_level_scale = 1.3 if bloom_level == "HIGH" else 1.0
+        bloom_light_scale = _clamp_float(ambient_light_lux / 12000.0, minimum=0.25, maximum=2.0)
+        bloom_halo_strength = _clamp_float(
+            (sensor_bloom_intensity + (0.4 * flare_glare_ratio) + (0.35 * signal_saturation_ratio))
+            * bloom_level_scale
+            * bloom_light_scale,
+            minimum=0.0,
+            maximum=2.5,
+        )
+
+    postprocess_visibility_scale = _clamp_float(
+        1.0
+        - (0.16 * vignetting_edge_darkening)
+        - (0.04 * bloom_halo_strength)
+        - (0.06 * flare_glare_ratio)
+        - (chromatic_aberration_shift_px / image_max_dim * 8.0),
+        minimum=0.65,
+        maximum=1.0,
+    )
+    camera_noise_stddev_px_delta = _clamp_float(
+        max(0.0, gain_linear - 1.0) * 0.35
+        + (abs(gamma - 0.4545) * 0.12)
+        + (0.1 * bloom_halo_strength)
+        + (0.002 * spot_size_rms),
+        minimum=0.0,
+        maximum=2.0,
+    )
+    dynamic_range_stops_delta = _clamp_float(
+        (-0.42 * max(0.0, gain_linear - 1.0))
+        - (0.22 * bloom_halo_strength)
+        - (0.08 * flare_glare_ratio)
+        + (0.2 if disable_tonemapper else 0.0),
+        minimum=-1.5,
+        maximum=0.8,
+    )
+    effective_luminance_gain = _clamp_float(
+        gain_linear
+        * (0.95 if disable_tonemapper else 1.0)
+        * _clamp_float(1.0 + (0.2 * white_balance_offset_norm), minimum=0.7, maximum=1.3),
+        minimum=0.05,
+        maximum=8.0,
+    )
+
+    return {
+        "postprocess_input_present": bool(config["postprocess_input_present"]),
+        "gain_db": float(gain_db),
+        "gain_linear": float(gain_linear),
+        "gamma": float(gamma),
+        "white_balance_kelvin": float(white_balance_kelvin),
+        "white_balance_offset_norm": float(white_balance_offset_norm),
+        "chromatic_aberration_mm": float(chromatic_aberration_mm),
+        "chromatic_aberration_shift_px_est": float(chromatic_aberration_shift_px),
+        "lens_flare_intensity": float(lens_flare),
+        "flare_glare_ratio": float(flare_glare_ratio),
+        "vignetting_intensity": float(vignetting_intensity),
+        "vignetting_alpha": float(vignetting_alpha),
+        "vignetting_radius": float(vignetting_radius),
+        "vignetting_edge_darkening": float(vignetting_edge_darkening),
+        "spot_size_rms": float(spot_size_rms),
+        "sensor_bloom_intensity": float(sensor_bloom_intensity),
+        "bloom_disable": bool(bloom_disable),
+        "bloom_level": bloom_level,
+        "bloom_halo_strength": float(bloom_halo_strength),
+        "disable_tonemapper": bool(disable_tonemapper),
+        "effective_luminance_gain": float(effective_luminance_gain),
+        "postprocess_visibility_scale": float(postprocess_visibility_scale),
+        "camera_noise_stddev_px_delta": float(camera_noise_stddev_px_delta),
+        "dynamic_range_stops_delta": float(dynamic_range_stops_delta),
+    }
+
+
 def _resolve_camera_projection_mode(raw: Any) -> str:
     projection = str(raw if raw is not None else "").strip().upper()
     if projection in {"RECTILINEAR", "EQUIDISTANT", "ORTHOGRAPHIC"}:
@@ -893,6 +1223,28 @@ class CameraStubPlugin(SensorPlugin):
             snr_visibility_scale = _clamp_float(1.0 - max(0.0, 18.0 - snr_db) / 120.0, minimum=0.85, maximum=1.0)
             visibility_score *= snr_visibility_scale
             visible_actor_count = int(round(float(len(actors)) * visibility_score))
+        camera_postprocess = _compute_camera_postprocess(
+            sensor_config=sensor_config,
+            environment=environment,
+            image_width_px=image_width_px,
+            image_height_px=image_height_px,
+            camera_physics=camera_physics,
+        )
+        if bool(camera_postprocess.get("postprocess_input_present", False)):
+            camera_noise_stddev_px += _to_non_negative_float(
+                camera_postprocess.get("camera_noise_stddev_px_delta", 0.0)
+            )
+            dynamic_range_stops += _to_float(
+                camera_postprocess.get("dynamic_range_stops_delta", 0.0),
+                default=0.0,
+            )
+            visibility_score *= _clamp_float(
+                _to_float(camera_postprocess.get("postprocess_visibility_scale", 1.0), default=1.0),
+                minimum=0.0,
+                maximum=1.0,
+            )
+            visibility_score = _clamp_float(visibility_score, minimum=0.0, maximum=1.0)
+            visible_actor_count = int(round(float(len(actors)) * visibility_score))
         dynamic_range_stops = max(4.0, dynamic_range_stops)
         return {
             "modality": "camera",
@@ -909,6 +1261,7 @@ class CameraStubPlugin(SensorPlugin):
             "ambient_light_lux": ambient_light_lux,
             "camera_geometry": camera_geometry,
             "camera_physics": camera_physics,
+            "camera_postprocess": camera_postprocess,
         }
 
 
@@ -1097,6 +1450,14 @@ def _summarize_sensor_quality(frames: list[dict[str, Any]]) -> dict[str, Any]:
     camera_principal_point_offset_norm_total = 0.0
     camera_effective_focal_length_px_total = 0.0
     camera_projection_mode_counts: dict[str, int] = {}
+    camera_gain_db_total = 0.0
+    camera_gamma_total = 0.0
+    camera_white_balance_kelvin_total = 0.0
+    camera_vignetting_edge_darkening_total = 0.0
+    camera_bloom_halo_strength_total = 0.0
+    camera_chromatic_aberration_shift_px_total = 0.0
+    camera_tonemapper_disabled_frame_count = 0
+    camera_bloom_level_counts: dict[str, int] = {}
     lidar_frame_count = 0
     lidar_point_count_total = 0
     lidar_returns_per_laser_total = 0
@@ -1157,6 +1518,28 @@ def _summarize_sensor_quality(frames: list[dict[str, Any]]) -> dict[str, Any]:
             projection = str(camera_geometry.get("projection", "")).strip().upper()
             if projection:
                 camera_projection_mode_counts[projection] = camera_projection_mode_counts.get(projection, 0) + 1
+            camera_postprocess = payload.get("camera_postprocess", {})
+            if not isinstance(camera_postprocess, dict):
+                camera_postprocess = {}
+            camera_gain_db_total += _to_float(camera_postprocess.get("gain_db", 0.0), default=0.0)
+            camera_gamma_total += _to_non_negative_float(camera_postprocess.get("gamma", 0.0))
+            camera_white_balance_kelvin_total += _to_non_negative_float(
+                camera_postprocess.get("white_balance_kelvin", 0.0)
+            )
+            camera_vignetting_edge_darkening_total += _to_non_negative_float(
+                camera_postprocess.get("vignetting_edge_darkening", 0.0)
+            )
+            camera_bloom_halo_strength_total += _to_non_negative_float(
+                camera_postprocess.get("bloom_halo_strength", 0.0)
+            )
+            camera_chromatic_aberration_shift_px_total += _to_non_negative_float(
+                camera_postprocess.get("chromatic_aberration_shift_px_est", 0.0)
+            )
+            if bool(camera_postprocess.get("disable_tonemapper", False)):
+                camera_tonemapper_disabled_frame_count += 1
+            bloom_level = str(camera_postprocess.get("bloom_level", "")).strip().upper()
+            if bloom_level:
+                camera_bloom_level_counts[bloom_level] = camera_bloom_level_counts.get(bloom_level, 0) + 1
         elif sensor_type == "lidar":
             lidar_frame_count += 1
             lidar_point_count_total += _to_non_negative_int(payload.get("point_count", 0))
@@ -1231,6 +1614,36 @@ def _summarize_sensor_quality(frames: list[dict[str, Any]]) -> dict[str, Any]:
         if camera_frame_count > 0
         else 0.0
     )
+    camera_gain_db_avg = (
+        camera_gain_db_total / float(camera_frame_count)
+        if camera_frame_count > 0
+        else 0.0
+    )
+    camera_gamma_avg = (
+        camera_gamma_total / float(camera_frame_count)
+        if camera_frame_count > 0
+        else 0.0
+    )
+    camera_white_balance_kelvin_avg = (
+        camera_white_balance_kelvin_total / float(camera_frame_count)
+        if camera_frame_count > 0
+        else 0.0
+    )
+    camera_vignetting_edge_darkening_avg = (
+        camera_vignetting_edge_darkening_total / float(camera_frame_count)
+        if camera_frame_count > 0
+        else 0.0
+    )
+    camera_bloom_halo_strength_avg = (
+        camera_bloom_halo_strength_total / float(camera_frame_count)
+        if camera_frame_count > 0
+        else 0.0
+    )
+    camera_chromatic_aberration_shift_px_avg = (
+        camera_chromatic_aberration_shift_px_total / float(camera_frame_count)
+        if camera_frame_count > 0
+        else 0.0
+    )
     lidar_point_count_avg = (
         float(lidar_point_count_total) / float(lidar_frame_count)
         if lidar_frame_count > 0
@@ -1288,6 +1701,16 @@ def _summarize_sensor_quality(frames: list[dict[str, Any]]) -> dict[str, Any]:
         "camera_effective_focal_length_px_avg": float(camera_effective_focal_length_px_avg),
         "camera_projection_mode_counts": {
             key: camera_projection_mode_counts[key] for key in sorted(camera_projection_mode_counts.keys())
+        },
+        "camera_gain_db_avg": float(camera_gain_db_avg),
+        "camera_gamma_avg": float(camera_gamma_avg),
+        "camera_white_balance_kelvin_avg": float(camera_white_balance_kelvin_avg),
+        "camera_vignetting_edge_darkening_avg": float(camera_vignetting_edge_darkening_avg),
+        "camera_bloom_halo_strength_avg": float(camera_bloom_halo_strength_avg),
+        "camera_chromatic_aberration_shift_px_avg": float(camera_chromatic_aberration_shift_px_avg),
+        "camera_tonemapper_disabled_frame_count": int(camera_tonemapper_disabled_frame_count),
+        "camera_bloom_level_counts": {
+            key: camera_bloom_level_counts[key] for key in sorted(camera_bloom_level_counts.keys())
         },
         "lidar_frame_count": int(lidar_frame_count),
         "lidar_point_count_total": int(lidar_point_count_total),

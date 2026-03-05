@@ -157,6 +157,24 @@ python3 sensor_sim_bridge.py \
   --out runs/sensor_frames_camera_geometry_distortion_v0.json
 ```
 
+Camera postprocess/system-lens effects inputs (Applied docs aligned subset):
+
+- `lens_params.chromatic_aberration`, `lens_params.lens_flare`
+- `lens_params.vignetting.intensity|alpha|radius`
+- `sensor_params.bloom`
+- `system_params.gain`, `system_params.gamma`, `system_params.white_balance`
+- `fidelity.bloom.disable|level`, `fidelity.disable_tonemapper`
+
+Camera postprocess example:
+
+```bash
+python3 sensor_sim_bridge.py \
+  --world-state examples/world_state_adverse_weather_v0.json \
+  --sensor-rig examples/sensor_rig_camera_postprocess_v0.json \
+  --fidelity-tier high \
+  --out runs/sensor_frames_camera_postprocess_v0.json
+```
+
 ## Sensor rig sweep scaffold
 
 ```bash

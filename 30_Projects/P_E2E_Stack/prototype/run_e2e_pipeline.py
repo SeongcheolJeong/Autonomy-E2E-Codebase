@@ -2000,7 +2000,21 @@ def run_phase2_hooks(args: argparse.Namespace) -> dict[str, Any]:
         except (TypeError, ValueError):
             return 0.0
         return parsed if parsed >= 0.0 else 0.0
+    def _to_float(value: Any, *, default: float = 0.0) -> float:
+        try:
+            return float(value)
+        except (TypeError, ValueError):
+            return float(default)
     def _normalize_projection_mode_counts(raw_value: Any) -> dict[str, int]:
+        normalized: dict[str, int] = {}
+        if isinstance(raw_value, dict):
+            for raw_key, raw_count in raw_value.items():
+                key = str(raw_key).strip().upper()
+                if not key:
+                    continue
+                normalized[key] = _to_non_negative_int(raw_count)
+        return {key: normalized[key] for key in sorted(normalized.keys())}
+    def _normalize_bloom_level_counts(raw_value: Any) -> dict[str, int]:
         normalized: dict[str, int] = {}
         if isinstance(raw_value, dict):
             for raw_key, raw_count in raw_value.items():
@@ -2025,6 +2039,14 @@ def run_phase2_hooks(args: argparse.Namespace) -> dict[str, Any]:
         "camera_principal_point_offset_norm_avg": 0.0,
         "camera_effective_focal_length_px_avg": 0.0,
         "camera_projection_mode_counts": {},
+        "camera_gain_db_avg": 0.0,
+        "camera_gamma_avg": 0.0,
+        "camera_white_balance_kelvin_avg": 0.0,
+        "camera_vignetting_edge_darkening_avg": 0.0,
+        "camera_bloom_halo_strength_avg": 0.0,
+        "camera_chromatic_aberration_shift_px_avg": 0.0,
+        "camera_tonemapper_disabled_frame_count": 0,
+        "camera_bloom_level_counts": {},
         "lidar_frame_count": 0,
         "lidar_point_count_total": 0,
         "lidar_point_count_avg": 0.0,
@@ -2084,6 +2106,26 @@ def run_phase2_hooks(args: argparse.Namespace) -> dict[str, Any]:
             "camera_projection_mode_counts": _normalize_projection_mode_counts(
                 sensor_quality_summary_raw.get("camera_projection_mode_counts", {})
             ),
+            "camera_gain_db_avg": _to_float(sensor_quality_summary_raw.get("camera_gain_db_avg", 0.0), default=0.0),
+            "camera_gamma_avg": _to_non_negative_float(sensor_quality_summary_raw.get("camera_gamma_avg", 0.0)),
+            "camera_white_balance_kelvin_avg": _to_non_negative_float(
+                sensor_quality_summary_raw.get("camera_white_balance_kelvin_avg", 0.0)
+            ),
+            "camera_vignetting_edge_darkening_avg": _to_non_negative_float(
+                sensor_quality_summary_raw.get("camera_vignetting_edge_darkening_avg", 0.0)
+            ),
+            "camera_bloom_halo_strength_avg": _to_non_negative_float(
+                sensor_quality_summary_raw.get("camera_bloom_halo_strength_avg", 0.0)
+            ),
+            "camera_chromatic_aberration_shift_px_avg": _to_non_negative_float(
+                sensor_quality_summary_raw.get("camera_chromatic_aberration_shift_px_avg", 0.0)
+            ),
+            "camera_tonemapper_disabled_frame_count": _to_non_negative_int(
+                sensor_quality_summary_raw.get("camera_tonemapper_disabled_frame_count", 0)
+            ),
+            "camera_bloom_level_counts": _normalize_bloom_level_counts(
+                sensor_quality_summary_raw.get("camera_bloom_level_counts", {})
+            ),
             "lidar_frame_count": _to_non_negative_int(sensor_quality_summary_raw.get("lidar_frame_count", 0)),
             "lidar_point_count_total": _to_non_negative_int(
                 sensor_quality_summary_raw.get("lidar_point_count_total", 0)
@@ -2136,6 +2178,14 @@ def run_phase2_hooks(args: argparse.Namespace) -> dict[str, Any]:
         camera_principal_point_offset_norm_total = 0.0
         camera_effective_focal_length_px_total = 0.0
         camera_projection_mode_counts: dict[str, int] = {}
+        camera_gain_db_total = 0.0
+        camera_gamma_total = 0.0
+        camera_white_balance_kelvin_total = 0.0
+        camera_vignetting_edge_darkening_total = 0.0
+        camera_bloom_halo_strength_total = 0.0
+        camera_chromatic_aberration_shift_px_total = 0.0
+        camera_tonemapper_disabled_frame_count = 0
+        camera_bloom_level_counts: dict[str, int] = {}
         lidar_frame_count = 0
         lidar_point_total = 0
         lidar_returns_total = 0
@@ -2187,14 +2237,42 @@ def run_phase2_hooks(args: argparse.Namespace) -> dict[str, Any]:
                 camera_principal_point_offset_norm_total += _to_non_negative_float(
                     camera_geometry_payload.get("principal_point_offset_norm", 0.0)
                 )
-                camera_effective_focal_length_px_total += _to_non_negative_float(
-                    camera_geometry_payload.get("effective_focal_length_px", 0.0)
-                )
+                fx = _to_non_negative_float(camera_geometry_payload.get("fx", 0.0))
+                fy = _to_non_negative_float(camera_geometry_payload.get("fy", 0.0))
+                if fx > 0.0 and fy > 0.0:
+                    camera_effective_focal_length_px_total += (fx + fy) / 2.0
+                elif fx > 0.0:
+                    camera_effective_focal_length_px_total += fx
+                elif fy > 0.0:
+                    camera_effective_focal_length_px_total += fy
                 projection = str(camera_geometry_payload.get("projection", "")).strip().upper()
                 if projection:
                     camera_projection_mode_counts[projection] = (
                         camera_projection_mode_counts.get(projection, 0) + 1
                     )
+                camera_postprocess_payload_raw = payload.get("camera_postprocess", {})
+                camera_postprocess_payload = (
+                    camera_postprocess_payload_raw if isinstance(camera_postprocess_payload_raw, dict) else {}
+                )
+                camera_gain_db_total += _to_float(camera_postprocess_payload.get("gain_db", 0.0), default=0.0)
+                camera_gamma_total += _to_non_negative_float(camera_postprocess_payload.get("gamma", 0.0))
+                camera_white_balance_kelvin_total += _to_non_negative_float(
+                    camera_postprocess_payload.get("white_balance_kelvin", 0.0)
+                )
+                camera_vignetting_edge_darkening_total += _to_non_negative_float(
+                    camera_postprocess_payload.get("vignetting_edge_darkening", 0.0)
+                )
+                camera_bloom_halo_strength_total += _to_non_negative_float(
+                    camera_postprocess_payload.get("bloom_halo_strength", 0.0)
+                )
+                camera_chromatic_aberration_shift_px_total += _to_non_negative_float(
+                    camera_postprocess_payload.get("chromatic_aberration_shift_px_est", 0.0)
+                )
+                if bool(camera_postprocess_payload.get("disable_tonemapper", False)):
+                    camera_tonemapper_disabled_frame_count += 1
+                bloom_level = str(camera_postprocess_payload.get("bloom_level", "")).strip().upper()
+                if bloom_level:
+                    camera_bloom_level_counts[bloom_level] = camera_bloom_level_counts.get(bloom_level, 0) + 1
             elif sensor_type == "lidar":
                 lidar_frame_count += 1
                 lidar_point_total += _to_non_negative_int(payload.get("point_count", 0))
@@ -2275,6 +2353,40 @@ def run_phase2_hooks(args: argparse.Namespace) -> dict[str, Any]:
             "camera_projection_mode_counts": {
                 key: camera_projection_mode_counts[key] for key in sorted(camera_projection_mode_counts.keys())
             },
+            "camera_gain_db_avg": (
+                float(camera_gain_db_total / float(camera_frame_count))
+                if camera_frame_count > 0
+                else 0.0
+            ),
+            "camera_gamma_avg": (
+                float(camera_gamma_total / float(camera_frame_count))
+                if camera_frame_count > 0
+                else 0.0
+            ),
+            "camera_white_balance_kelvin_avg": (
+                float(camera_white_balance_kelvin_total / float(camera_frame_count))
+                if camera_frame_count > 0
+                else 0.0
+            ),
+            "camera_vignetting_edge_darkening_avg": (
+                float(camera_vignetting_edge_darkening_total / float(camera_frame_count))
+                if camera_frame_count > 0
+                else 0.0
+            ),
+            "camera_bloom_halo_strength_avg": (
+                float(camera_bloom_halo_strength_total / float(camera_frame_count))
+                if camera_frame_count > 0
+                else 0.0
+            ),
+            "camera_chromatic_aberration_shift_px_avg": (
+                float(camera_chromatic_aberration_shift_px_total / float(camera_frame_count))
+                if camera_frame_count > 0
+                else 0.0
+            ),
+            "camera_tonemapper_disabled_frame_count": int(camera_tonemapper_disabled_frame_count),
+            "camera_bloom_level_counts": {
+                key: camera_bloom_level_counts[key] for key in sorted(camera_bloom_level_counts.keys())
+            },
             "lidar_frame_count": int(lidar_frame_count),
             "lidar_point_count_total": int(lidar_point_total),
             "lidar_point_count_avg": (
@@ -2326,6 +2438,7 @@ def run_phase2_hooks(args: argparse.Namespace) -> dict[str, Any]:
         sensor_quality_summary = {
             **sensor_quality_summary_defaults,
             "camera_projection_mode_counts": {},
+            "camera_bloom_level_counts": {},
         }
 
     sensor_sweep_runner = Path(args.sensor_sweep_runner).resolve()

@@ -1718,6 +1718,108 @@ class SensorSimBridgeTests(unittest.TestCase):
             )
             self.assertEqual(sensor_quality_summary.get("camera_projection_mode_counts"), {"EQUIDISTANT": 1})
 
+    def test_camera_postprocess_inputs_are_reflected_in_payload(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp_path = Path(tmp)
+            world_state = tmp_path / "world_state.json"
+            sensor_rig = tmp_path / "sensor_rig.json"
+            out_path = tmp_path / "sensor_frames.json"
+
+            world_state.write_text(
+                json.dumps(
+                    {
+                        "world_state_schema_version": "world_state_v0",
+                        "frame_timestamp": "2026-02-27T04:15:00Z",
+                        "environment": {
+                            "precipitation_intensity": 0.1,
+                            "fog_density": 0.05,
+                            "ambient_light_lux": 18000.0,
+                        },
+                        "actors": [{"actor_id": "ego"}, {"actor_id": "npc_001"}],
+                    }
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+            sensor_rig.write_text(
+                json.dumps(
+                    {
+                        "rig_schema_version": "sensor_rig_v0",
+                        "sensors": [
+                            {
+                                "sensor_id": "camera_front",
+                                "sensor_type": "camera",
+                                "image_width_px": 1920,
+                                "image_height_px": 1080,
+                                "lens_params": {
+                                    "chromatic_aberration": 1.8,
+                                    "lens_flare": 0.6,
+                                    "vignetting": {
+                                        "intensity": 0.5,
+                                        "alpha": 1.2,
+                                        "radius": 0.8,
+                                    },
+                                },
+                                "sensor_params": {
+                                    "bloom": 0.7,
+                                },
+                                "system_params": {
+                                    "gain": 12.0,
+                                    "gamma": 0.6,
+                                    "white_balance": 4800.0,
+                                },
+                                "fidelity": {
+                                    "bloom": {"disable": False, "level": "HIGH"},
+                                    "disable_tonemapper": True,
+                                },
+                            }
+                        ],
+                    }
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+
+            proc = run_script(
+                PROTOTYPE_DIR / "../../P_Sim-Engine/prototype/sensor_sim_bridge.py",
+                "--world-state",
+                str(world_state),
+                "--sensor-rig",
+                str(sensor_rig),
+                "--fidelity-tier",
+                "high",
+                "--out",
+                str(out_path),
+            )
+            self.assertIn("[ok] sensor_fidelity_tier=high", proc.stdout)
+
+            payload = read_json_file(self, file_path=out_path)
+            frames = payload.get("frames", [])
+            self.assertEqual(len(frames), 1)
+            camera_payload = frames[0].get("payload", {})
+            self.assertIsInstance(camera_payload, dict)
+            camera_postprocess = camera_payload.get("camera_postprocess", {})
+            self.assertIsInstance(camera_postprocess, dict)
+            self.assertTrue(bool(camera_postprocess.get("postprocess_input_present")))
+            self.assertAlmostEqual(float(camera_postprocess.get("gain_db", 0.0) or 0.0), 12.0, places=6)
+            self.assertEqual(str(camera_postprocess.get("bloom_level", "")), "HIGH")
+            self.assertTrue(bool(camera_postprocess.get("disable_tonemapper")))
+            self.assertGreater(float(camera_postprocess.get("vignetting_edge_darkening", 0.0) or 0.0), 0.0)
+            self.assertGreater(float(camera_postprocess.get("bloom_halo_strength", 0.0) or 0.0), 0.0)
+            self.assertGreater(float(camera_postprocess.get("chromatic_aberration_shift_px_est", 0.0) or 0.0), 0.0)
+
+            self.assertGreater(float(camera_payload.get("camera_noise_stddev_px", 0.0) or 0.0), 1.2)
+
+            sensor_quality_summary = payload.get("sensor_quality_summary", {})
+            self.assertAlmostEqual(float(sensor_quality_summary.get("camera_gain_db_avg", 0.0) or 0.0), 12.0, places=6)
+            self.assertGreater(float(sensor_quality_summary.get("camera_bloom_halo_strength_avg", 0.0) or 0.0), 0.0)
+            self.assertGreater(
+                float(sensor_quality_summary.get("camera_chromatic_aberration_shift_px_avg", 0.0) or 0.0),
+                0.0,
+            )
+            self.assertEqual(int(sensor_quality_summary.get("camera_tonemapper_disabled_frame_count", 0) or 0), 1)
+            self.assertEqual(sensor_quality_summary.get("camera_bloom_level_counts"), {"HIGH": 1})
+
     def test_invalid_sensor_type_is_reported_without_traceback(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             tmp_path = Path(tmp)
@@ -36566,6 +36668,9 @@ class RunE2EPipelineTests(unittest.TestCase):
             )
             self.assertIn("camera_distortion_edge_shift_px_avg", phase2_sensor_quality_summary)
             self.assertIn("camera_snr_db_avg", phase2_sensor_quality_summary)
+            self.assertIn("camera_gain_db_avg", phase2_sensor_quality_summary)
+            self.assertIn("camera_bloom_halo_strength_avg", phase2_sensor_quality_summary)
+            self.assertIn("camera_bloom_level_counts", phase2_sensor_quality_summary)
             self.assertIn("lidar_detection_ratio_avg", phase2_sensor_quality_summary)
             self.assertIn("radar_ghost_target_count_total", phase2_sensor_quality_summary)
             self.assertTrue(sensor_out.exists())
