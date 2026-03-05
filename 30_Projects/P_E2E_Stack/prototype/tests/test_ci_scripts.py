@@ -48874,6 +48874,10 @@ class BuildReleaseSummaryArtifactTests(unittest.TestCase):
                             "camera_exposure_time_ms_avg": 16.6,
                             "camera_signal_saturation_ratio_avg": 0.21,
                             "camera_rolling_shutter_total_delay_ms_avg": 30.0,
+                            "camera_rolling_shutter_time_step_us_avg": 27.1,
+                            "camera_rolling_shutter_temporal_aliasing_risk_avg": 0.08,
+                            "camera_rolling_shutter_temporal_sampling_quality_avg": 1.0,
+                            "camera_rolling_shutter_pixel_motion_per_step_px_avg": 0.029148,
                             "camera_normalized_total_noise_avg": 0.03,
                             "camera_distortion_edge_shift_px_avg": 12.5,
                             "camera_principal_point_offset_norm_avg": 0.04,
@@ -49062,6 +49066,61 @@ class BuildReleaseSummaryArtifactTests(unittest.TestCase):
             self.assertAlmostEqual(
                 float(phase2_sensor_fidelity_summary.get("sensor_radar_false_positive_rate_avg", 0.0) or 0.0),
                 0.25,
+                places=6,
+            )
+            self.assertAlmostEqual(
+                float(
+                    phase2_sensor_fidelity_summary.get(
+                        "sensor_camera_rolling_shutter_total_delay_ms_avg",
+                        0.0,
+                    )
+                    or 0.0
+                ),
+                30.0,
+                places=6,
+            )
+            self.assertAlmostEqual(
+                float(
+                    phase2_sensor_fidelity_summary.get(
+                        "sensor_camera_rolling_shutter_time_step_us_avg",
+                        0.0,
+                    )
+                    or 0.0
+                ),
+                27.1,
+                places=6,
+            )
+            self.assertAlmostEqual(
+                float(
+                    phase2_sensor_fidelity_summary.get(
+                        "sensor_camera_rolling_shutter_temporal_aliasing_risk_avg",
+                        0.0,
+                    )
+                    or 0.0
+                ),
+                0.08,
+                places=6,
+            )
+            self.assertAlmostEqual(
+                float(
+                    phase2_sensor_fidelity_summary.get(
+                        "sensor_camera_rolling_shutter_temporal_sampling_quality_avg",
+                        0.0,
+                    )
+                    or 0.0
+                ),
+                1.0,
+                places=6,
+            )
+            self.assertAlmostEqual(
+                float(
+                    phase2_sensor_fidelity_summary.get(
+                        "sensor_camera_rolling_shutter_pixel_motion_per_step_px_avg",
+                        0.0,
+                    )
+                    or 0.0
+                ),
+                0.029148,
                 places=6,
             )
             self.assertAlmostEqual(
@@ -49358,6 +49417,7 @@ class BuildReleaseSummaryArtifactTests(unittest.TestCase):
                     "phase2_sensor_fidelity=evaluated:1,tier_counts:high:1,fidelity_score_avg:3.000,fidelity_score_max:3.000(BATCH_MAP),frame_total:6,frame_avg:6.000,frame_max:6(BATCH_MAP),modality_total:camera:2,lidar:3,radar:1",
                     "camera_noise_avg_px:1.200,lidar_point_total:360,lidar_point_avg:120.000,radar_fp_total:1,radar_fp_avg:1.000,radar_fp_rate_avg:0.250000",
                     "camera_distortion_shift_avg_px:12.500,camera_projection_modes:EQUIDISTANT:2,camera_gain_avg_db:8.000,camera_bloom_halo_avg:0.660,camera_tonemapper_disabled_total:2,camera_bloom_levels:HIGH:2",
+                    "camera_rs_delay_avg_ms:30.000,camera_rs_step_avg_us:27.100,camera_rs_aliasing_avg:0.080,camera_rs_sampling_quality_avg:1.000,camera_rs_motion_step_avg_px:0.029148",
                     "camera_shroud_enabled_total:2,camera_shroud_dirt_avg:0.800,camera_shroud_fog_avg:0.600,camera_shroud_occlusion_avg:0.310,camera_shroud_scatter_avg:0.420,camera_shroud_coverage_avg:0.280,camera_shroud_states:DYNAMIC:2",
                     "camera_depth_enabled_total:2,camera_depth_min_avg_m:0.500,camera_depth_max_avg_m:120.000,camera_depth_bit_depth_avg:16.000,camera_depth_modes:LOG:2",
                     "camera_flow_enabled_total:2,camera_flow_mag_avg_px:4.200,camera_flow_velocity_dirs:FORWARD:2,camera_flow_y_axis_dirs:UP:2,lidar_detection_ratio_avg:0.850,radar_ghost_total:2",
@@ -53087,6 +53147,11 @@ class BuildNotificationPayloadTests(unittest.TestCase):
                             "sensor_radar_false_positive_count_total": 1,
                             "sensor_radar_false_positive_count_avg": 1.0,
                             "sensor_radar_false_positive_rate_avg": 0.25,
+                            "sensor_camera_rolling_shutter_total_delay_ms_avg": 30.0,
+                            "sensor_camera_rolling_shutter_time_step_us_avg": 27.1,
+                            "sensor_camera_rolling_shutter_temporal_aliasing_risk_avg": 0.08,
+                            "sensor_camera_rolling_shutter_temporal_sampling_quality_avg": 1.0,
+                            "sensor_camera_rolling_shutter_pixel_motion_per_step_px_avg": 0.029148,
                             "sensor_camera_shroud_input_enabled_frame_count_total": 2,
                             "sensor_camera_shroud_dirt_intensity_avg": 0.8,
                             "sensor_camera_shroud_fog_intensity_avg": 0.6,
@@ -53166,6 +53231,7 @@ class BuildNotificationPayloadTests(unittest.TestCase):
             self.assertIn("phase2_sensor_fidelity_summary=evaluated=1,tier_counts=high:1", payload.get("message_text", ""))
             self.assertIn("frame_total=6", str(payload.get("phase2_sensor_fidelity_summary_text", "")))
             self.assertIn("radar_fp_rate_avg=0.250000", str(payload.get("phase2_sensor_fidelity_summary_text", "")))
+            self.assertIn("camera_rs_step_avg_us=27.100", str(payload.get("phase2_sensor_fidelity_summary_text", "")))
             self.assertIn("camera_shroud_states=DYNAMIC:2", str(payload.get("phase2_sensor_fidelity_summary_text", "")))
             self.assertIn("camera_depth_enabled_total=2", str(payload.get("phase2_sensor_fidelity_summary_text", "")))
             self.assertIn("camera_flow_velocity_dirs=FORWARD:2", str(payload.get("phase2_sensor_fidelity_summary_text", "")))

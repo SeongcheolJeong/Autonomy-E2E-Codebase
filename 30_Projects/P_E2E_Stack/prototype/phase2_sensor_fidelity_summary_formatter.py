@@ -73,6 +73,16 @@ def format_phase2_sensor_fidelity_summary(
         f"radar_fp_total={_to_int(payload.get('sensor_radar_false_positive_count_total', 0))}",
         f"radar_fp_avg={_to_float(payload.get('sensor_radar_false_positive_count_avg', 0.0)):.3f}",
         f"radar_fp_rate_avg={_to_float(payload.get('sensor_radar_false_positive_rate_avg', 0.0)):.6f}",
+        "camera_rs_delay_avg_ms="
+        f"{_to_float(payload.get('sensor_camera_rolling_shutter_total_delay_ms_avg', 0.0)):.3f}",
+        "camera_rs_step_avg_us="
+        f"{_to_float(payload.get('sensor_camera_rolling_shutter_time_step_us_avg', 0.0)):.3f}",
+        "camera_rs_aliasing_avg="
+        f"{_to_float(payload.get('sensor_camera_rolling_shutter_temporal_aliasing_risk_avg', 0.0)):.3f}",
+        "camera_rs_sampling_quality_avg="
+        f"{_to_float(payload.get('sensor_camera_rolling_shutter_temporal_sampling_quality_avg', 0.0)):.3f}",
+        "camera_rs_motion_step_avg_px="
+        f"{_to_float(payload.get('sensor_camera_rolling_shutter_pixel_motion_per_step_px_avg', 0.0)):.6f}",
         "camera_shroud_enabled_total="
         f"{_to_int(payload.get('sensor_camera_shroud_input_enabled_frame_count_total', 0))}",
         f"camera_shroud_dirt_avg={_to_float(payload.get('sensor_camera_shroud_dirt_intensity_avg', 0.0)):.3f}",

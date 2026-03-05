@@ -1414,6 +1414,10 @@ def discover_pipeline_manifests(scan_roots: list[Path], release_prefix: str) -> 
             phase2_sensor_camera_exposure_time_ms_avg = 0.0
             phase2_sensor_camera_signal_saturation_ratio_avg = 0.0
             phase2_sensor_camera_rolling_shutter_total_delay_ms_avg = 0.0
+            phase2_sensor_camera_rolling_shutter_time_step_us_avg = 0.0
+            phase2_sensor_camera_rolling_shutter_temporal_aliasing_risk_avg = 0.0
+            phase2_sensor_camera_rolling_shutter_temporal_sampling_quality_avg = 0.0
+            phase2_sensor_camera_rolling_shutter_pixel_motion_per_step_px_avg = 0.0
             phase2_sensor_camera_normalized_total_noise_avg = 0.0
             phase2_sensor_camera_distortion_edge_shift_px_avg = 0.0
             phase2_sensor_camera_principal_point_offset_norm_avg = 0.0
@@ -1617,6 +1621,50 @@ def discover_pipeline_manifests(scan_roots: list[Path], release_prefix: str) -> 
                             _to_float_or_none(
                                 phase2_sensor_quality_summary_raw.get(
                                     "camera_rolling_shutter_total_delay_ms_avg"
+                                )
+                            )
+                            or 0.0
+                        ),
+                    )
+                    phase2_sensor_camera_rolling_shutter_time_step_us_avg = max(
+                        0.0,
+                        float(
+                            _to_float_or_none(
+                                phase2_sensor_quality_summary_raw.get(
+                                    "camera_rolling_shutter_time_step_us_avg"
+                                )
+                            )
+                            or 0.0
+                        ),
+                    )
+                    phase2_sensor_camera_rolling_shutter_temporal_aliasing_risk_avg = max(
+                        0.0,
+                        float(
+                            _to_float_or_none(
+                                phase2_sensor_quality_summary_raw.get(
+                                    "camera_rolling_shutter_temporal_aliasing_risk_avg"
+                                )
+                            )
+                            or 0.0
+                        ),
+                    )
+                    phase2_sensor_camera_rolling_shutter_temporal_sampling_quality_avg = max(
+                        0.0,
+                        float(
+                            _to_float_or_none(
+                                phase2_sensor_quality_summary_raw.get(
+                                    "camera_rolling_shutter_temporal_sampling_quality_avg"
+                                )
+                            )
+                            or 0.0
+                        ),
+                    )
+                    phase2_sensor_camera_rolling_shutter_pixel_motion_per_step_px_avg = max(
+                        0.0,
+                        float(
+                            _to_float_or_none(
+                                phase2_sensor_quality_summary_raw.get(
+                                    "camera_rolling_shutter_pixel_motion_per_step_px_avg"
                                 )
                             )
                             or 0.0
@@ -2850,6 +2898,18 @@ def discover_pipeline_manifests(scan_roots: list[Path], release_prefix: str) -> 
                     ),
                     "phase2_sensor_camera_rolling_shutter_total_delay_ms_avg": (
                         phase2_sensor_camera_rolling_shutter_total_delay_ms_avg
+                    ),
+                    "phase2_sensor_camera_rolling_shutter_time_step_us_avg": (
+                        phase2_sensor_camera_rolling_shutter_time_step_us_avg
+                    ),
+                    "phase2_sensor_camera_rolling_shutter_temporal_aliasing_risk_avg": (
+                        phase2_sensor_camera_rolling_shutter_temporal_aliasing_risk_avg
+                    ),
+                    "phase2_sensor_camera_rolling_shutter_temporal_sampling_quality_avg": (
+                        phase2_sensor_camera_rolling_shutter_temporal_sampling_quality_avg
+                    ),
+                    "phase2_sensor_camera_rolling_shutter_pixel_motion_per_step_px_avg": (
+                        phase2_sensor_camera_rolling_shutter_pixel_motion_per_step_px_avg
                     ),
                     "phase2_sensor_camera_normalized_total_noise_avg": (
                         phase2_sensor_camera_normalized_total_noise_avg
@@ -7135,6 +7195,48 @@ def summarize_phase2_sensor_fidelity(pipeline_manifests: list[dict[str, Any]]) -
                         or 0.0
                     ),
                 ),
+                "camera_rolling_shutter_time_step_us_avg": max(
+                    0.0,
+                    float(
+                        _to_float_or_none(
+                            manifest.get("phase2_sensor_camera_rolling_shutter_time_step_us_avg")
+                        )
+                        or 0.0
+                    ),
+                ),
+                "camera_rolling_shutter_temporal_aliasing_risk_avg": max(
+                    0.0,
+                    float(
+                        _to_float_or_none(
+                            manifest.get(
+                                "phase2_sensor_camera_rolling_shutter_temporal_aliasing_risk_avg"
+                            )
+                        )
+                        or 0.0
+                    ),
+                ),
+                "camera_rolling_shutter_temporal_sampling_quality_avg": max(
+                    0.0,
+                    float(
+                        _to_float_or_none(
+                            manifest.get(
+                                "phase2_sensor_camera_rolling_shutter_temporal_sampling_quality_avg"
+                            )
+                        )
+                        or 0.0
+                    ),
+                ),
+                "camera_rolling_shutter_pixel_motion_per_step_px_avg": max(
+                    0.0,
+                    float(
+                        _to_float_or_none(
+                            manifest.get(
+                                "phase2_sensor_camera_rolling_shutter_pixel_motion_per_step_px_avg"
+                            )
+                        )
+                        or 0.0
+                    ),
+                ),
                 "camera_normalized_total_noise_avg": max(
                     0.0,
                     float(_to_float_or_none(manifest.get("phase2_sensor_camera_normalized_total_noise_avg")) or 0.0),
@@ -7436,6 +7538,10 @@ def summarize_phase2_sensor_fidelity(pipeline_manifests: list[dict[str, Any]]) -
             "sensor_camera_exposure_time_ms_avg": 0.0,
             "sensor_camera_signal_saturation_ratio_avg": 0.0,
             "sensor_camera_rolling_shutter_total_delay_ms_avg": 0.0,
+            "sensor_camera_rolling_shutter_time_step_us_avg": 0.0,
+            "sensor_camera_rolling_shutter_temporal_aliasing_risk_avg": 0.0,
+            "sensor_camera_rolling_shutter_temporal_sampling_quality_avg": 0.0,
+            "sensor_camera_rolling_shutter_pixel_motion_per_step_px_avg": 0.0,
             "sensor_camera_normalized_total_noise_avg": 0.0,
             "sensor_camera_distortion_edge_shift_px_avg": 0.0,
             "sensor_camera_principal_point_offset_norm_avg": 0.0,
@@ -7633,6 +7739,26 @@ def summarize_phase2_sensor_fidelity(pipeline_manifests: list[dict[str, Any]]) -
     )
     camera_rolling_shutter_total_delay_ms_weighted_total = sum(
         float(row.get("camera_rolling_shutter_total_delay_ms_avg", 0.0))
+        * float(int(row.get("camera_frame_count", 0)))
+        for row in checked_rows
+    )
+    camera_rolling_shutter_time_step_us_weighted_total = sum(
+        float(row.get("camera_rolling_shutter_time_step_us_avg", 0.0))
+        * float(int(row.get("camera_frame_count", 0)))
+        for row in checked_rows
+    )
+    camera_rolling_shutter_temporal_aliasing_risk_weighted_total = sum(
+        float(row.get("camera_rolling_shutter_temporal_aliasing_risk_avg", 0.0))
+        * float(int(row.get("camera_frame_count", 0)))
+        for row in checked_rows
+    )
+    camera_rolling_shutter_temporal_sampling_quality_weighted_total = sum(
+        float(row.get("camera_rolling_shutter_temporal_sampling_quality_avg", 0.0))
+        * float(int(row.get("camera_frame_count", 0)))
+        for row in checked_rows
+    )
+    camera_rolling_shutter_pixel_motion_per_step_px_weighted_total = sum(
+        float(row.get("camera_rolling_shutter_pixel_motion_per_step_px_avg", 0.0))
         * float(int(row.get("camera_frame_count", 0)))
         for row in checked_rows
     )
@@ -7932,6 +8058,26 @@ def summarize_phase2_sensor_fidelity(pipeline_manifests: list[dict[str, Any]]) -
         ),
         "sensor_camera_rolling_shutter_total_delay_ms_avg": (
             float(camera_rolling_shutter_total_delay_ms_weighted_total / float(camera_frame_count_total))
+            if camera_frame_count_total > 0
+            else 0.0
+        ),
+        "sensor_camera_rolling_shutter_time_step_us_avg": (
+            float(camera_rolling_shutter_time_step_us_weighted_total / float(camera_frame_count_total))
+            if camera_frame_count_total > 0
+            else 0.0
+        ),
+        "sensor_camera_rolling_shutter_temporal_aliasing_risk_avg": (
+            float(camera_rolling_shutter_temporal_aliasing_risk_weighted_total / float(camera_frame_count_total))
+            if camera_frame_count_total > 0
+            else 0.0
+        ),
+        "sensor_camera_rolling_shutter_temporal_sampling_quality_avg": (
+            float(camera_rolling_shutter_temporal_sampling_quality_weighted_total / float(camera_frame_count_total))
+            if camera_frame_count_total > 0
+            else 0.0
+        ),
+        "sensor_camera_rolling_shutter_pixel_motion_per_step_px_avg": (
+            float(camera_rolling_shutter_pixel_motion_per_step_px_weighted_total / float(camera_frame_count_total))
             if camera_frame_count_total > 0
             else 0.0
         ),
@@ -12188,6 +12334,33 @@ def main() -> int:
             )
             else "n/a"
         )
+        phase2_sensor_camera_rolling_shutter_delay_ms_avg = float(
+            phase2_sensor_fidelity_summary.get("sensor_camera_rolling_shutter_total_delay_ms_avg", 0.0) or 0.0
+        )
+        phase2_sensor_camera_rolling_shutter_time_step_us_avg = float(
+            phase2_sensor_fidelity_summary.get("sensor_camera_rolling_shutter_time_step_us_avg", 0.0) or 0.0
+        )
+        phase2_sensor_camera_rolling_shutter_temporal_aliasing_risk_avg = float(
+            phase2_sensor_fidelity_summary.get(
+                "sensor_camera_rolling_shutter_temporal_aliasing_risk_avg",
+                0.0,
+            )
+            or 0.0
+        )
+        phase2_sensor_camera_rolling_shutter_temporal_sampling_quality_avg = float(
+            phase2_sensor_fidelity_summary.get(
+                "sensor_camera_rolling_shutter_temporal_sampling_quality_avg",
+                0.0,
+            )
+            or 0.0
+        )
+        phase2_sensor_camera_rolling_shutter_pixel_motion_per_step_px_avg = float(
+            phase2_sensor_fidelity_summary.get(
+                "sensor_camera_rolling_shutter_pixel_motion_per_step_px_avg",
+                0.0,
+            )
+            or 0.0
+        )
         phase2_sensor_camera_shroud_input_enabled_frame_total = int(
             phase2_sensor_fidelity_summary.get("sensor_camera_shroud_input_enabled_frame_count_total", 0) or 0
         )
@@ -12342,6 +12515,13 @@ def main() -> int:
             f"camera_bloom_halo_avg:{phase2_sensor_camera_bloom_halo_strength_avg:.3f},"
             f"camera_tonemapper_disabled_total:{phase2_sensor_camera_tonemapper_disabled_frame_total},"
             f"camera_bloom_levels:{phase2_sensor_camera_bloom_level_counts_total_text},"
+            f"camera_rs_delay_avg_ms:{phase2_sensor_camera_rolling_shutter_delay_ms_avg:.3f},"
+            f"camera_rs_step_avg_us:{phase2_sensor_camera_rolling_shutter_time_step_us_avg:.3f},"
+            f"camera_rs_aliasing_avg:{phase2_sensor_camera_rolling_shutter_temporal_aliasing_risk_avg:.3f},"
+            "camera_rs_sampling_quality_avg:"
+            f"{phase2_sensor_camera_rolling_shutter_temporal_sampling_quality_avg:.3f},"
+            "camera_rs_motion_step_avg_px:"
+            f"{phase2_sensor_camera_rolling_shutter_pixel_motion_per_step_px_avg:.6f},"
             f"camera_shroud_enabled_total:{phase2_sensor_camera_shroud_input_enabled_frame_total},"
             f"camera_shroud_dirt_avg:{phase2_sensor_camera_shroud_dirt_intensity_avg:.3f},"
             f"camera_shroud_fog_avg:{phase2_sensor_camera_shroud_fog_intensity_avg:.3f},"

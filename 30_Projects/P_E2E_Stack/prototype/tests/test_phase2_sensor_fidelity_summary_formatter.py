@@ -58,6 +58,11 @@ class Phase2SensorFidelitySummaryFormatterTests(unittest.TestCase):
             "sensor_radar_false_positive_count_total": 20,
             "sensor_radar_false_positive_count_avg": 20.0,
             "sensor_radar_false_positive_rate_avg": 0.005,
+            "sensor_camera_rolling_shutter_total_delay_ms_avg": 29.5,
+            "sensor_camera_rolling_shutter_time_step_us_avg": 27.1,
+            "sensor_camera_rolling_shutter_temporal_aliasing_risk_avg": 0.08,
+            "sensor_camera_rolling_shutter_temporal_sampling_quality_avg": 1.0,
+            "sensor_camera_rolling_shutter_pixel_motion_per_step_px_avg": 0.029148,
             "sensor_camera_shroud_input_enabled_frame_count_total": 12,
             "sensor_camera_shroud_dirt_intensity_avg": 0.8,
             "sensor_camera_shroud_fog_intensity_avg": 0.6,
@@ -110,6 +115,7 @@ class Phase2SensorFidelitySummaryFormatterTests(unittest.TestCase):
             format_counts=_fmt_counts_compact,
             spaced=False,
         )
+        self.assertIn("camera_rs_step_avg_us=27.100", compact)
         self.assertIn("fidelity_score_max=0.880(BATCH_MAIN)", compact)
         self.assertIn("camera_shroud_states=DYNAMIC:12", compact)
         self.assertIn("rig_sweep_best_camera_visibility_max=0.920(BATCH_SWEEP)", compact)
@@ -121,6 +127,7 @@ class Phase2SensorFidelitySummaryFormatterTests(unittest.TestCase):
             format_counts=_fmt_counts_spaced,
             spaced=True,
         )
+        self.assertIn("camera_rs_step_avg_us=27.100", spaced)
         self.assertIn("fidelity_score_max=0.880 (BATCH_MAIN)", spaced)
         self.assertIn("camera_shroud_states=DYNAMIC:12", spaced)
         self.assertIn("rig_sweep_best_camera_visibility_max=0.920 (BATCH_SWEEP)", spaced)
