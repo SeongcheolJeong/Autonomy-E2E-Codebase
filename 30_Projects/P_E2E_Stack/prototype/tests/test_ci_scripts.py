@@ -2135,6 +2135,147 @@ class SensorSimBridgeTests(unittest.TestCase):
                 1.0,
             )
 
+    def test_camera_color_filter_array_matrix_inputs_are_reflected_in_payload(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp_path = Path(tmp)
+            world_state = tmp_path / "world_state.json"
+            sensor_rig = tmp_path / "sensor_rig.json"
+            out_path = tmp_path / "sensor_frames.json"
+
+            world_state.write_text(
+                json.dumps(
+                    {
+                        "world_state_schema_version": "world_state_v0",
+                        "frame_timestamp": "2026-02-27T04:18:00Z",
+                        "environment": {
+                            "precipitation_intensity": 0.08,
+                            "fog_density": 0.04,
+                            "ambient_light_lux": 14000.0,
+                        },
+                        "actors": [{"actor_id": "ego"}, {"actor_id": "npc_001"}],
+                    }
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+            sensor_rig.write_text(
+                json.dumps(
+                    {
+                        "rig_schema_version": "sensor_rig_v0",
+                        "sensors": [
+                            {
+                                "sensor_id": "camera_front",
+                                "sensor_type": "camera",
+                                "image_width_px": 1920,
+                                "image_height_px": 1080,
+                                "sensor_params": {
+                                    "bloom": 0.45,
+                                    "color_filter_array_matrix": {
+                                        "white_balance": {"r": 1.1, "g": 1.0, "b": 0.92},
+                                        "layout": {
+                                            "p1": {"r": 1.2, "g": 0.05, "b": 0.0, "bias": 0.02},
+                                            "p2": {"r": 0.0, "g": 1.1, "b": 0.08, "bias": 0.01},
+                                            "p3": {"r": 0.06, "g": 1.0, "b": 0.04, "bias": 0.0},
+                                            "p4": {"r": 0.02, "g": 0.1, "b": 1.15, "bias": -0.01},
+                                        },
+                                        "transmittance": {"p1": 0.95, "p2": 0.9, "p3": 0.88, "p4": 0.9},
+                                        "clamping": {"min": -0.05, "max": 1.1},
+                                    },
+                                },
+                                "system_params": {
+                                    "gain": 9.0,
+                                    "gamma": 0.58,
+                                    "white_balance": 5200.0,
+                                    "color_space": "RGB",
+                                    "data_type": "FLOAT",
+                                },
+                                "fidelity": {
+                                    "bloom": {"disable": False, "level": "LOW"},
+                                    "disable_tonemapper": False,
+                                },
+                            }
+                        ],
+                    }
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+
+            proc = run_script(
+                PROTOTYPE_DIR / "../../P_Sim-Engine/prototype/sensor_sim_bridge.py",
+                "--world-state",
+                str(world_state),
+                "--sensor-rig",
+                str(sensor_rig),
+                "--fidelity-tier",
+                "high",
+                "--out",
+                str(out_path),
+            )
+            self.assertIn("[ok] sensor_fidelity_tier=high", proc.stdout)
+
+            payload = read_json_file(self, file_path=out_path)
+            frames = payload.get("frames", [])
+            self.assertEqual(len(frames), 1)
+            camera_payload = frames[0].get("payload", {})
+            self.assertIsInstance(camera_payload, dict)
+            camera_postprocess = camera_payload.get("camera_postprocess", {})
+            self.assertIsInstance(camera_postprocess, dict)
+            self.assertTrue(bool(camera_postprocess.get("color_filter_array_matrix_input_present")))
+            self.assertTrue(bool(camera_postprocess.get("color_filter_array_matrix_applied")))
+            self.assertFalse(bool(camera_postprocess.get("color_filter_array_matrix_conflict_with_cfa")))
+            matrix_wb = camera_postprocess.get("color_filter_array_matrix_white_balance", {})
+            self.assertIsInstance(matrix_wb, dict)
+            self.assertAlmostEqual(float(matrix_wb.get("r", 0.0) or 0.0), 1.1, places=6)
+            matrix_clamping = camera_postprocess.get("color_filter_array_matrix_clamping", {})
+            self.assertIsInstance(matrix_clamping, dict)
+            self.assertAlmostEqual(float(matrix_clamping.get("min", 0.0) or 0.0), -0.05, places=6)
+            self.assertAlmostEqual(float(matrix_clamping.get("max", 0.0) or 0.0), 1.1, places=6)
+            self.assertGreater(
+                float(camera_postprocess.get("color_filter_array_matrix_clamp_range", 0.0) or 0.0),
+                0.0,
+            )
+            self.assertGreater(
+                float(camera_postprocess.get("color_filter_array_matrix_color_reconstruction_score", 0.0) or 0.0),
+                0.0,
+            )
+            self.assertGreaterEqual(
+                float(camera_postprocess.get("color_filter_array_matrix_artifact_risk", 0.0) or 0.0),
+                0.0,
+            )
+
+            sensor_quality_summary = payload.get("sensor_quality_summary", {})
+            self.assertEqual(
+                int(sensor_quality_summary.get("camera_color_filter_array_matrix_input_frame_count", 0) or 0),
+                1,
+            )
+            self.assertEqual(
+                int(sensor_quality_summary.get("camera_color_filter_array_matrix_applied_frame_count", 0) or 0),
+                1,
+            )
+            self.assertEqual(
+                int(sensor_quality_summary.get("camera_color_filter_array_matrix_conflict_frame_count", 0) or 0),
+                0,
+            )
+            self.assertGreater(
+                float(
+                    sensor_quality_summary.get(
+                        "camera_color_filter_array_matrix_color_reconstruction_score_avg",
+                        0.0,
+                    )
+                    or 0.0
+                ),
+                0.0,
+            )
+            self.assertGreaterEqual(
+                float(sensor_quality_summary.get("camera_color_filter_array_matrix_artifact_risk_avg", 0.0) or 0.0),
+                0.0,
+            )
+            self.assertGreaterEqual(
+                float(sensor_quality_summary.get("camera_color_filter_array_matrix_clamp_hit_ratio_avg", 0.0) or 0.0),
+                0.0,
+            )
+
     def test_camera_depth_and_optical_flow_inputs_are_reflected_in_payload(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             tmp_path = Path(tmp)
@@ -37313,6 +37454,15 @@ class RunE2EPipelineTests(unittest.TestCase):
             self.assertIn("camera_color_filter_non_rgb_channel_count_avg", phase2_sensor_quality_summary)
             self.assertIn("camera_color_filter_color_reconstruction_score_avg", phase2_sensor_quality_summary)
             self.assertIn("camera_demosaic_mode_counts", phase2_sensor_quality_summary)
+            self.assertIn("camera_color_filter_array_matrix_input_frame_count", phase2_sensor_quality_summary)
+            self.assertIn("camera_color_filter_array_matrix_applied_frame_count", phase2_sensor_quality_summary)
+            self.assertIn("camera_color_filter_array_matrix_conflict_frame_count", phase2_sensor_quality_summary)
+            self.assertIn(
+                "camera_color_filter_array_matrix_color_reconstruction_score_avg",
+                phase2_sensor_quality_summary,
+            )
+            self.assertIn("camera_color_filter_array_matrix_artifact_risk_avg", phase2_sensor_quality_summary)
+            self.assertIn("camera_color_filter_array_matrix_clamp_hit_ratio_avg", phase2_sensor_quality_summary)
             self.assertIn("camera_bloom_level_counts", phase2_sensor_quality_summary)
             self.assertIn("camera_depth_enabled_frame_count", phase2_sensor_quality_summary)
             self.assertIn("camera_depth_mode_counts", phase2_sensor_quality_summary)

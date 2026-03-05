@@ -718,6 +718,104 @@ def _resolve_cfa_transmittance(raw_value: Any) -> dict[str, float]:
     return resolved
 
 
+def _resolve_cfa_matrix_white_balance(raw_value: Any) -> dict[str, float]:
+    defaults = {
+        "r": 1.0,
+        "g": 1.0,
+        "b": 1.0,
+    }
+    resolved = dict(defaults)
+    if isinstance(raw_value, dict):
+        for key in ("r", "g", "b"):
+            value = raw_value.get(key, raw_value.get(key.upper(), resolved[key]))
+            resolved[key] = _clamp_float(_to_float(value, default=resolved[key]), minimum=0.0, maximum=4.0)
+    elif isinstance(raw_value, (list, tuple)):
+        ordered_keys = ("r", "g", "b")
+        for idx, key in enumerate(ordered_keys):
+            if idx >= len(raw_value):
+                break
+            resolved[key] = _clamp_float(_to_float(raw_value[idx], default=resolved[key]), minimum=0.0, maximum=4.0)
+    return resolved
+
+
+def _resolve_cfa_matrix_layout(raw_value: Any) -> dict[str, dict[str, float]]:
+    defaults = {
+        "p1": {"r": 1.0, "g": 0.0, "b": 0.0, "bias": 0.0},
+        "p2": {"r": 0.0, "g": 1.0, "b": 0.0, "bias": 0.0},
+        "p3": {"r": 0.0, "g": 1.0, "b": 0.0, "bias": 0.0},
+        "p4": {"r": 0.0, "g": 0.0, "b": 1.0, "bias": 0.0},
+    }
+    resolved: dict[str, dict[str, float]] = {key: dict(value) for key, value in defaults.items()}
+    if isinstance(raw_value, dict):
+        for key in ("p1", "p2", "p3", "p4"):
+            entry_raw = raw_value.get(key, raw_value.get(key.upper(), {}))
+            entry = _as_dict(entry_raw)
+            current = resolved[key]
+            resolved[key] = {
+                "r": _clamp_float(
+                    _to_float(entry.get("r", entry.get("R", current["r"])), default=current["r"]),
+                    minimum=-4.0,
+                    maximum=4.0,
+                ),
+                "g": _clamp_float(
+                    _to_float(entry.get("g", entry.get("G", current["g"])), default=current["g"]),
+                    minimum=-4.0,
+                    maximum=4.0,
+                ),
+                "b": _clamp_float(
+                    _to_float(entry.get("b", entry.get("B", current["b"])), default=current["b"]),
+                    minimum=-4.0,
+                    maximum=4.0,
+                ),
+                "bias": _clamp_float(
+                    _to_float(entry.get("bias", entry.get("BIAS", current["bias"])), default=current["bias"]),
+                    minimum=-2.0,
+                    maximum=2.0,
+                ),
+            }
+    return resolved
+
+
+def _resolve_cfa_matrix_transmittance(raw_value: Any) -> dict[str, float]:
+    defaults = {
+        "p1": 1.0,
+        "p2": 1.0,
+        "p3": 1.0,
+        "p4": 1.0,
+    }
+    resolved: dict[str, float] = dict(defaults)
+    if isinstance(raw_value, dict):
+        for key in ("p1", "p2", "p3", "p4"):
+            value = raw_value.get(key, raw_value.get(key.upper(), resolved[key]))
+            resolved[key] = _clamp_float(_to_float(value, default=resolved[key]), minimum=0.0, maximum=3.0)
+    elif isinstance(raw_value, (list, tuple)):
+        ordered_keys = ("p1", "p2", "p3", "p4")
+        for idx, key in enumerate(ordered_keys):
+            if idx >= len(raw_value):
+                break
+            resolved[key] = _clamp_float(_to_float(raw_value[idx], default=resolved[key]), minimum=0.0, maximum=3.0)
+    return resolved
+
+
+def _resolve_cfa_matrix_clamping(raw_value: Any) -> dict[str, float]:
+    clamp_min = 0.0
+    clamp_max = 1.0
+    if isinstance(raw_value, dict):
+        clamp_min = _to_float(raw_value.get("min", raw_value.get("MIN", clamp_min)), default=clamp_min)
+        clamp_max = _to_float(raw_value.get("max", raw_value.get("MAX", clamp_max)), default=clamp_max)
+    elif isinstance(raw_value, (list, tuple)) and len(raw_value) >= 2:
+        clamp_min = _to_float(raw_value[0], default=clamp_min)
+        clamp_max = _to_float(raw_value[1], default=clamp_max)
+    clamp_min = _clamp_float(clamp_min, minimum=-4.0, maximum=4.0)
+    clamp_max = _clamp_float(clamp_max, minimum=-4.0, maximum=4.0)
+    if clamp_max < clamp_min:
+        clamp_min, clamp_max = clamp_max, clamp_min
+    return {
+        "min": float(clamp_min),
+        "max": float(clamp_max),
+    }
+
+
 def _resolve_piecewise_linear_mapping(raw: Any) -> list[dict[str, float]]:
     if not isinstance(raw, list):
         return []
@@ -788,6 +886,9 @@ def _resolve_camera_postprocess_config(sensor_config: dict[str, Any]) -> dict[st
     color_filter_array = _as_dict(sensor_params.get("color_filter_array"))
     if not color_filter_array:
         color_filter_array = _as_dict(sensor_config.get("color_filter_array"))
+    color_filter_array_matrix = _as_dict(sensor_params.get("color_filter_array_matrix"))
+    if not color_filter_array_matrix:
+        color_filter_array_matrix = _as_dict(sensor_config.get("color_filter_array_matrix"))
     black_level_offset_raw = system_params.get("black_level_offset", sensor_config.get("black_level_offset"))
     saturation_raw = system_params.get("saturation", sensor_config.get("saturation"))
     demosaic_mode = _resolve_demosaic_mode(
@@ -801,6 +902,30 @@ def _resolve_camera_postprocess_config(sensor_config: dict[str, Any]) -> dict[st
     )
     color_filter_transmittance = _resolve_cfa_transmittance(
         color_filter_array.get("transmittance", sensor_config.get("color_filter_transmittance"))
+    )
+    color_filter_array_matrix_white_balance = _resolve_cfa_matrix_white_balance(
+        color_filter_array_matrix.get(
+            "white_balance",
+            sensor_config.get("color_filter_array_matrix_white_balance"),
+        )
+    )
+    color_filter_array_matrix_layout = _resolve_cfa_matrix_layout(
+        color_filter_array_matrix.get(
+            "layout",
+            sensor_config.get("color_filter_array_matrix_layout"),
+        )
+    )
+    color_filter_array_matrix_transmittance = _resolve_cfa_matrix_transmittance(
+        color_filter_array_matrix.get(
+            "transmittance",
+            sensor_config.get("color_filter_array_matrix_transmittance"),
+        )
+    )
+    color_filter_array_matrix_clamping = _resolve_cfa_matrix_clamping(
+        color_filter_array_matrix.get(
+            "clamping",
+            sensor_config.get("color_filter_array_matrix_clamping"),
+        )
     )
     piecewise_linear_mapping = _resolve_piecewise_linear_mapping(
         system_params.get("piecewise_linear_mapping", sensor_config.get("piecewise_linear_mapping"))
@@ -841,13 +966,21 @@ def _resolve_camera_postprocess_config(sensor_config: dict[str, Any]) -> dict[st
             "transmittance",
         )
     ) or any(
+        key in color_filter_array_matrix
+        for key in (
+            "white_balance",
+            "layout",
+            "transmittance",
+            "clamping",
+        )
+    ) or any(
         key in fidelity
         for key in (
             "bloom",
             "disable_tonemapper",
         )
     ) or any(
-        key in sensor_params for key in ("bloom", "demosaic", "color_filter_array")
+        key in sensor_params for key in ("bloom", "demosaic", "color_filter_array", "color_filter_array_matrix")
     ) or any(
         key in sensor_config
         for key in (
@@ -866,6 +999,11 @@ def _resolve_camera_postprocess_config(sensor_config: dict[str, Any]) -> dict[st
             "color_filter_array",
             "color_filter_layout",
             "color_filter_transmittance",
+            "color_filter_array_matrix",
+            "color_filter_array_matrix_white_balance",
+            "color_filter_array_matrix_layout",
+            "color_filter_array_matrix_transmittance",
+            "color_filter_array_matrix_clamping",
             "color_space",
             "data_type",
             "piecewise_linear_mapping",
@@ -1040,6 +1178,11 @@ def _resolve_camera_postprocess_config(sensor_config: dict[str, Any]) -> dict[st
         "demosaic_mode": demosaic_mode,
         "color_filter_layout": color_filter_layout,
         "color_filter_transmittance": color_filter_transmittance,
+        "color_filter_array_matrix_input_present": bool(color_filter_array_matrix),
+        "color_filter_array_matrix_white_balance": color_filter_array_matrix_white_balance,
+        "color_filter_array_matrix_layout": color_filter_array_matrix_layout,
+        "color_filter_array_matrix_transmittance": color_filter_array_matrix_transmittance,
+        "color_filter_array_matrix_clamping": color_filter_array_matrix_clamping,
         "color_space": color_space,
         "output_data_type": output_data_type,
         "piecewise_linear_mapping": piecewise_linear_mapping,
@@ -1083,6 +1226,11 @@ def _compute_camera_postprocess(
     demosaic_mode = str(config.get("demosaic_mode", "IDEAL"))
     color_filter_layout = _as_dict(config.get("color_filter_layout"))
     color_filter_transmittance = _as_dict(config.get("color_filter_transmittance"))
+    color_filter_array_matrix_input_present = bool(config.get("color_filter_array_matrix_input_present", False))
+    color_filter_array_matrix_white_balance = _as_dict(config.get("color_filter_array_matrix_white_balance"))
+    color_filter_array_matrix_layout = _as_dict(config.get("color_filter_array_matrix_layout"))
+    color_filter_array_matrix_transmittance = _as_dict(config.get("color_filter_array_matrix_transmittance"))
+    color_filter_array_matrix_clamping = _as_dict(config.get("color_filter_array_matrix_clamping"))
     color_space = str(config.get("color_space", "RGB"))
     output_data_type = str(config.get("output_data_type", "UINT"))
     piecewise_linear_mapping = config.get("piecewise_linear_mapping", [])
@@ -1181,6 +1329,121 @@ def _compute_camera_postprocess(
         minimum=0.0,
         maximum=1.0,
     )
+    cfa_matrix_white_balance = _resolve_cfa_matrix_white_balance(color_filter_array_matrix_white_balance)
+    cfa_matrix_layout = _resolve_cfa_matrix_layout(color_filter_array_matrix_layout)
+    cfa_matrix_transmittance = _resolve_cfa_matrix_transmittance(color_filter_array_matrix_transmittance)
+    cfa_matrix_clamping = _resolve_cfa_matrix_clamping(color_filter_array_matrix_clamping)
+    cfa_matrix_clamp_min = _to_float(cfa_matrix_clamping.get("min", 0.0), default=0.0)
+    cfa_matrix_clamp_max = _to_float(cfa_matrix_clamping.get("max", 1.0), default=1.0)
+    cfa_matrix_clamp_range = max(1e-6, cfa_matrix_clamp_max - cfa_matrix_clamp_min)
+    cfa_matrix_conflict_with_cfa = bool(color_filter_array_matrix_input_present and color_filter_array_input_present)
+    cfa_matrix_applied = bool(color_filter_array_matrix_input_present and color_space != "MONO")
+    cfa_matrix_requires_non_mono = bool(color_space != "MONO")
+    cfa_matrix_layout_energy_total = 0.0
+    cfa_matrix_cross_talk_ratio_total = 0.0
+    cfa_matrix_output_total = 0.0
+    cfa_matrix_clamp_hit_total = 0.0
+    cfa_matrix_transmittance_total = 0.0
+    for key in ("p1", "p2", "p3", "p4"):
+        entry = _as_dict(cfa_matrix_layout.get(key))
+        coeff_r = _to_float(entry.get("r", 0.0), default=0.0) * _to_float(cfa_matrix_white_balance.get("r", 1.0), default=1.0)
+        coeff_g = _to_float(entry.get("g", 0.0), default=0.0) * _to_float(cfa_matrix_white_balance.get("g", 1.0), default=1.0)
+        coeff_b = _to_float(entry.get("b", 0.0), default=0.0) * _to_float(cfa_matrix_white_balance.get("b", 1.0), default=1.0)
+        bias = _to_float(entry.get("bias", 0.0), default=0.0)
+        subpixel_transmittance = _to_float(cfa_matrix_transmittance.get(key, 1.0), default=1.0)
+        channel_energy = abs(coeff_r) + abs(coeff_g) + abs(coeff_b)
+        dominant_channel_energy = max(abs(coeff_r), abs(coeff_g), abs(coeff_b))
+        cross_talk_ratio = 0.0
+        if channel_energy > 1e-6:
+            cross_talk_ratio = _clamp_float(
+                (channel_energy - dominant_channel_energy) / channel_energy,
+                minimum=0.0,
+                maximum=1.0,
+            )
+        subpixel_output = (((coeff_r + coeff_g + coeff_b) / 3.0) + bias) * subpixel_transmittance
+        subpixel_output_clamped = _clamp_float(
+            subpixel_output,
+            minimum=cfa_matrix_clamp_min,
+            maximum=cfa_matrix_clamp_max,
+        )
+        clamp_hit = 1.0 if (subpixel_output != subpixel_output_clamped) else 0.0
+        cfa_matrix_layout_energy_total += channel_energy
+        cfa_matrix_cross_talk_ratio_total += cross_talk_ratio
+        cfa_matrix_output_total += subpixel_output_clamped
+        cfa_matrix_clamp_hit_total += clamp_hit
+        cfa_matrix_transmittance_total += subpixel_transmittance
+    cfa_matrix_layout_energy_avg = cfa_matrix_layout_energy_total / 4.0
+    cfa_matrix_cross_talk_ratio_avg = cfa_matrix_cross_talk_ratio_total / 4.0
+    cfa_matrix_output_avg = cfa_matrix_output_total / 4.0
+    cfa_matrix_clamp_hit_ratio = cfa_matrix_clamp_hit_total / 4.0
+    cfa_matrix_transmittance_avg = cfa_matrix_transmittance_total / 4.0
+    cfa_matrix_wb_values = [
+        _to_float(cfa_matrix_white_balance.get("r", 1.0), default=1.0),
+        _to_float(cfa_matrix_white_balance.get("g", 1.0), default=1.0),
+        _to_float(cfa_matrix_white_balance.get("b", 1.0), default=1.0),
+    ]
+    cfa_matrix_wb_balance_score = 1.0
+    cfa_matrix_wb_max = max(cfa_matrix_wb_values)
+    if cfa_matrix_wb_max > 1e-6:
+        cfa_matrix_wb_balance_score = _clamp_float(
+            min(cfa_matrix_wb_values) / cfa_matrix_wb_max,
+            minimum=0.0,
+            maximum=1.0,
+        )
+    cfa_matrix_output_norm = _clamp_float(
+        (cfa_matrix_output_avg - cfa_matrix_clamp_min) / cfa_matrix_clamp_range,
+        minimum=0.0,
+        maximum=1.0,
+    )
+    cfa_matrix_overdrive = _clamp_float(cfa_matrix_layout_energy_avg - 1.0, minimum=0.0, maximum=2.0)
+    cfa_matrix_color_reconstruction_score = _clamp_float(
+        (0.42 * (1.0 - cfa_matrix_cross_talk_ratio_avg))
+        + (0.2 * cfa_matrix_wb_balance_score)
+        + (0.2 * _clamp_float(cfa_matrix_transmittance_avg, minimum=0.0, maximum=1.5) / 1.5)
+        + (0.18 * cfa_matrix_output_norm),
+        minimum=0.0,
+        maximum=1.0,
+    )
+    cfa_matrix_artifact_risk = _clamp_float(
+        (0.45 * cfa_matrix_cross_talk_ratio_avg)
+        + (0.3 * cfa_matrix_clamp_hit_ratio)
+        + (0.25 * (cfa_matrix_overdrive / 2.0)),
+        minimum=0.0,
+        maximum=1.0,
+    )
+    if not cfa_matrix_applied and color_filter_array_matrix_input_present:
+        cfa_matrix_color_reconstruction_score *= 0.5
+        cfa_matrix_artifact_risk = _clamp_float(
+            cfa_matrix_artifact_risk + 0.2,
+            minimum=0.0,
+            maximum=1.0,
+        )
+    if not color_filter_array_matrix_input_present:
+        cfa_matrix_color_reconstruction_score = 0.0
+        cfa_matrix_artifact_risk = 0.0
+        cfa_matrix_clamp_hit_ratio = 0.0
+        cfa_matrix_output_norm = 0.5
+        cfa_matrix_layout_energy_avg = 0.0
+        cfa_matrix_cross_talk_ratio_avg = 0.0
+        cfa_matrix_transmittance_avg = 0.0
+    cfa_matrix_visibility_scale = 1.0
+    cfa_matrix_noise_delta = 0.0
+    cfa_matrix_dynamic_range_delta = 0.0
+    if color_filter_array_matrix_input_present:
+        cfa_matrix_visibility_scale = _clamp_float(
+            0.9 + (0.16 * cfa_matrix_color_reconstruction_score) - (0.12 * cfa_matrix_artifact_risk),
+            minimum=0.72,
+            maximum=1.08,
+        )
+        cfa_matrix_noise_delta = (0.16 * cfa_matrix_artifact_risk) + (0.12 * (1.0 - cfa_matrix_color_reconstruction_score))
+        cfa_matrix_dynamic_range_delta = (0.32 * (cfa_matrix_output_norm - 0.5)) - (0.2 * cfa_matrix_artifact_risk)
+    cfa_effective_color_reconstruction_score = cfa_color_reconstruction_score
+    cfa_effective_demosaic_artifact_scale = cfa_demosaic_artifact_scale
+    cfa_effective_luma_throughput = cfa_luma_throughput
+    if cfa_matrix_applied:
+        cfa_effective_color_reconstruction_score = 1.0
+        cfa_effective_demosaic_artifact_scale = 0.0
+        cfa_effective_luma_throughput = 0.5
     piecewise_linear_mapping_present = len(piecewise_linear_mapping) >= 2
     piecewise_linear_mapping_point_count = int(len(piecewise_linear_mapping))
     if piecewise_linear_mapping_present:
@@ -1280,10 +1543,11 @@ def _compute_camera_postprocess(
         postprocess_visibility_scale
         * color_space_visibility_scale
         * _clamp_float(
-            0.92 + (0.14 * cfa_color_reconstruction_score) - (0.07 * cfa_demosaic_artifact_scale),
+            0.92 + (0.14 * cfa_effective_color_reconstruction_score) - (0.07 * cfa_effective_demosaic_artifact_scale),
             minimum=0.75,
             maximum=1.08,
         )
+        * cfa_matrix_visibility_scale
         * _clamp_float(
             1.0 - (0.04 * piecewise_mapping_midtone_deviation),
             minimum=0.85,
@@ -1301,8 +1565,9 @@ def _compute_camera_postprocess(
         + (0.05 * saturation_deviation)
         + color_space_noise_delta
         + data_type_noise_delta
-        + (0.18 * (1.0 - cfa_color_reconstruction_score))
-        + (0.08 * cfa_demosaic_artifact_scale)
+        + (0.18 * (1.0 - cfa_effective_color_reconstruction_score))
+        + (0.08 * cfa_effective_demosaic_artifact_scale)
+        + cfa_matrix_noise_delta
         + (0.05 * piecewise_mapping_contrast_deviation),
         minimum=0.0,
         maximum=2.0,
@@ -1313,8 +1578,9 @@ def _compute_camera_postprocess(
         - (0.08 * flare_glare_ratio)
         - (1.1 * effective_black_level_lift)
         - (0.15 * max(0.0, saturation_effective_scale - 1.0))
-        + (0.35 * (cfa_luma_throughput - 0.5))
-        - (0.14 * cfa_demosaic_artifact_scale)
+        + (0.35 * (cfa_effective_luma_throughput - 0.5))
+        - (0.14 * cfa_effective_demosaic_artifact_scale)
+        + cfa_matrix_dynamic_range_delta
         + (0.45 * (piecewise_mapping_dynamic_range_scale - 1.0))
         + data_type_dynamic_range_delta
         + (0.2 if disable_tonemapper else 0.0),
@@ -1372,6 +1638,35 @@ def _compute_camera_postprocess(
         "color_filter_luma_throughput": float(cfa_luma_throughput),
         "color_filter_color_reconstruction_score": float(cfa_color_reconstruction_score),
         "color_filter_demosaic_artifact_scale": float(cfa_demosaic_artifact_scale),
+        "color_filter_array_matrix_input_present": bool(color_filter_array_matrix_input_present),
+        "color_filter_array_matrix_applied": bool(cfa_matrix_applied),
+        "color_filter_array_matrix_requires_non_mono": bool(cfa_matrix_requires_non_mono),
+        "color_filter_array_matrix_conflict_with_cfa": bool(cfa_matrix_conflict_with_cfa),
+        "color_filter_array_matrix_white_balance": {
+            "r": float(cfa_matrix_white_balance.get("r", 1.0)),
+            "g": float(cfa_matrix_white_balance.get("g", 1.0)),
+            "b": float(cfa_matrix_white_balance.get("b", 1.0)),
+        },
+        "color_filter_array_matrix_transmittance": {
+            "p1": float(cfa_matrix_transmittance.get("p1", 1.0)),
+            "p2": float(cfa_matrix_transmittance.get("p2", 1.0)),
+            "p3": float(cfa_matrix_transmittance.get("p3", 1.0)),
+            "p4": float(cfa_matrix_transmittance.get("p4", 1.0)),
+        },
+        "color_filter_array_matrix_clamping": {
+            "min": float(cfa_matrix_clamp_min),
+            "max": float(cfa_matrix_clamp_max),
+        },
+        "color_filter_array_matrix_clamp_range": float(cfa_matrix_clamp_range),
+        "color_filter_array_matrix_layout_energy_avg": float(cfa_matrix_layout_energy_avg),
+        "color_filter_array_matrix_cross_talk_ratio_avg": float(cfa_matrix_cross_talk_ratio_avg),
+        "color_filter_array_matrix_output_norm": float(cfa_matrix_output_norm),
+        "color_filter_array_matrix_clamp_hit_ratio": float(cfa_matrix_clamp_hit_ratio),
+        "color_filter_array_matrix_color_reconstruction_score": float(cfa_matrix_color_reconstruction_score),
+        "color_filter_array_matrix_artifact_risk": float(cfa_matrix_artifact_risk),
+        "color_filter_array_matrix_visibility_scale": float(cfa_matrix_visibility_scale),
+        "color_filter_array_matrix_noise_delta": float(cfa_matrix_noise_delta),
+        "color_filter_array_matrix_dynamic_range_delta": float(cfa_matrix_dynamic_range_delta),
         "color_space": color_space,
         "output_data_type": output_data_type,
         "piecewise_linear_mapping_present": bool(piecewise_linear_mapping_present),
@@ -2306,6 +2601,12 @@ def _summarize_sensor_quality(frames: list[dict[str, Any]]) -> dict[str, Any]:
     camera_color_filter_non_rgb_channel_count_total = 0.0
     camera_color_filter_color_reconstruction_score_total = 0.0
     camera_demosaic_mode_counts: dict[str, int] = {}
+    camera_color_filter_array_matrix_input_frame_count = 0
+    camera_color_filter_array_matrix_applied_frame_count = 0
+    camera_color_filter_array_matrix_conflict_frame_count = 0
+    camera_color_filter_array_matrix_color_reconstruction_score_total = 0.0
+    camera_color_filter_array_matrix_artifact_risk_total = 0.0
+    camera_color_filter_array_matrix_clamp_hit_ratio_total = 0.0
     camera_tonemapper_disabled_frame_count = 0
     camera_bloom_level_counts: dict[str, int] = {}
     camera_depth_enabled_frame_count = 0
@@ -2455,6 +2756,21 @@ def _summarize_sensor_quality(frames: list[dict[str, Any]]) -> dict[str, Any]:
             demosaic_mode = str(camera_postprocess.get("demosaic_mode", "")).strip().upper()
             if demosaic_mode:
                 camera_demosaic_mode_counts[demosaic_mode] = camera_demosaic_mode_counts.get(demosaic_mode, 0) + 1
+            if bool(camera_postprocess.get("color_filter_array_matrix_input_present", False)):
+                camera_color_filter_array_matrix_input_frame_count += 1
+            if bool(camera_postprocess.get("color_filter_array_matrix_applied", False)):
+                camera_color_filter_array_matrix_applied_frame_count += 1
+            if bool(camera_postprocess.get("color_filter_array_matrix_conflict_with_cfa", False)):
+                camera_color_filter_array_matrix_conflict_frame_count += 1
+            camera_color_filter_array_matrix_color_reconstruction_score_total += _to_non_negative_float(
+                camera_postprocess.get("color_filter_array_matrix_color_reconstruction_score", 0.0)
+            )
+            camera_color_filter_array_matrix_artifact_risk_total += _to_non_negative_float(
+                camera_postprocess.get("color_filter_array_matrix_artifact_risk", 0.0)
+            )
+            camera_color_filter_array_matrix_clamp_hit_ratio_total += _to_non_negative_float(
+                camera_postprocess.get("color_filter_array_matrix_clamp_hit_ratio", 0.0)
+            )
             if bool(camera_postprocess.get("disable_tonemapper", False)):
                 camera_tonemapper_disabled_frame_count += 1
             bloom_level = str(camera_postprocess.get("bloom_level", "")).strip().upper()
@@ -2653,6 +2969,21 @@ def _summarize_sensor_quality(frames: list[dict[str, Any]]) -> dict[str, Any]:
         if camera_frame_count > 0
         else 0.0
     )
+    camera_color_filter_array_matrix_color_reconstruction_score_avg = (
+        camera_color_filter_array_matrix_color_reconstruction_score_total / float(camera_frame_count)
+        if camera_frame_count > 0
+        else 0.0
+    )
+    camera_color_filter_array_matrix_artifact_risk_avg = (
+        camera_color_filter_array_matrix_artifact_risk_total / float(camera_frame_count)
+        if camera_frame_count > 0
+        else 0.0
+    )
+    camera_color_filter_array_matrix_clamp_hit_ratio_avg = (
+        camera_color_filter_array_matrix_clamp_hit_ratio_total / float(camera_frame_count)
+        if camera_frame_count > 0
+        else 0.0
+    )
     camera_depth_min_m_avg = (
         camera_depth_min_m_total / float(camera_frame_count)
         if camera_frame_count > 0
@@ -2780,6 +3111,24 @@ def _summarize_sensor_quality(frames: list[dict[str, Any]]) -> dict[str, Any]:
         "camera_demosaic_mode_counts": {
             key: camera_demosaic_mode_counts[key] for key in sorted(camera_demosaic_mode_counts.keys())
         },
+        "camera_color_filter_array_matrix_input_frame_count": int(
+            camera_color_filter_array_matrix_input_frame_count
+        ),
+        "camera_color_filter_array_matrix_applied_frame_count": int(
+            camera_color_filter_array_matrix_applied_frame_count
+        ),
+        "camera_color_filter_array_matrix_conflict_frame_count": int(
+            camera_color_filter_array_matrix_conflict_frame_count
+        ),
+        "camera_color_filter_array_matrix_color_reconstruction_score_avg": float(
+            camera_color_filter_array_matrix_color_reconstruction_score_avg
+        ),
+        "camera_color_filter_array_matrix_artifact_risk_avg": float(
+            camera_color_filter_array_matrix_artifact_risk_avg
+        ),
+        "camera_color_filter_array_matrix_clamp_hit_ratio_avg": float(
+            camera_color_filter_array_matrix_clamp_hit_ratio_avg
+        ),
         "camera_tonemapper_disabled_frame_count": int(camera_tonemapper_disabled_frame_count),
         "camera_bloom_level_counts": {
             key: camera_bloom_level_counts[key] for key in sorted(camera_bloom_level_counts.keys())
