@@ -1,0 +1,43 @@
+{
+  "rig_schema_version": "sensor_rig_v0",
+  "sensors": [
+    {
+      "sensor_id": "camera_front_geometry",
+      "sensor_type": "camera",
+      "image_width_px": 1920,
+      "image_height_px": 1080,
+      "lens_params": {
+        "projection": "EQUIDISTANT",
+        "cropping": 0.9,
+        "camera_intrinsic_params": {
+          "fx": 960.0,
+          "fy": 940.0,
+          "cx": 980.0,
+          "cy": 510.0
+        },
+        "opencv_distortion_params": {
+          "k1": 0.24,
+          "k2": -0.38,
+          "p1": 0.0001,
+          "p2": 0.00005,
+          "k3": -0.03
+        },
+        "radial_distortion_params": {
+          "units": "NORMALIZED",
+          "coefficients": {
+            "a_0": 1.0,
+            "a_1": -0.08,
+            "a_2": 0.01
+          }
+        }
+      },
+      "standard_params": {
+        "field_of_view": {
+          "az": 1.57,
+          "el": 1.0
+        },
+        "rendered_field_of_view": 1.8
+      }
+    }
+  ]
+}

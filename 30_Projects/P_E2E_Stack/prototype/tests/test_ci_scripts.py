@@ -1611,6 +1611,113 @@ class SensorSimBridgeTests(unittest.TestCase):
                 0.0,
             )
 
+    def test_camera_geometry_and_distortion_inputs_are_reflected_in_payload(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp_path = Path(tmp)
+            world_state = tmp_path / "world_state.json"
+            sensor_rig = tmp_path / "sensor_rig.json"
+            out_path = tmp_path / "sensor_frames.json"
+
+            world_state.write_text(
+                json.dumps(
+                    {
+                        "world_state_schema_version": "world_state_v0",
+                        "frame_timestamp": "2026-02-27T04:00:00Z",
+                        "actors": [{"actor_id": "ego"}, {"actor_id": "npc_001"}],
+                    }
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+            sensor_rig.write_text(
+                json.dumps(
+                    {
+                        "rig_schema_version": "sensor_rig_v0",
+                        "sensors": [
+                            {
+                                "sensor_id": "camera_front",
+                                "sensor_type": "camera",
+                                "image_width_px": 1920,
+                                "image_height_px": 1080,
+                                "lens_params": {
+                                    "projection": "EQUIDISTANT",
+                                    "cropping": 0.9,
+                                    "camera_intrinsic_params": {
+                                        "fx": 960.0,
+                                        "fy": 940.0,
+                                        "cx": 980.0,
+                                        "cy": 510.0,
+                                    },
+                                    "opencv_distortion_params": {
+                                        "k1": 0.24,
+                                        "k2": -0.38,
+                                        "p1": 0.0001,
+                                        "p2": 0.00005,
+                                        "k3": -0.03,
+                                    },
+                                    "radial_distortion_params": {
+                                        "units": "NORMALIZED",
+                                        "coefficients": {
+                                            "a_0": 1.0,
+                                            "a_1": -0.08,
+                                            "a_2": 0.01,
+                                        },
+                                    },
+                                },
+                                "standard_params": {
+                                    "field_of_view": {
+                                        "az": 1.57,
+                                        "el": 1.0,
+                                    },
+                                    "rendered_field_of_view": 1.8,
+                                },
+                            }
+                        ],
+                    }
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+
+            proc = run_script(
+                PROTOTYPE_DIR / "../../P_Sim-Engine/prototype/sensor_sim_bridge.py",
+                "--world-state",
+                str(world_state),
+                "--sensor-rig",
+                str(sensor_rig),
+                "--fidelity-tier",
+                "high",
+                "--out",
+                str(out_path),
+            )
+            self.assertIn("[ok] sensor_fidelity_tier=high", proc.stdout)
+
+            payload = read_json_file(self, file_path=out_path)
+            frames = payload.get("frames", [])
+            self.assertEqual(len(frames), 1)
+            camera_payload = frames[0].get("payload", {})
+            self.assertIsInstance(camera_payload, dict)
+            camera_geometry = camera_payload.get("camera_geometry", {})
+            self.assertIsInstance(camera_geometry, dict)
+            self.assertTrue(bool(camera_geometry.get("geometry_input_present")))
+            self.assertEqual(str(camera_geometry.get("projection", "")), "EQUIDISTANT")
+            self.assertTrue(bool(camera_geometry.get("distortion_input_present")))
+            self.assertAlmostEqual(float(camera_geometry.get("fx", 0.0) or 0.0), 960.0, places=6)
+            self.assertAlmostEqual(float(camera_geometry.get("fy", 0.0) or 0.0), 940.0, places=6)
+            self.assertGreater(float(camera_geometry.get("principal_point_offset_norm", 0.0) or 0.0), 0.0)
+            self.assertGreater(float(camera_geometry.get("opencv_distortion_edge_shift_px_est", 0.0) or 0.0), 0.0)
+            self.assertEqual(str(camera_geometry.get("radial_distortion_units", "")), "NORMALIZED")
+            self.assertGreater(float(camera_geometry.get("radial_distortion_edge_shift_px_est", 0.0) or 0.0), 0.0)
+            self.assertGreater(float(camera_geometry.get("distortion_edge_shift_px_est", 0.0) or 0.0), 0.0)
+
+            sensor_quality_summary = payload.get("sensor_quality_summary", {})
+            self.assertGreater(float(sensor_quality_summary.get("camera_distortion_edge_shift_px_avg", 0.0) or 0.0), 0.0)
+            self.assertGreater(
+                float(sensor_quality_summary.get("camera_principal_point_offset_norm_avg", 0.0) or 0.0),
+                0.0,
+            )
+            self.assertEqual(sensor_quality_summary.get("camera_projection_mode_counts"), {"EQUIDISTANT": 1})
+
     def test_invalid_sensor_type_is_reported_without_traceback(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             tmp_path = Path(tmp)

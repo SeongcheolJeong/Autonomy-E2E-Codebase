@@ -138,6 +138,25 @@ python3 sensor_sim_bridge.py \
   --out runs/sensor_frames_camera_physics_v0.json
 ```
 
+Camera geometry/distortion inputs (Applied docs aligned subset):
+
+- `lens_params.projection` (`RECTILINEAR|EQUIDISTANT|ORTHOGRAPHIC`)
+- `lens_params.camera_intrinsic_params` (`fx`, `fy`, `cx`, `cy`)
+- `lens_params.opencv_distortion_params` (`k1..k6`, `p1`, `p2`)
+- `lens_params.radial_distortion_params.units` (`NORMALIZED|PIXELS|RADIANS`)
+- `lens_params.radial_distortion_params.coefficients` (`a_0..a_14`)
+- `lens_params.cropping`, `standard_params.rendered_field_of_view`
+
+Camera geometry/distortion example:
+
+```bash
+python3 sensor_sim_bridge.py \
+  --world-state examples/world_state_v0.json \
+  --sensor-rig examples/sensor_rig_camera_geometry_distortion_v0.json \
+  --fidelity-tier high \
+  --out runs/sensor_frames_camera_geometry_distortion_v0.json
+```
+
 ## Sensor rig sweep scaffold
 
 ```bash

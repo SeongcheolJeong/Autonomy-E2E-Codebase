@@ -548,6 +548,265 @@ def _compute_camera_physics(
     }
 
 
+def _resolve_camera_projection_mode(raw: Any) -> str:
+    projection = str(raw if raw is not None else "").strip().upper()
+    if projection in {"RECTILINEAR", "EQUIDISTANT", "ORTHOGRAPHIC"}:
+        return projection
+    return "RECTILINEAR"
+
+
+def _resolve_opencv_distortion_params(raw: Any) -> dict[str, float]:
+    keys = ("k1", "k2", "p1", "p2", "k3", "k4", "k5", "k6")
+    values: dict[str, float] = {key: 0.0 for key in keys}
+    if isinstance(raw, dict):
+        for key in keys:
+            values[key] = _to_float(raw.get(key, 0.0), default=0.0)
+        return values
+    if isinstance(raw, (list, tuple)):
+        for idx, value in enumerate(raw):
+            if idx >= len(keys):
+                break
+            values[keys[idx]] = _to_float(value, default=0.0)
+    return values
+
+
+def _resolve_radial_distortion_params(raw: Any) -> dict[str, Any]:
+    units = "NORMALIZED"
+    coefficients = {"a_0": 1.0}
+    if not isinstance(raw, dict):
+        return {"units": units, "coefficients": coefficients}
+    units_raw = str(raw.get("units", units)).strip().upper()
+    if units_raw in {"NORMALIZED", "PIXELS", "RADIANS"}:
+        units = units_raw
+    coeff_raw = _as_dict(raw.get("coefficients"))
+    if coeff_raw:
+        coefficients = {}
+        for idx in range(15):
+            key = f"a_{idx}"
+            if key in coeff_raw:
+                coefficients[key] = _to_float(coeff_raw.get(key, 0.0), default=0.0)
+        if "a_0" not in coefficients:
+            coefficients["a_0"] = 1.0
+    return {"units": units, "coefficients": coefficients}
+
+
+def _compute_opencv_edge_shift_px(
+    *,
+    params: dict[str, float],
+    image_width_px: int,
+    image_height_px: int,
+) -> float:
+    x = 0.82
+    y = 0.82 * (float(image_height_px) / float(max(image_width_px, 1)))
+    r2 = (x * x) + (y * y)
+    r4 = r2 * r2
+    r6 = r4 * r2
+    numerator = 1.0 + (params["k1"] * r2) + (params["k2"] * r4) + (params["k3"] * r6)
+    denominator = 1.0 + (params["k4"] * r2) + (params["k5"] * r4) + (params["k6"] * r6)
+    if abs(denominator) < 1e-6:
+        denominator = 1e-6
+    radial = numerator / denominator
+    x_distorted = (x * radial) + (2.0 * params["p1"] * x * y) + (params["p2"] * (r2 + (2.0 * x * x)))
+    y_distorted = (y * radial) + (params["p1"] * (r2 + (2.0 * y * y))) + (2.0 * params["p2"] * x * y)
+    norm_shift = math.sqrt(((x_distorted - x) ** 2) + ((y_distorted - y) ** 2))
+    return float(norm_shift * (float(max(image_width_px, image_height_px)) / 2.0))
+
+
+def _compute_radial_edge_shift_px(
+    *,
+    params: dict[str, Any],
+    image_width_px: int,
+    image_height_px: int,
+    field_of_view_az_rad: float,
+    focal_length_px: float,
+) -> tuple[float, float]:
+    units = str(params.get("units", "NORMALIZED")).strip().upper()
+    coefficients_raw = params.get("coefficients", {})
+    coefficients = coefficients_raw if isinstance(coefficients_raw, dict) else {"a_0": 1.0}
+    if units == "PIXELS":
+        base_r = 0.85 * (float(max(image_width_px, image_height_px)) / 2.0)
+    elif units == "RADIANS":
+        base_r = 0.85 * (field_of_view_az_rad / 2.0)
+    else:
+        units = "NORMALIZED"
+        base_r = 0.85
+    gain = 0.0
+    for idx in range(15):
+        key = f"a_{idx}"
+        coeff = _to_float(coefficients.get(key, 0.0), default=0.0)
+        gain += coeff * (base_r ** idx)
+    delta = abs(gain - 1.0) * base_r
+    if units == "PIXELS":
+        edge_shift_px = delta
+    elif units == "RADIANS":
+        edge_shift_px = delta * max(focal_length_px, 1.0)
+    else:
+        edge_shift_px = delta * (float(max(image_width_px, image_height_px)) / 2.0)
+    return (float(edge_shift_px), float(gain))
+
+
+def _compute_camera_geometry(
+    *,
+    sensor_config: dict[str, Any],
+    image_width_px: int,
+    image_height_px: int,
+) -> dict[str, Any]:
+    standard_params = _as_dict(sensor_config.get("standard_params"))
+    lens_params = _as_dict(sensor_config.get("lens_params"))
+    if not lens_params:
+        lens_params = _as_dict(standard_params.get("lens_params"))
+    camera_intrinsic_params = _as_dict(lens_params.get("camera_intrinsic_params"))
+    field_of_view = _as_dict(standard_params.get("field_of_view"))
+    projection = _resolve_camera_projection_mode(
+        sensor_config.get("projection", lens_params.get("projection", "RECTILINEAR"))
+    )
+    field_of_view_az_rad = _to_float(
+        sensor_config.get(
+            "field_of_view_az_rad",
+            field_of_view.get("az", sensor_config.get("field_of_view_deg", 90.0)),
+        ),
+        default=math.radians(90.0),
+    )
+    if field_of_view_az_rad > math.pi:
+        field_of_view_az_rad = math.radians(field_of_view_az_rad)
+    field_of_view_az_rad = _clamp_float(field_of_view_az_rad, minimum=0.1, maximum=math.pi - 0.01)
+    field_of_view_el_rad = _to_float(
+        sensor_config.get("field_of_view_el_rad", field_of_view.get("el", 0.0)),
+        default=0.0,
+    )
+    if field_of_view_el_rad > math.pi:
+        field_of_view_el_rad = math.radians(field_of_view_el_rad)
+    if field_of_view_el_rad <= 0.0:
+        field_of_view_el_rad = 2.0 * math.atan(
+            math.tan(field_of_view_az_rad / 2.0) * (float(image_height_px) / float(max(image_width_px, 1)))
+        )
+    field_of_view_el_rad = _clamp_float(field_of_view_el_rad, minimum=0.1, maximum=math.pi - 0.01)
+    fx = _to_float(camera_intrinsic_params.get("fx", 0.0), default=0.0)
+    fy = _to_float(camera_intrinsic_params.get("fy", 0.0), default=0.0)
+    cx = _to_float(camera_intrinsic_params.get("cx", float(image_width_px) / 2.0), default=float(image_width_px) / 2.0)
+    cy = _to_float(
+        camera_intrinsic_params.get("cy", float(image_height_px) / 2.0),
+        default=float(image_height_px) / 2.0,
+    )
+    if fx <= 0.0:
+        fx = float(image_width_px) / (2.0 * math.tan(field_of_view_az_rad / 2.0))
+    if fy <= 0.0:
+        fy = float(image_height_px) / (2.0 * math.tan(field_of_view_el_rad / 2.0))
+    principal_point_offset_x_norm = (cx - (float(image_width_px) / 2.0)) / float(max(image_width_px, 1))
+    principal_point_offset_y_norm = (cy - (float(image_height_px) / 2.0)) / float(max(image_height_px, 1))
+    principal_point_offset_norm = math.sqrt(
+        (principal_point_offset_x_norm * principal_point_offset_x_norm)
+        + (principal_point_offset_y_norm * principal_point_offset_y_norm)
+    )
+    opencv_params = _resolve_opencv_distortion_params(
+        sensor_config.get("opencv_distortion_params", lens_params.get("opencv_distortion_params"))
+    )
+    opencv_distortion_edge_shift_px = _compute_opencv_edge_shift_px(
+        params=opencv_params,
+        image_width_px=image_width_px,
+        image_height_px=image_height_px,
+    )
+    radial_params = _resolve_radial_distortion_params(
+        sensor_config.get("radial_distortion_params", lens_params.get("radial_distortion_params"))
+    )
+    radial_distortion_edge_shift_px, radial_distortion_gain_edge = _compute_radial_edge_shift_px(
+        params=radial_params,
+        image_width_px=image_width_px,
+        image_height_px=image_height_px,
+        field_of_view_az_rad=field_of_view_az_rad,
+        focal_length_px=(fx + fy) / 2.0,
+    )
+    rendered_field_of_view_rad = _to_float(
+        sensor_config.get("rendered_field_of_view_rad", standard_params.get("rendered_field_of_view", 0.0)),
+        default=0.0,
+    )
+    if rendered_field_of_view_rad > math.pi:
+        rendered_field_of_view_rad = math.radians(rendered_field_of_view_rad)
+    rendered_field_of_view_rad = _clamp_float(rendered_field_of_view_rad, minimum=0.0, maximum=math.pi - 0.01)
+    cropping = _clamp_float(
+        _to_float(sensor_config.get("cropping", lens_params.get("cropping", 1.0)), default=1.0),
+        minimum=0.1,
+        maximum=4.0,
+    )
+    ortho_width_m = _clamp_float(
+        _to_float(sensor_config.get("ortho_width_m", lens_params.get("ortho_width", 0.0)), default=0.0),
+        minimum=0.0,
+        maximum=100000.0,
+    )
+    meters_per_pixel_x = 0.0
+    meters_per_pixel_y = 0.0
+    if projection == "ORTHOGRAPHIC" and ortho_width_m > 0.0:
+        meters_per_pixel_x = ortho_width_m / float(max(image_width_px, 1))
+        meters_per_pixel_y = (
+            ortho_width_m
+            * float(image_height_px)
+            / float(max(image_width_px * image_height_px, 1))
+        )
+
+    distortion_input_present = False
+    for value in opencv_params.values():
+        if abs(value) > 1e-9:
+            distortion_input_present = True
+            break
+    if not distortion_input_present:
+        coefficients_raw = radial_params.get("coefficients", {})
+        coefficients = coefficients_raw if isinstance(coefficients_raw, dict) else {}
+        for key, value in coefficients.items():
+            if key == "a_0":
+                if abs(_to_float(value, default=1.0) - 1.0) > 1e-9:
+                    distortion_input_present = True
+                    break
+            elif abs(_to_float(value, default=0.0)) > 1e-9:
+                distortion_input_present = True
+                break
+
+    geometry_input_present = (
+        bool(lens_params)
+        or bool(camera_intrinsic_params)
+        or ("projection" in sensor_config)
+        or ("projection" in lens_params)
+        or ("radial_distortion_params" in sensor_config)
+        or ("radial_distortion_params" in lens_params)
+        or ("opencv_distortion_params" in sensor_config)
+        or ("opencv_distortion_params" in lens_params)
+        or ("cropping" in sensor_config)
+        or ("cropping" in lens_params)
+        or ("rendered_field_of_view" in standard_params)
+        or ("rendered_field_of_view_rad" in sensor_config)
+        or ("field_of_view" in standard_params)
+        or ("field_of_view_deg" in sensor_config)
+        or ("field_of_view_az_rad" in sensor_config)
+        or ("field_of_view_el_rad" in sensor_config)
+    )
+
+    return {
+        "geometry_input_present": bool(geometry_input_present),
+        "projection": projection,
+        "field_of_view_az_rad": float(field_of_view_az_rad),
+        "field_of_view_el_rad": float(field_of_view_el_rad),
+        "rendered_field_of_view_rad": float(rendered_field_of_view_rad),
+        "cropping": float(cropping),
+        "fx": float(fx),
+        "fy": float(fy),
+        "cx": float(cx),
+        "cy": float(cy),
+        "principal_point_offset_x_norm": float(principal_point_offset_x_norm),
+        "principal_point_offset_y_norm": float(principal_point_offset_y_norm),
+        "principal_point_offset_norm": float(principal_point_offset_norm),
+        "opencv_distortion_params": opencv_params,
+        "opencv_distortion_edge_shift_px_est": float(opencv_distortion_edge_shift_px),
+        "radial_distortion_units": str(radial_params.get("units", "NORMALIZED")),
+        "radial_distortion_coefficients": radial_params.get("coefficients", {"a_0": 1.0}),
+        "radial_distortion_gain_edge": float(radial_distortion_gain_edge),
+        "radial_distortion_edge_shift_px_est": float(radial_distortion_edge_shift_px),
+        "distortion_input_present": bool(distortion_input_present),
+        "distortion_edge_shift_px_est": float(opencv_distortion_edge_shift_px + radial_distortion_edge_shift_px),
+        "ortho_width_m": float(ortho_width_m),
+        "ortho_meters_per_pixel_x": float(meters_per_pixel_x),
+        "ortho_meters_per_pixel_y": float(meters_per_pixel_y),
+    }
+
+
 class SensorPlugin(ABC):
     @abstractmethod
     def render(
@@ -602,6 +861,24 @@ class CameraStubPlugin(SensorPlugin):
             - (1.5 * precipitation_intensity)
             - (2.0 * darkness_ratio),
         )
+        camera_geometry = _compute_camera_geometry(
+            sensor_config=sensor_config,
+            image_width_px=image_width_px,
+            image_height_px=image_height_px,
+        )
+        if bool(camera_geometry.get("geometry_input_present", False)):
+            distortion_edge_shift_px_est = _to_non_negative_float(
+                camera_geometry.get("distortion_edge_shift_px_est", 0.0)
+            )
+            distortion_visibility_penalty = min(
+                0.25,
+                distortion_edge_shift_px_est / float(max(image_width_px, image_height_px, 1)),
+            )
+            cropping = _to_float(camera_geometry.get("cropping", 1.0), default=1.0)
+            cropping_penalty = min(0.25, abs(cropping - 1.0) * 0.12)
+            visibility_score *= (1.0 - distortion_visibility_penalty - cropping_penalty)
+            visibility_score = _clamp_float(visibility_score, minimum=0.0, maximum=1.0)
+            visible_actor_count = int(round(float(len(actors)) * visibility_score))
         camera_physics = _compute_camera_physics(
             sensor_config=sensor_config,
             environment=environment,
@@ -630,6 +907,7 @@ class CameraStubPlugin(SensorPlugin):
             "weather_precipitation_intensity": precipitation_intensity,
             "weather_fog_density": fog_density,
             "ambient_light_lux": ambient_light_lux,
+            "camera_geometry": camera_geometry,
             "camera_physics": camera_physics,
         }
 
@@ -815,6 +1093,10 @@ def _summarize_sensor_quality(frames: list[dict[str, Any]]) -> dict[str, Any]:
     camera_signal_saturation_ratio_total = 0.0
     camera_rolling_shutter_total_delay_ms_total = 0.0
     camera_normalized_total_noise_total = 0.0
+    camera_distortion_edge_shift_px_total = 0.0
+    camera_principal_point_offset_norm_total = 0.0
+    camera_effective_focal_length_px_total = 0.0
+    camera_projection_mode_counts: dict[str, int] = {}
     lidar_frame_count = 0
     lidar_point_count_total = 0
     lidar_returns_per_laser_total = 0
@@ -855,6 +1137,26 @@ def _summarize_sensor_quality(frames: list[dict[str, Any]]) -> dict[str, Any]:
             camera_normalized_total_noise_total += _to_non_negative_float(
                 camera_physics.get("normalized_total_noise", 0.0)
             )
+            camera_geometry = payload.get("camera_geometry", {})
+            if not isinstance(camera_geometry, dict):
+                camera_geometry = {}
+            camera_distortion_edge_shift_px_total += _to_non_negative_float(
+                camera_geometry.get("distortion_edge_shift_px_est", 0.0)
+            )
+            camera_principal_point_offset_norm_total += _to_non_negative_float(
+                camera_geometry.get("principal_point_offset_norm", 0.0)
+            )
+            fx = _to_non_negative_float(camera_geometry.get("fx", 0.0))
+            fy = _to_non_negative_float(camera_geometry.get("fy", 0.0))
+            if fx > 0.0 and fy > 0.0:
+                camera_effective_focal_length_px_total += (fx + fy) / 2.0
+            elif fx > 0.0:
+                camera_effective_focal_length_px_total += fx
+            elif fy > 0.0:
+                camera_effective_focal_length_px_total += fy
+            projection = str(camera_geometry.get("projection", "")).strip().upper()
+            if projection:
+                camera_projection_mode_counts[projection] = camera_projection_mode_counts.get(projection, 0) + 1
         elif sensor_type == "lidar":
             lidar_frame_count += 1
             lidar_point_count_total += _to_non_negative_int(payload.get("point_count", 0))
@@ -914,6 +1216,21 @@ def _summarize_sensor_quality(frames: list[dict[str, Any]]) -> dict[str, Any]:
         if camera_frame_count > 0
         else 0.0
     )
+    camera_distortion_edge_shift_px_avg = (
+        camera_distortion_edge_shift_px_total / float(camera_frame_count)
+        if camera_frame_count > 0
+        else 0.0
+    )
+    camera_principal_point_offset_norm_avg = (
+        camera_principal_point_offset_norm_total / float(camera_frame_count)
+        if camera_frame_count > 0
+        else 0.0
+    )
+    camera_effective_focal_length_px_avg = (
+        camera_effective_focal_length_px_total / float(camera_frame_count)
+        if camera_frame_count > 0
+        else 0.0
+    )
     lidar_point_count_avg = (
         float(lidar_point_count_total) / float(lidar_frame_count)
         if lidar_frame_count > 0
@@ -966,6 +1283,12 @@ def _summarize_sensor_quality(frames: list[dict[str, Any]]) -> dict[str, Any]:
         "camera_signal_saturation_ratio_avg": float(camera_signal_saturation_ratio_avg),
         "camera_rolling_shutter_total_delay_ms_avg": float(camera_rolling_shutter_total_delay_ms_avg),
         "camera_normalized_total_noise_avg": float(camera_normalized_total_noise_avg),
+        "camera_distortion_edge_shift_px_avg": float(camera_distortion_edge_shift_px_avg),
+        "camera_principal_point_offset_norm_avg": float(camera_principal_point_offset_norm_avg),
+        "camera_effective_focal_length_px_avg": float(camera_effective_focal_length_px_avg),
+        "camera_projection_mode_counts": {
+            key: camera_projection_mode_counts[key] for key in sorted(camera_projection_mode_counts.keys())
+        },
         "lidar_frame_count": int(lidar_frame_count),
         "lidar_point_count_total": int(lidar_point_count_total),
         "lidar_point_count_avg": float(lidar_point_count_avg),
