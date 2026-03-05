@@ -3477,6 +3477,61 @@ def _format_runtime_lane_execution_summary(summary: dict[str, Any]) -> str:
     )
 
 
+def _format_runtime_lane_phase2_rig_sweep_radar_alignment_summary(summary: dict[str, Any]) -> str:
+    if not isinstance(summary, dict):
+        return "n/a"
+    try:
+        runtime_row_count = int(summary.get("runtime_row_count", 0))
+    except (TypeError, ValueError):
+        runtime_row_count = 0
+    if runtime_row_count <= 0:
+        return "n/a"
+    try:
+        matched_manifest_count = int(summary.get("matched_manifest_count", 0))
+    except (TypeError, ValueError):
+        matched_manifest_count = 0
+    try:
+        metrics_sample_count = int(summary.get("metrics_sample_count", 0))
+    except (TypeError, ValueError):
+        metrics_sample_count = 0
+    try:
+        unmatched_row_count = int(summary.get("unmatched_row_count", 0))
+    except (TypeError, ValueError):
+        unmatched_row_count = 0
+    runtime_counts_text = _format_non_negative_int_counts(
+        _as_non_negative_int_map(summary.get("runtime_counts", {}))
+    )
+    result_counts_text = _format_non_negative_int_counts(
+        _as_non_negative_int_map(summary.get("result_counts", {}))
+    )
+    mapping_mode_counts_text = _format_non_negative_int_counts(
+        _as_non_negative_int_map(summary.get("mapping_mode_counts", {}))
+    )
+    pass_minus_fail_metric_delta = _as_float_map(summary.get("pass_minus_fail_metric_delta", {}))
+    pass_minus_fail_effective = float(
+        pass_minus_fail_metric_delta.get("radar_effective_detection_quality_avg", 0.0) or 0.0
+    )
+    pass_minus_fail_track_purity = float(
+        pass_minus_fail_metric_delta.get("radar_track_purity_avg", 0.0) or 0.0
+    )
+    pass_minus_fail_doppler = float(
+        pass_minus_fail_metric_delta.get("radar_doppler_resolution_quality_avg", 0.0) or 0.0
+    )
+    pass_minus_fail_range = float(
+        pass_minus_fail_metric_delta.get("radar_range_coverage_quality_avg", 0.0) or 0.0
+    )
+    return (
+        f"rows={runtime_row_count},matched={matched_manifest_count},"
+        f"metric_samples={metrics_sample_count},runtimes={runtime_counts_text},"
+        f"results={result_counts_text},mapping_modes={mapping_mode_counts_text},"
+        f"unmatched={unmatched_row_count},"
+        f"pass_minus_fail_effective_quality_avg={pass_minus_fail_effective:.3f},"
+        f"pass_minus_fail_track_purity_avg={pass_minus_fail_track_purity:.3f},"
+        f"pass_minus_fail_doppler_quality_avg={pass_minus_fail_doppler:.3f},"
+        f"pass_minus_fail_range_quality_avg={pass_minus_fail_range:.3f}"
+    )
+
+
 def _format_runtime_evidence_compare_summary(summary: dict[str, Any]) -> str:
     if not isinstance(summary, dict):
         return "n/a"
@@ -6114,6 +6169,20 @@ def main() -> int:
         runtime_lane_execution_summary_raw if isinstance(runtime_lane_execution_summary_raw, dict) else {}
     )
     runtime_lane_execution_summary_text = _format_runtime_lane_execution_summary(runtime_lane_execution_summary)
+    runtime_lane_phase2_rig_sweep_radar_alignment_summary_raw = summary_payload.get(
+        "runtime_lane_phase2_rig_sweep_radar_alignment_summary",
+        {},
+    )
+    runtime_lane_phase2_rig_sweep_radar_alignment_summary = (
+        runtime_lane_phase2_rig_sweep_radar_alignment_summary_raw
+        if isinstance(runtime_lane_phase2_rig_sweep_radar_alignment_summary_raw, dict)
+        else {}
+    )
+    runtime_lane_phase2_rig_sweep_radar_alignment_summary_text = (
+        _format_runtime_lane_phase2_rig_sweep_radar_alignment_summary(
+            runtime_lane_phase2_rig_sweep_radar_alignment_summary
+        )
+    )
     runtime_evidence_compare_summary_raw = summary_payload.get("runtime_evidence_compare_summary", {})
     runtime_evidence_compare_summary = (
         runtime_evidence_compare_summary_raw if isinstance(runtime_evidence_compare_summary_raw, dict) else {}
@@ -7071,6 +7140,70 @@ def main() -> int:
     runtime_lane_execution_failed_rows_text = _format_runtime_lane_execution_failed_rows(
         runtime_lane_execution_failed_rows
     )
+    runtime_lane_phase2_rig_sweep_radar_alignment_runtime_counts = _as_non_negative_int_map(
+        runtime_lane_phase2_rig_sweep_radar_alignment_summary.get("runtime_counts", {})
+    )
+    runtime_lane_phase2_rig_sweep_radar_alignment_result_counts = _as_non_negative_int_map(
+        runtime_lane_phase2_rig_sweep_radar_alignment_summary.get("result_counts", {})
+    )
+    runtime_lane_phase2_rig_sweep_radar_alignment_mapping_mode_counts = _as_non_negative_int_map(
+        runtime_lane_phase2_rig_sweep_radar_alignment_summary.get("mapping_mode_counts", {})
+    )
+    runtime_lane_phase2_rig_sweep_radar_alignment_pass_metric_summary_raw = (
+        runtime_lane_phase2_rig_sweep_radar_alignment_summary.get("pass_metric_summary", {})
+    )
+    runtime_lane_phase2_rig_sweep_radar_alignment_pass_metric_summary = (
+        runtime_lane_phase2_rig_sweep_radar_alignment_pass_metric_summary_raw
+        if isinstance(runtime_lane_phase2_rig_sweep_radar_alignment_pass_metric_summary_raw, dict)
+        else {}
+    )
+    runtime_lane_phase2_rig_sweep_radar_alignment_fail_metric_summary_raw = (
+        runtime_lane_phase2_rig_sweep_radar_alignment_summary.get("fail_metric_summary", {})
+    )
+    runtime_lane_phase2_rig_sweep_radar_alignment_fail_metric_summary = (
+        runtime_lane_phase2_rig_sweep_radar_alignment_fail_metric_summary_raw
+        if isinstance(runtime_lane_phase2_rig_sweep_radar_alignment_fail_metric_summary_raw, dict)
+        else {}
+    )
+    runtime_lane_phase2_rig_sweep_radar_alignment_pass_minus_fail_metric_delta = _as_float_map(
+        runtime_lane_phase2_rig_sweep_radar_alignment_summary.get("pass_minus_fail_metric_delta", {})
+    )
+    try:
+        runtime_lane_phase2_rig_sweep_radar_alignment_row_count = int(
+            runtime_lane_phase2_rig_sweep_radar_alignment_summary.get("runtime_row_count", 0)
+        )
+    except (TypeError, ValueError):
+        runtime_lane_phase2_rig_sweep_radar_alignment_row_count = 0
+    try:
+        runtime_lane_phase2_rig_sweep_radar_alignment_metrics_sample_count = int(
+            runtime_lane_phase2_rig_sweep_radar_alignment_summary.get("metrics_sample_count", 0)
+        )
+    except (TypeError, ValueError):
+        runtime_lane_phase2_rig_sweep_radar_alignment_metrics_sample_count = 0
+    try:
+        runtime_lane_phase2_rig_sweep_radar_alignment_unmatched_row_count = int(
+            runtime_lane_phase2_rig_sweep_radar_alignment_summary.get("unmatched_row_count", 0)
+        )
+    except (TypeError, ValueError):
+        runtime_lane_phase2_rig_sweep_radar_alignment_unmatched_row_count = 0
+    try:
+        runtime_lane_phase2_rig_sweep_radar_alignment_pass_metrics_sample_count = int(
+            runtime_lane_phase2_rig_sweep_radar_alignment_pass_metric_summary.get(
+                "metrics_sample_count",
+                0,
+            )
+        )
+    except (TypeError, ValueError):
+        runtime_lane_phase2_rig_sweep_radar_alignment_pass_metrics_sample_count = 0
+    try:
+        runtime_lane_phase2_rig_sweep_radar_alignment_fail_metrics_sample_count = int(
+            runtime_lane_phase2_rig_sweep_radar_alignment_fail_metric_summary.get(
+                "metrics_sample_count",
+                0,
+            )
+        )
+    except (TypeError, ValueError):
+        runtime_lane_phase2_rig_sweep_radar_alignment_fail_metrics_sample_count = 0
     runtime_evidence_failed_records_raw = runtime_evidence_summary.get("failed_records", [])
     runtime_evidence_failed_records: list[dict[str, str]] = []
     if isinstance(runtime_evidence_failed_records_raw, list):
@@ -7242,6 +7375,9 @@ def main() -> int:
     runtime_lane_execution_warning_messages: list[str] = []
     runtime_lane_execution_warning_reasons: list[str] = []
     runtime_lane_execution_warning = ""
+    runtime_lane_phase2_rig_sweep_radar_alignment_warning_messages: list[str] = []
+    runtime_lane_phase2_rig_sweep_radar_alignment_warning_reasons: list[str] = []
+    runtime_lane_phase2_rig_sweep_radar_alignment_warning = ""
     runtime_lane_execution_exec_lane_warn_min_rows_mismatch = False
     runtime_lane_execution_exec_lane_hold_min_rows_mismatch = False
     runtime_lane_execution_phase2_sensor_fidelity_score_avg_warn_min_mismatch = False
@@ -7978,9 +8114,123 @@ def main() -> int:
             )
             if status != "HOLD":
                 status = "HOLD"
+        if (
+            runtime_lane_execution_fail_count > 0
+            and runtime_lane_phase2_rig_sweep_radar_alignment_row_count > 0
+        ):
+            if runtime_lane_phase2_rig_sweep_radar_alignment_metrics_sample_count <= 0:
+                runtime_lane_phase2_rig_sweep_radar_alignment_warning_messages.append(
+                    "runtime_lane_phase2_rig_sweep_radar_alignment_metrics_sample_count=0 "
+                    f"while runtime_lane_execution_failed={runtime_lane_execution_fail_count}/"
+                    f"{runtime_lane_execution_row_count}"
+                )
+                runtime_lane_phase2_rig_sweep_radar_alignment_warning_reasons.append(
+                    "runtime_lane_phase2_rig_sweep_radar_alignment_missing_metric_samples"
+                )
+                if status in {"PASS", "INFO"}:
+                    status = "WARN"
+            if runtime_lane_phase2_rig_sweep_radar_alignment_unmatched_row_count > 0:
+                runtime_lane_phase2_rig_sweep_radar_alignment_warning_messages.append(
+                    "runtime_lane_phase2_rig_sweep_radar_alignment_unmatched_rows="
+                    f"{runtime_lane_phase2_rig_sweep_radar_alignment_unmatched_row_count}/"
+                    f"{runtime_lane_phase2_rig_sweep_radar_alignment_row_count}"
+                )
+                runtime_lane_phase2_rig_sweep_radar_alignment_warning_reasons.append(
+                    "runtime_lane_phase2_rig_sweep_radar_alignment_unmatched_rows_present"
+                )
+                if status in {"PASS", "INFO"}:
+                    status = "WARN"
+            if (
+                runtime_lane_phase2_rig_sweep_radar_alignment_pass_metrics_sample_count > 0
+                and runtime_lane_phase2_rig_sweep_radar_alignment_fail_metrics_sample_count > 0
+            ):
+                radar_effective_delta = float(
+                    runtime_lane_phase2_rig_sweep_radar_alignment_pass_minus_fail_metric_delta.get(
+                        "radar_effective_detection_quality_avg",
+                        0.0,
+                    )
+                    or 0.0
+                )
+                radar_track_purity_delta = float(
+                    runtime_lane_phase2_rig_sweep_radar_alignment_pass_minus_fail_metric_delta.get(
+                        "radar_track_purity_avg",
+                        0.0,
+                    )
+                    or 0.0
+                )
+                radar_doppler_delta = float(
+                    runtime_lane_phase2_rig_sweep_radar_alignment_pass_minus_fail_metric_delta.get(
+                        "radar_doppler_resolution_quality_avg",
+                        0.0,
+                    )
+                    or 0.0
+                )
+                radar_range_delta = float(
+                    runtime_lane_phase2_rig_sweep_radar_alignment_pass_minus_fail_metric_delta.get(
+                        "radar_range_coverage_quality_avg",
+                        0.0,
+                    )
+                    or 0.0
+                )
+                delta_candidates = [
+                    ("radar_effective_quality_avg", radar_effective_delta),
+                    ("radar_track_purity_avg", radar_track_purity_delta),
+                    ("radar_doppler_quality_avg", radar_doppler_delta),
+                    ("radar_range_quality_avg", radar_range_delta),
+                ]
+                degraded_metrics = [
+                    f"{metric_name}:{metric_delta:.3f}"
+                    for metric_name, metric_delta in delta_candidates
+                    if metric_delta <= -0.05
+                ]
+                non_positive_metrics = [
+                    f"{metric_name}:{metric_delta:.3f}"
+                    for metric_name, metric_delta in delta_candidates
+                    if metric_delta <= 0.0
+                ]
+                if degraded_metrics:
+                    runtime_lane_phase2_rig_sweep_radar_alignment_warning_messages.append(
+                        "runtime_lane_phase2_rig_sweep_radar_alignment_pass_minus_fail_degraded="
+                        + ",".join(degraded_metrics)
+                    )
+                    runtime_lane_phase2_rig_sweep_radar_alignment_warning_reasons.append(
+                        "runtime_lane_phase2_rig_sweep_radar_alignment_pass_minus_fail_degraded"
+                    )
+                    if radar_effective_delta <= -0.10 or len(degraded_metrics) >= 2:
+                        status = "HOLD"
+                    elif status in {"PASS", "INFO"}:
+                        status = "WARN"
+                elif non_positive_metrics:
+                    runtime_lane_phase2_rig_sweep_radar_alignment_warning_messages.append(
+                        "runtime_lane_phase2_rig_sweep_radar_alignment_pass_minus_fail_non_positive="
+                        + ",".join(non_positive_metrics)
+                    )
+                    runtime_lane_phase2_rig_sweep_radar_alignment_warning_reasons.append(
+                        "runtime_lane_phase2_rig_sweep_radar_alignment_pass_minus_fail_non_positive"
+                    )
+                    if status in {"PASS", "INFO"}:
+                        status = "WARN"
+            elif runtime_lane_phase2_rig_sweep_radar_alignment_fail_metrics_sample_count > 0:
+                runtime_lane_phase2_rig_sweep_radar_alignment_warning_messages.append(
+                    "runtime_lane_phase2_rig_sweep_radar_alignment_missing_pass_baseline="
+                    f"pass_metric_samples={runtime_lane_phase2_rig_sweep_radar_alignment_pass_metrics_sample_count},"
+                    f"fail_metric_samples={runtime_lane_phase2_rig_sweep_radar_alignment_fail_metrics_sample_count}"
+                )
+                runtime_lane_phase2_rig_sweep_radar_alignment_warning_reasons.append(
+                    "runtime_lane_phase2_rig_sweep_radar_alignment_missing_pass_baseline"
+                )
+                if status in {"PASS", "INFO"}:
+                    status = "WARN"
     if runtime_lane_execution_warning_messages:
         runtime_lane_execution_warning = "; ".join(runtime_lane_execution_warning_messages)
         runtime_lane_execution_warning_reasons = list(dict.fromkeys(runtime_lane_execution_warning_reasons))
+    if runtime_lane_phase2_rig_sweep_radar_alignment_warning_messages:
+        runtime_lane_phase2_rig_sweep_radar_alignment_warning = "; ".join(
+            runtime_lane_phase2_rig_sweep_radar_alignment_warning_messages
+        )
+        runtime_lane_phase2_rig_sweep_radar_alignment_warning_reasons = list(
+            dict.fromkeys(runtime_lane_phase2_rig_sweep_radar_alignment_warning_reasons)
+        )
     if runtime_evidence_compare_summary:
         try:
             runtime_evidence_compare_artifact_count = int(runtime_evidence_compare_summary.get("artifact_count", 0))
@@ -11604,6 +11854,11 @@ def main() -> int:
             "runtime_lane_execution_summary="
             f"{runtime_lane_execution_summary_text}"
         )
+    if runtime_lane_phase2_rig_sweep_radar_alignment_summary_text != "n/a":
+        text_lines.append(
+            "runtime_lane_phase2_rig_sweep_radar_alignment_summary="
+            f"{runtime_lane_phase2_rig_sweep_radar_alignment_summary_text}"
+        )
     if runtime_evidence_compare_summary_text != "n/a":
         text_lines.append(
             "runtime_evidence_compare_summary="
@@ -11759,6 +12014,15 @@ def main() -> int:
                 "runtime_lane_execution_failed_rows="
                 f"{runtime_lane_execution_failed_rows_text}"
             )
+    if runtime_lane_phase2_rig_sweep_radar_alignment_warning:
+        text_lines.append(
+            "runtime_lane_phase2_rig_sweep_radar_alignment_warning="
+            f"{runtime_lane_phase2_rig_sweep_radar_alignment_warning}"
+        )
+        text_lines.append(
+            "runtime_lane_phase2_rig_sweep_radar_alignment_warning_reasons="
+            f"{','.join(runtime_lane_phase2_rig_sweep_radar_alignment_warning_reasons) or 'n/a'}"
+        )
     if runtime_evidence_warning:
         text_lines.append(f"runtime_evidence_warning={runtime_evidence_warning}")
         text_lines.append(
@@ -12282,6 +12546,11 @@ def main() -> int:
     if runtime_lane_execution_summary_text != "n/a":
         runtime_lane_execution_lines = ["*runtime lane execution*"]
         runtime_lane_execution_lines.append(f"- summary: {runtime_lane_execution_summary_text}")
+        if runtime_lane_phase2_rig_sweep_radar_alignment_summary_text != "n/a":
+            runtime_lane_execution_lines.append(
+                "- radar_alignment_summary: "
+                f"{runtime_lane_phase2_rig_sweep_radar_alignment_summary_text}"
+            )
         runtime_lane_execution_lines.append(
             f"- threshold_drift_detected: {1 if runtime_threshold_drift_detected else 0}"
         )
@@ -12302,6 +12571,15 @@ def main() -> int:
                 runtime_lane_execution_lines.append(
                     f"- evidence_missing_runtimes: {runtime_lane_execution_evidence_missing_runtimes_text}"
                 )
+        if runtime_lane_phase2_rig_sweep_radar_alignment_warning:
+            runtime_lane_execution_lines.append(
+                "- radar_alignment_warning: "
+                f"{runtime_lane_phase2_rig_sweep_radar_alignment_warning}"
+            )
+            runtime_lane_execution_lines.append(
+                "- radar_alignment_warning_reasons: "
+                f"{', '.join(runtime_lane_phase2_rig_sweep_radar_alignment_warning_reasons) or 'n/a'}"
+            )
         if runtime_lane_execution_failed_rows_text != "n/a":
             runtime_lane_execution_lines.append(
                 f"- failed_rows: {runtime_lane_execution_failed_rows_text}"
@@ -12900,6 +13178,54 @@ def main() -> int:
         "runtime_evidence_failed_records_text": runtime_evidence_failed_records_text,
         "runtime_lane_execution_summary": runtime_lane_execution_summary,
         "runtime_lane_execution_summary_text": runtime_lane_execution_summary_text,
+        "runtime_lane_phase2_rig_sweep_radar_alignment_summary": (
+            runtime_lane_phase2_rig_sweep_radar_alignment_summary
+        ),
+        "runtime_lane_phase2_rig_sweep_radar_alignment_summary_text": (
+            runtime_lane_phase2_rig_sweep_radar_alignment_summary_text
+        ),
+        "runtime_lane_phase2_rig_sweep_radar_alignment_runtime_counts": (
+            runtime_lane_phase2_rig_sweep_radar_alignment_runtime_counts
+        ),
+        "runtime_lane_phase2_rig_sweep_radar_alignment_result_counts": (
+            runtime_lane_phase2_rig_sweep_radar_alignment_result_counts
+        ),
+        "runtime_lane_phase2_rig_sweep_radar_alignment_mapping_mode_counts": (
+            runtime_lane_phase2_rig_sweep_radar_alignment_mapping_mode_counts
+        ),
+        "runtime_lane_phase2_rig_sweep_radar_alignment_pass_metric_summary": (
+            runtime_lane_phase2_rig_sweep_radar_alignment_pass_metric_summary
+        ),
+        "runtime_lane_phase2_rig_sweep_radar_alignment_fail_metric_summary": (
+            runtime_lane_phase2_rig_sweep_radar_alignment_fail_metric_summary
+        ),
+        "runtime_lane_phase2_rig_sweep_radar_alignment_pass_minus_fail_metric_delta": (
+            runtime_lane_phase2_rig_sweep_radar_alignment_pass_minus_fail_metric_delta
+        ),
+        "runtime_lane_phase2_rig_sweep_radar_alignment_row_count": (
+            runtime_lane_phase2_rig_sweep_radar_alignment_row_count
+        ),
+        "runtime_lane_phase2_rig_sweep_radar_alignment_metrics_sample_count": (
+            runtime_lane_phase2_rig_sweep_radar_alignment_metrics_sample_count
+        ),
+        "runtime_lane_phase2_rig_sweep_radar_alignment_unmatched_row_count": (
+            runtime_lane_phase2_rig_sweep_radar_alignment_unmatched_row_count
+        ),
+        "runtime_lane_phase2_rig_sweep_radar_alignment_pass_metrics_sample_count": (
+            runtime_lane_phase2_rig_sweep_radar_alignment_pass_metrics_sample_count
+        ),
+        "runtime_lane_phase2_rig_sweep_radar_alignment_fail_metrics_sample_count": (
+            runtime_lane_phase2_rig_sweep_radar_alignment_fail_metrics_sample_count
+        ),
+        "runtime_lane_phase2_rig_sweep_radar_alignment_warning": (
+            runtime_lane_phase2_rig_sweep_radar_alignment_warning
+        ),
+        "runtime_lane_phase2_rig_sweep_radar_alignment_warning_messages": (
+            runtime_lane_phase2_rig_sweep_radar_alignment_warning_messages
+        ),
+        "runtime_lane_phase2_rig_sweep_radar_alignment_warning_reasons": (
+            runtime_lane_phase2_rig_sweep_radar_alignment_warning_reasons
+        ),
         "runtime_lane_execution_warning": runtime_lane_execution_warning,
         "runtime_lane_execution_warning_messages": runtime_lane_execution_warning_messages,
         "runtime_lane_execution_warning_reasons": runtime_lane_execution_warning_reasons,

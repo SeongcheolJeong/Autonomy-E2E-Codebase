@@ -53396,6 +53396,146 @@ class BuildNotificationPayloadTests(unittest.TestCase):
             )
             self.assertIn("*runtime lane execution*", json.dumps(payload.get("slack", {})))
 
+    def test_runtime_lane_alignment_non_positive_delta_emits_warn_reasons(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp_path = Path(tmp)
+            summary_path = tmp_path / "summary.json"
+            out_path = tmp_path / "notification.json"
+            summary_path.write_text(
+                json.dumps(
+                    {
+                        "release_prefix": "REL_RUNTIME_LANE_ALIGNMENT_WARN_001",
+                        "summary_count": 1,
+                        "final_result_counts": {"PASS": 1},
+                        "pipeline_overall_counts": {"PASS": 1},
+                        "pipeline_trend_counts": {"PASS": 1},
+                        "runtime_lane_execution_summary": {
+                            "artifact_count": 1,
+                            "runtime_row_count": 2,
+                            "pass_count": 1,
+                            "fail_count": 1,
+                            "unknown_count": 0,
+                            "lane_row_counts": {"exec": 2},
+                            "runtime_evidence_exists_false_count": 0,
+                        },
+                        "runtime_lane_phase2_rig_sweep_radar_alignment_summary": {
+                            "runtime_row_count": 2,
+                            "matched_manifest_count": 2,
+                            "metrics_sample_count": 2,
+                            "unmatched_row_count": 0,
+                            "runtime_counts": {"awsim": 1, "carla": 1},
+                            "result_counts": {"fail": 1, "pass": 1},
+                            "mapping_mode_counts": {"release_prefix": 2},
+                            "pass_metric_summary": {"metrics_sample_count": 1},
+                            "fail_metric_summary": {"metrics_sample_count": 1},
+                            "pass_minus_fail_metric_delta": {
+                                "radar_effective_detection_quality_avg": -0.02,
+                                "radar_track_purity_avg": 0.04,
+                                "radar_doppler_resolution_quality_avg": 0.03,
+                                "radar_range_coverage_quality_avg": 0.05,
+                            },
+                        },
+                    }
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+
+            run_script(
+                PROTOTYPE_DIR / "build_release_notification_payload.py",
+                "--summary-json",
+                str(summary_path),
+                "--out-json",
+                str(out_path),
+            )
+            payload = read_json_file(
+                self,
+                file_path=out_path,
+            )
+            self.assertEqual(payload["status"], "WARN")
+            self.assertIn(
+                "runtime_lane_phase2_rig_sweep_radar_alignment_warning="
+                "runtime_lane_phase2_rig_sweep_radar_alignment_pass_minus_fail_non_positive="
+                "radar_effective_quality_avg:-0.020",
+                payload.get("message_text", ""),
+            )
+            self.assertEqual(
+                payload.get("runtime_lane_phase2_rig_sweep_radar_alignment_warning_reasons"),
+                ["runtime_lane_phase2_rig_sweep_radar_alignment_pass_minus_fail_non_positive"],
+            )
+            self.assertIn(
+                "pass_minus_fail_effective_quality_avg=-0.020",
+                payload.get("runtime_lane_phase2_rig_sweep_radar_alignment_summary_text", ""),
+            )
+
+    def test_runtime_lane_alignment_degraded_delta_promotes_hold(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp_path = Path(tmp)
+            summary_path = tmp_path / "summary.json"
+            out_path = tmp_path / "notification.json"
+            summary_path.write_text(
+                json.dumps(
+                    {
+                        "release_prefix": "REL_RUNTIME_LANE_ALIGNMENT_HOLD_001",
+                        "summary_count": 1,
+                        "final_result_counts": {"PASS": 1},
+                        "pipeline_overall_counts": {"PASS": 1},
+                        "pipeline_trend_counts": {"PASS": 1},
+                        "runtime_lane_execution_summary": {
+                            "artifact_count": 1,
+                            "runtime_row_count": 2,
+                            "pass_count": 1,
+                            "fail_count": 1,
+                            "unknown_count": 0,
+                            "lane_row_counts": {"exec": 2},
+                            "runtime_evidence_exists_false_count": 0,
+                        },
+                        "runtime_lane_phase2_rig_sweep_radar_alignment_summary": {
+                            "runtime_row_count": 2,
+                            "matched_manifest_count": 2,
+                            "metrics_sample_count": 2,
+                            "unmatched_row_count": 0,
+                            "runtime_counts": {"awsim": 1, "carla": 1},
+                            "result_counts": {"fail": 1, "pass": 1},
+                            "mapping_mode_counts": {"release_prefix": 2},
+                            "pass_metric_summary": {"metrics_sample_count": 1},
+                            "fail_metric_summary": {"metrics_sample_count": 1},
+                            "pass_minus_fail_metric_delta": {
+                                "radar_effective_detection_quality_avg": -0.12,
+                                "radar_track_purity_avg": -0.08,
+                                "radar_doppler_resolution_quality_avg": -0.07,
+                                "radar_range_coverage_quality_avg": 0.01,
+                            },
+                        },
+                    }
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+
+            run_script(
+                PROTOTYPE_DIR / "build_release_notification_payload.py",
+                "--summary-json",
+                str(summary_path),
+                "--out-json",
+                str(out_path),
+            )
+            payload = read_json_file(
+                self,
+                file_path=out_path,
+            )
+            self.assertEqual(payload["status"], "HOLD")
+            self.assertIn(
+                "runtime_lane_phase2_rig_sweep_radar_alignment_warning="
+                "runtime_lane_phase2_rig_sweep_radar_alignment_pass_minus_fail_degraded="
+                "radar_effective_quality_avg:-0.120,radar_track_purity_avg:-0.080,radar_doppler_quality_avg:-0.070",
+                payload.get("message_text", ""),
+            )
+            self.assertIn(
+                "runtime_lane_phase2_rig_sweep_radar_alignment_pass_minus_fail_degraded",
+                payload.get("runtime_lane_phase2_rig_sweep_radar_alignment_warning_reasons", []),
+            )
+
     def test_runtime_lane_execution_missing_exec_lane_without_threshold_keeps_pass(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             tmp_path = Path(tmp)
