@@ -1,0 +1,55 @@
+{
+  "rig_schema_version": "sensor_rig_v0",
+  "sensors": [
+    {
+      "sensor_id": "camera_front_color_pipeline",
+      "sensor_type": "camera",
+      "image_width_px": 1920,
+      "image_height_px": 1080,
+      "lens_params": {
+        "chromatic_aberration": 1.2,
+        "lens_flare": 0.4,
+        "vignetting": {
+          "intensity": 0.35,
+          "alpha": 1.0,
+          "radius": 0.9
+        }
+      },
+      "sensor_params": {
+        "bloom": 0.45
+      },
+      "system_params": {
+        "gain": 8.0,
+        "gamma": 0.62,
+        "white_balance": 5200.0,
+        "color_space": "MONO",
+        "data_type": "FLOAT",
+        "piecewise_linear_mapping": [
+          {
+            "input": 0.0,
+            "output": 0.0
+          },
+          {
+            "input": 0.45,
+            "output": 0.5
+          },
+          {
+            "input": 0.75,
+            "output": 0.9
+          },
+          {
+            "input": 1.0,
+            "output": 1.0
+          }
+        ]
+      },
+      "fidelity": {
+        "bloom": {
+          "disable": false,
+          "level": "LOW"
+        },
+        "disable_tonemapper": false
+      }
+    }
+  ]
+}

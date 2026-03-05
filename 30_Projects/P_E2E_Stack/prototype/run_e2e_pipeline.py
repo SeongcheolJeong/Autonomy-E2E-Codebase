@@ -2062,6 +2062,12 @@ def run_phase2_hooks(args: argparse.Namespace) -> dict[str, Any]:
         "camera_auto_black_level_stddev_to_subtract_avg": 0.0,
         "camera_saturation_rgb_avg": 0.0,
         "camera_saturation_effective_scale_avg": 0.0,
+        "camera_piecewise_linear_mapping_enabled_frame_count": 0,
+        "camera_piecewise_linear_mapping_point_count_avg": 0.0,
+        "camera_piecewise_linear_mapping_dynamic_range_scale_avg": 0.0,
+        "camera_piecewise_linear_mapping_midtone_gain_avg": 0.0,
+        "camera_color_space_counts": {},
+        "camera_output_data_type_counts": {},
         "camera_tonemapper_disabled_frame_count": 0,
         "camera_bloom_level_counts": {},
         "camera_depth_enabled_frame_count": 0,
@@ -2171,6 +2177,24 @@ def run_phase2_hooks(args: argparse.Namespace) -> dict[str, Any]:
             "camera_saturation_effective_scale_avg": _to_non_negative_float(
                 sensor_quality_summary_raw.get("camera_saturation_effective_scale_avg", 0.0)
             ),
+            "camera_piecewise_linear_mapping_enabled_frame_count": _to_non_negative_int(
+                sensor_quality_summary_raw.get("camera_piecewise_linear_mapping_enabled_frame_count", 0)
+            ),
+            "camera_piecewise_linear_mapping_point_count_avg": _to_non_negative_float(
+                sensor_quality_summary_raw.get("camera_piecewise_linear_mapping_point_count_avg", 0.0)
+            ),
+            "camera_piecewise_linear_mapping_dynamic_range_scale_avg": _to_non_negative_float(
+                sensor_quality_summary_raw.get("camera_piecewise_linear_mapping_dynamic_range_scale_avg", 0.0)
+            ),
+            "camera_piecewise_linear_mapping_midtone_gain_avg": _to_non_negative_float(
+                sensor_quality_summary_raw.get("camera_piecewise_linear_mapping_midtone_gain_avg", 0.0)
+            ),
+            "camera_color_space_counts": _normalize_uppercase_mode_counts(
+                sensor_quality_summary_raw.get("camera_color_space_counts", {})
+            ),
+            "camera_output_data_type_counts": _normalize_uppercase_mode_counts(
+                sensor_quality_summary_raw.get("camera_output_data_type_counts", {})
+            ),
             "camera_tonemapper_disabled_frame_count": _to_non_negative_int(
                 sensor_quality_summary_raw.get("camera_tonemapper_disabled_frame_count", 0)
             ),
@@ -2270,6 +2294,12 @@ def run_phase2_hooks(args: argparse.Namespace) -> dict[str, Any]:
         camera_auto_black_level_stddev_to_subtract_total = 0.0
         camera_saturation_rgb_avg_total = 0.0
         camera_saturation_effective_scale_total = 0.0
+        camera_piecewise_linear_mapping_enabled_frame_count = 0
+        camera_piecewise_linear_mapping_point_count_total = 0.0
+        camera_piecewise_linear_mapping_dynamic_range_scale_total = 0.0
+        camera_piecewise_linear_mapping_midtone_gain_total = 0.0
+        camera_color_space_counts: dict[str, int] = {}
+        camera_output_data_type_counts: dict[str, int] = {}
         camera_tonemapper_disabled_frame_count = 0
         camera_bloom_level_counts: dict[str, int] = {}
         camera_depth_enabled_frame_count = 0
@@ -2394,6 +2424,25 @@ def run_phase2_hooks(args: argparse.Namespace) -> dict[str, Any]:
                 camera_saturation_effective_scale_total += _to_non_negative_float(
                     camera_postprocess_payload.get("saturation_effective_scale", 0.0)
                 )
+                if bool(camera_postprocess_payload.get("piecewise_linear_mapping_present", False)):
+                    camera_piecewise_linear_mapping_enabled_frame_count += 1
+                camera_piecewise_linear_mapping_point_count_total += _to_non_negative_float(
+                    camera_postprocess_payload.get("piecewise_linear_mapping_point_count", 0.0)
+                )
+                camera_piecewise_linear_mapping_dynamic_range_scale_total += _to_non_negative_float(
+                    camera_postprocess_payload.get("piecewise_linear_mapping_dynamic_range_scale", 0.0)
+                )
+                camera_piecewise_linear_mapping_midtone_gain_total += _to_non_negative_float(
+                    camera_postprocess_payload.get("piecewise_linear_mapping_midtone_gain", 0.0)
+                )
+                color_space = str(camera_postprocess_payload.get("color_space", "")).strip().upper()
+                if color_space:
+                    camera_color_space_counts[color_space] = camera_color_space_counts.get(color_space, 0) + 1
+                output_data_type = str(camera_postprocess_payload.get("output_data_type", "")).strip().upper()
+                if output_data_type:
+                    camera_output_data_type_counts[output_data_type] = (
+                        camera_output_data_type_counts.get(output_data_type, 0) + 1
+                    )
                 if bool(camera_postprocess_payload.get("disable_tonemapper", False)):
                     camera_tonemapper_disabled_frame_count += 1
                 bloom_level = str(camera_postprocess_payload.get("bloom_level", "")).strip().upper()
@@ -2584,6 +2633,32 @@ def run_phase2_hooks(args: argparse.Namespace) -> dict[str, Any]:
                 if camera_frame_count > 0
                 else 0.0
             ),
+            "camera_piecewise_linear_mapping_enabled_frame_count": int(
+                camera_piecewise_linear_mapping_enabled_frame_count
+            ),
+            "camera_piecewise_linear_mapping_point_count_avg": (
+                float(camera_piecewise_linear_mapping_point_count_total / float(camera_frame_count))
+                if camera_frame_count > 0
+                else 0.0
+            ),
+            "camera_piecewise_linear_mapping_dynamic_range_scale_avg": (
+                float(camera_piecewise_linear_mapping_dynamic_range_scale_total / float(camera_frame_count))
+                if camera_frame_count > 0
+                else 0.0
+            ),
+            "camera_piecewise_linear_mapping_midtone_gain_avg": (
+                float(camera_piecewise_linear_mapping_midtone_gain_total / float(camera_frame_count))
+                if camera_frame_count > 0
+                else 0.0
+            ),
+            "camera_color_space_counts": {
+                key: camera_color_space_counts[key]
+                for key in sorted(camera_color_space_counts.keys())
+            },
+            "camera_output_data_type_counts": {
+                key: camera_output_data_type_counts[key]
+                for key in sorted(camera_output_data_type_counts.keys())
+            },
             "camera_tonemapper_disabled_frame_count": int(camera_tonemapper_disabled_frame_count),
             "camera_bloom_level_counts": {
                 key: camera_bloom_level_counts[key] for key in sorted(camera_bloom_level_counts.keys())

@@ -646,6 +646,71 @@ def _resolve_bloom_level(raw: Any) -> str:
     return "LOW"
 
 
+def _resolve_camera_color_space(raw: Any) -> str:
+    value = str(raw if raw is not None else "").strip().upper()
+    if value in {"RGB", "LABD65", "XYZD65", "MONO", "RAINBOW"}:
+        return value
+    return "RGB"
+
+
+def _resolve_camera_output_data_type(raw: Any) -> str:
+    value = str(raw if raw is not None else "").strip().upper()
+    if value in {"UINT", "FLOAT"}:
+        return value
+    return "UINT"
+
+
+def _resolve_piecewise_linear_mapping(raw: Any) -> list[dict[str, float]]:
+    if not isinstance(raw, list):
+        return []
+    normalized: list[dict[str, float]] = []
+    for point in raw:
+        if not isinstance(point, dict):
+            continue
+        point_input = _clamp_float(
+            _to_float(point.get("input", 0.0), default=0.0),
+            minimum=0.0,
+            maximum=1.0,
+        )
+        point_output = _clamp_float(
+            _to_float(point.get("output", 0.0), default=0.0),
+            minimum=0.0,
+            maximum=1.0,
+        )
+        normalized.append({"input": float(point_input), "output": float(point_output)})
+    normalized.sort(key=lambda item: item["input"])
+    deduped: list[dict[str, float]] = []
+    for point in normalized:
+        if deduped and abs(point["input"] - deduped[-1]["input"]) <= 1e-9:
+            deduped[-1] = point
+            continue
+        deduped.append(point)
+    return deduped
+
+
+def _evaluate_piecewise_linear_mapping(points: list[dict[str, float]], value: float) -> float:
+    x = _clamp_float(value, minimum=0.0, maximum=1.0)
+    if not points:
+        return x
+    if x <= points[0]["input"]:
+        return float(points[0]["output"])
+    if x >= points[-1]["input"]:
+        return float(points[-1]["output"])
+    for idx in range(1, len(points)):
+        left = points[idx - 1]
+        right = points[idx]
+        left_x = float(left["input"])
+        right_x = float(right["input"])
+        if x > right_x:
+            continue
+        span = max(1e-9, right_x - left_x)
+        t = _clamp_float((x - left_x) / span, minimum=0.0, maximum=1.0)
+        left_y = float(left["output"])
+        right_y = float(right["output"])
+        return left_y + ((right_y - left_y) * t)
+    return float(points[-1]["output"])
+
+
 def _resolve_camera_postprocess_config(sensor_config: dict[str, Any]) -> dict[str, Any]:
     standard_params = _as_dict(sensor_config.get("standard_params"))
     lens_params = _as_dict(sensor_config.get("lens_params"))
@@ -664,6 +729,15 @@ def _resolve_camera_postprocess_config(sensor_config: dict[str, Any]) -> dict[st
     auto_black_level_offset = _as_dict(system_params.get("auto_black_level_offset"))
     black_level_offset_raw = system_params.get("black_level_offset", sensor_config.get("black_level_offset"))
     saturation_raw = system_params.get("saturation", sensor_config.get("saturation"))
+    piecewise_linear_mapping = _resolve_piecewise_linear_mapping(
+        system_params.get("piecewise_linear_mapping", sensor_config.get("piecewise_linear_mapping"))
+    )
+    color_space = _resolve_camera_color_space(
+        system_params.get("color_space", sensor_config.get("color_space", "RGB"))
+    )
+    output_data_type = _resolve_camera_output_data_type(
+        system_params.get("data_type", sensor_config.get("data_type", "UINT"))
+    )
 
     explicit_input_present = any(
         key in lens_params
@@ -682,6 +756,9 @@ def _resolve_camera_postprocess_config(sensor_config: dict[str, Any]) -> dict[st
             "auto_black_level_offset",
             "black_level_offset",
             "saturation",
+            "color_space",
+            "data_type",
+            "piecewise_linear_mapping",
         )
     ) or any(
         key in fidelity
@@ -705,6 +782,9 @@ def _resolve_camera_postprocess_config(sensor_config: dict[str, Any]) -> dict[st
             "auto_black_level_offset",
             "black_level_offset",
             "saturation",
+            "color_space",
+            "data_type",
+            "piecewise_linear_mapping",
             "bloom",
             "bloom_disable",
             "bloom_level",
@@ -872,6 +952,9 @@ def _resolve_camera_postprocess_config(sensor_config: dict[str, Any]) -> dict[st
         "auto_black_level_stddev_to_subtract": float(auto_black_level_stddev_to_subtract),
         "black_level_offset": black_level_offset,
         "saturation": saturation,
+        "color_space": color_space,
+        "output_data_type": output_data_type,
+        "piecewise_linear_mapping": piecewise_linear_mapping,
         "bloom_disable": bool(bloom_disable),
         "bloom_level": bloom_level,
         "disable_tonemapper": bool(disable_tonemapper),
@@ -908,6 +991,11 @@ def _compute_camera_postprocess(
     saturation_g = _to_non_negative_float(saturation.get("g", 1.0))
     saturation_b = _to_non_negative_float(saturation.get("b", 1.0))
     saturation_a = _to_non_negative_float(saturation.get("a", 1.0))
+    color_space = str(config.get("color_space", "RGB"))
+    output_data_type = str(config.get("output_data_type", "UINT"))
+    piecewise_linear_mapping = config.get("piecewise_linear_mapping", [])
+    if not isinstance(piecewise_linear_mapping, list):
+        piecewise_linear_mapping = []
     bloom_disable = bool(config["bloom_disable"])
     bloom_level = str(config["bloom_level"])
     disable_tonemapper = bool(config["disable_tonemapper"])
@@ -952,6 +1040,57 @@ def _compute_camera_postprocess(
         maximum=4.0,
     )
     saturation_deviation = abs(saturation_effective_scale - 1.0)
+    piecewise_linear_mapping_present = len(piecewise_linear_mapping) >= 2
+    piecewise_linear_mapping_point_count = int(len(piecewise_linear_mapping))
+    if piecewise_linear_mapping_present:
+        piecewise_mapping_input_span = max(
+            0.0,
+            float(piecewise_linear_mapping[-1]["input"]) - float(piecewise_linear_mapping[0]["input"]),
+        )
+        piecewise_mapping_output_span = max(
+            0.0,
+            float(piecewise_linear_mapping[-1]["output"]) - float(piecewise_linear_mapping[0]["output"]),
+        )
+        piecewise_mapping_dynamic_range_scale = _clamp_float(
+            piecewise_mapping_output_span / max(piecewise_mapping_input_span, 1e-6),
+            minimum=0.1,
+            maximum=4.0,
+        )
+        mapped_mid = _evaluate_piecewise_linear_mapping(piecewise_linear_mapping, 0.5)
+        mapped_low = _evaluate_piecewise_linear_mapping(piecewise_linear_mapping, 0.45)
+        mapped_high = _evaluate_piecewise_linear_mapping(piecewise_linear_mapping, 0.55)
+        piecewise_mapping_midtone_gain = _clamp_float(
+            mapped_mid / 0.5,
+            minimum=0.0,
+            maximum=4.0,
+        )
+        piecewise_mapping_contrast_gain = _clamp_float(
+            (mapped_high - mapped_low) / 0.1,
+            minimum=0.0,
+            maximum=4.0,
+        )
+    else:
+        piecewise_mapping_input_span = 0.0
+        piecewise_mapping_output_span = 0.0
+        piecewise_mapping_dynamic_range_scale = 1.0
+        piecewise_mapping_midtone_gain = 1.0
+        piecewise_mapping_contrast_gain = 1.0
+    piecewise_mapping_midtone_deviation = abs(piecewise_mapping_midtone_gain - 1.0)
+    piecewise_mapping_contrast_deviation = abs(piecewise_mapping_contrast_gain - 1.0)
+    if color_space == "MONO":
+        color_space_visibility_scale = 1.02
+        color_space_noise_delta = -0.08
+    elif color_space == "RAINBOW":
+        color_space_visibility_scale = 0.9
+        color_space_noise_delta = 0.16
+    elif color_space in {"LABD65", "XYZD65"}:
+        color_space_visibility_scale = 0.97
+        color_space_noise_delta = 0.06
+    else:
+        color_space_visibility_scale = 1.0
+        color_space_noise_delta = 0.0
+    data_type_noise_delta = -0.06 if output_data_type == "FLOAT" else 0.0
+    data_type_dynamic_range_delta = 0.12 if output_data_type == "FLOAT" else 0.0
     vignetting_radius_scale = _clamp_float((1.4 - vignetting_radius) / 1.4, minimum=0.0, maximum=1.0)
     vignetting_edge_darkening = _clamp_float(
         vignetting_intensity
@@ -996,13 +1135,27 @@ def _compute_camera_postprocess(
         minimum=0.65,
         maximum=1.0,
     )
+    postprocess_visibility_scale = _clamp_float(
+        postprocess_visibility_scale
+        * color_space_visibility_scale
+        * _clamp_float(
+            1.0 - (0.04 * piecewise_mapping_midtone_deviation),
+            minimum=0.85,
+            maximum=1.08,
+        ),
+        minimum=0.5,
+        maximum=1.05,
+    )
     camera_noise_stddev_px_delta = _clamp_float(
         max(0.0, gain_linear - 1.0) * 0.35
         + (abs(gamma - 0.4545) * 0.12)
         + (0.1 * bloom_halo_strength)
         + (0.002 * spot_size_rms)
         + (0.22 * effective_black_level_lift)
-        + (0.05 * saturation_deviation),
+        + (0.05 * saturation_deviation)
+        + color_space_noise_delta
+        + data_type_noise_delta
+        + (0.05 * piecewise_mapping_contrast_deviation),
         minimum=0.0,
         maximum=2.0,
     )
@@ -1012,6 +1165,8 @@ def _compute_camera_postprocess(
         - (0.08 * flare_glare_ratio)
         - (1.1 * effective_black_level_lift)
         - (0.15 * max(0.0, saturation_effective_scale - 1.0))
+        + (0.45 * (piecewise_mapping_dynamic_range_scale - 1.0))
+        + data_type_dynamic_range_delta
         + (0.2 if disable_tonemapper else 0.0),
         minimum=-1.5,
         maximum=0.8,
@@ -1047,6 +1202,19 @@ def _compute_camera_postprocess(
             "b": float(saturation_b),
             "a": float(saturation_a),
         },
+        "color_space": color_space,
+        "output_data_type": output_data_type,
+        "piecewise_linear_mapping_present": bool(piecewise_linear_mapping_present),
+        "piecewise_linear_mapping_point_count": int(piecewise_linear_mapping_point_count),
+        "piecewise_linear_mapping_input_span": float(piecewise_mapping_input_span),
+        "piecewise_linear_mapping_output_span": float(piecewise_mapping_output_span),
+        "piecewise_linear_mapping_dynamic_range_scale": float(piecewise_mapping_dynamic_range_scale),
+        "piecewise_linear_mapping_midtone_gain": float(piecewise_mapping_midtone_gain),
+        "piecewise_linear_mapping_contrast_gain": float(piecewise_mapping_contrast_gain),
+        "color_space_visibility_scale": float(color_space_visibility_scale),
+        "color_space_noise_delta": float(color_space_noise_delta),
+        "data_type_noise_delta": float(data_type_noise_delta),
+        "data_type_dynamic_range_delta": float(data_type_dynamic_range_delta),
         "saturation_rgb_avg": float(saturation_rgb_avg),
         "saturation_effective_scale": float(saturation_effective_scale),
         "chromatic_aberration_mm": float(chromatic_aberration_mm),
@@ -1957,6 +2125,12 @@ def _summarize_sensor_quality(frames: list[dict[str, Any]]) -> dict[str, Any]:
     camera_auto_black_level_stddev_to_subtract_total = 0.0
     camera_saturation_rgb_avg_total = 0.0
     camera_saturation_effective_scale_total = 0.0
+    camera_piecewise_linear_mapping_enabled_frame_count = 0
+    camera_piecewise_linear_mapping_point_count_total = 0.0
+    camera_piecewise_linear_mapping_dynamic_range_scale_total = 0.0
+    camera_piecewise_linear_mapping_midtone_gain_total = 0.0
+    camera_color_space_counts: dict[str, int] = {}
+    camera_output_data_type_counts: dict[str, int] = {}
     camera_tonemapper_disabled_frame_count = 0
     camera_bloom_level_counts: dict[str, int] = {}
     camera_depth_enabled_frame_count = 0
@@ -2073,6 +2247,25 @@ def _summarize_sensor_quality(frames: list[dict[str, Any]]) -> dict[str, Any]:
             camera_saturation_effective_scale_total += _to_non_negative_float(
                 camera_postprocess.get("saturation_effective_scale", 0.0)
             )
+            if bool(camera_postprocess.get("piecewise_linear_mapping_present", False)):
+                camera_piecewise_linear_mapping_enabled_frame_count += 1
+            camera_piecewise_linear_mapping_point_count_total += _to_non_negative_float(
+                camera_postprocess.get("piecewise_linear_mapping_point_count", 0.0)
+            )
+            camera_piecewise_linear_mapping_dynamic_range_scale_total += _to_non_negative_float(
+                camera_postprocess.get("piecewise_linear_mapping_dynamic_range_scale", 0.0)
+            )
+            camera_piecewise_linear_mapping_midtone_gain_total += _to_non_negative_float(
+                camera_postprocess.get("piecewise_linear_mapping_midtone_gain", 0.0)
+            )
+            color_space = str(camera_postprocess.get("color_space", "")).strip().upper()
+            if color_space:
+                camera_color_space_counts[color_space] = camera_color_space_counts.get(color_space, 0) + 1
+            output_data_type = str(camera_postprocess.get("output_data_type", "")).strip().upper()
+            if output_data_type:
+                camera_output_data_type_counts[output_data_type] = (
+                    camera_output_data_type_counts.get(output_data_type, 0) + 1
+                )
             if bool(camera_postprocess.get("disable_tonemapper", False)):
                 camera_tonemapper_disabled_frame_count += 1
             bloom_level = str(camera_postprocess.get("bloom_level", "")).strip().upper()
@@ -2241,6 +2434,21 @@ def _summarize_sensor_quality(frames: list[dict[str, Any]]) -> dict[str, Any]:
         if camera_frame_count > 0
         else 0.0
     )
+    camera_piecewise_linear_mapping_point_count_avg = (
+        camera_piecewise_linear_mapping_point_count_total / float(camera_frame_count)
+        if camera_frame_count > 0
+        else 0.0
+    )
+    camera_piecewise_linear_mapping_dynamic_range_scale_avg = (
+        camera_piecewise_linear_mapping_dynamic_range_scale_total / float(camera_frame_count)
+        if camera_frame_count > 0
+        else 0.0
+    )
+    camera_piecewise_linear_mapping_midtone_gain_avg = (
+        camera_piecewise_linear_mapping_midtone_gain_total / float(camera_frame_count)
+        if camera_frame_count > 0
+        else 0.0
+    )
     camera_depth_min_m_avg = (
         camera_depth_min_m_total / float(camera_frame_count)
         if camera_frame_count > 0
@@ -2340,6 +2548,25 @@ def _summarize_sensor_quality(frames: list[dict[str, Any]]) -> dict[str, Any]:
         ),
         "camera_saturation_rgb_avg": float(camera_saturation_rgb_avg),
         "camera_saturation_effective_scale_avg": float(camera_saturation_effective_scale_avg),
+        "camera_piecewise_linear_mapping_enabled_frame_count": int(
+            camera_piecewise_linear_mapping_enabled_frame_count
+        ),
+        "camera_piecewise_linear_mapping_point_count_avg": float(
+            camera_piecewise_linear_mapping_point_count_avg
+        ),
+        "camera_piecewise_linear_mapping_dynamic_range_scale_avg": float(
+            camera_piecewise_linear_mapping_dynamic_range_scale_avg
+        ),
+        "camera_piecewise_linear_mapping_midtone_gain_avg": float(
+            camera_piecewise_linear_mapping_midtone_gain_avg
+        ),
+        "camera_color_space_counts": {
+            key: camera_color_space_counts[key] for key in sorted(camera_color_space_counts.keys())
+        },
+        "camera_output_data_type_counts": {
+            key: camera_output_data_type_counts[key]
+            for key in sorted(camera_output_data_type_counts.keys())
+        },
         "camera_tonemapper_disabled_frame_count": int(camera_tonemapper_disabled_frame_count),
         "camera_bloom_level_counts": {
             key: camera_bloom_level_counts[key] for key in sorted(camera_bloom_level_counts.keys())

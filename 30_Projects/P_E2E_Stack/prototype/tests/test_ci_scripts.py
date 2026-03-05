@@ -1972,6 +1972,14 @@ class SensorSimBridgeTests(unittest.TestCase):
                                     "auto_black_level_offset": {"stddev_to_subtract": 2.0},
                                     "black_level_offset": {"r": 0.08, "g": 0.06, "b": 0.04, "a": 0.1},
                                     "saturation": {"r": 1.2, "g": 1.1, "b": 0.9, "a": 1.05},
+                                    "color_space": "MONO",
+                                    "data_type": "FLOAT",
+                                    "piecewise_linear_mapping": [
+                                        {"input": 0.0, "output": 0.0},
+                                        {"input": 0.45, "output": 0.5},
+                                        {"input": 0.75, "output": 0.9},
+                                        {"input": 1.0, "output": 1.0},
+                                    ],
                                 },
                                 "fidelity": {
                                     "bloom": {"disable": False, "level": "HIGH"},
@@ -2017,6 +2025,18 @@ class SensorSimBridgeTests(unittest.TestCase):
                 2.0,
                 places=6,
             )
+            self.assertEqual(str(camera_postprocess.get("color_space", "")), "MONO")
+            self.assertEqual(str(camera_postprocess.get("output_data_type", "")), "FLOAT")
+            self.assertTrue(bool(camera_postprocess.get("piecewise_linear_mapping_present")))
+            self.assertEqual(int(camera_postprocess.get("piecewise_linear_mapping_point_count", 0) or 0), 4)
+            self.assertGreater(
+                float(camera_postprocess.get("piecewise_linear_mapping_dynamic_range_scale", 0.0) or 0.0),
+                0.0,
+            )
+            self.assertGreater(
+                float(camera_postprocess.get("piecewise_linear_mapping_midtone_gain", 0.0) or 0.0),
+                0.0,
+            )
             black_level_offset = camera_postprocess.get("black_level_offset", {})
             self.assertIsInstance(black_level_offset, dict)
             self.assertAlmostEqual(float(black_level_offset.get("r", 0.0) or 0.0), 0.08, places=6)
@@ -2042,6 +2062,27 @@ class SensorSimBridgeTests(unittest.TestCase):
                 float(sensor_quality_summary.get("camera_auto_black_level_stddev_to_subtract_avg", 0.0) or 0.0),
                 2.0,
                 places=6,
+            )
+            self.assertEqual(sensor_quality_summary.get("camera_color_space_counts"), {"MONO": 1})
+            self.assertEqual(sensor_quality_summary.get("camera_output_data_type_counts"), {"FLOAT": 1})
+            self.assertEqual(
+                int(sensor_quality_summary.get("camera_piecewise_linear_mapping_enabled_frame_count", 0) or 0),
+                1,
+            )
+            self.assertAlmostEqual(
+                float(sensor_quality_summary.get("camera_piecewise_linear_mapping_point_count_avg", 0.0) or 0.0),
+                4.0,
+                places=6,
+            )
+            self.assertGreater(
+                float(
+                    sensor_quality_summary.get(
+                        "camera_piecewise_linear_mapping_dynamic_range_scale_avg",
+                        0.0,
+                    )
+                    or 0.0
+                ),
+                0.0,
             )
             self.assertGreater(
                 float(sensor_quality_summary.get("camera_saturation_effective_scale_avg", 0.0) or 0.0),
@@ -37215,6 +37256,12 @@ class RunE2EPipelineTests(unittest.TestCase):
             self.assertIn("camera_bloom_halo_strength_avg", phase2_sensor_quality_summary)
             self.assertIn("camera_black_level_lift_norm_avg", phase2_sensor_quality_summary)
             self.assertIn("camera_saturation_effective_scale_avg", phase2_sensor_quality_summary)
+            self.assertIn("camera_piecewise_linear_mapping_enabled_frame_count", phase2_sensor_quality_summary)
+            self.assertIn("camera_piecewise_linear_mapping_point_count_avg", phase2_sensor_quality_summary)
+            self.assertIn("camera_piecewise_linear_mapping_dynamic_range_scale_avg", phase2_sensor_quality_summary)
+            self.assertIn("camera_piecewise_linear_mapping_midtone_gain_avg", phase2_sensor_quality_summary)
+            self.assertIn("camera_color_space_counts", phase2_sensor_quality_summary)
+            self.assertIn("camera_output_data_type_counts", phase2_sensor_quality_summary)
             self.assertIn("camera_bloom_level_counts", phase2_sensor_quality_summary)
             self.assertIn("camera_depth_enabled_frame_count", phase2_sensor_quality_summary)
             self.assertIn("camera_depth_mode_counts", phase2_sensor_quality_summary)
