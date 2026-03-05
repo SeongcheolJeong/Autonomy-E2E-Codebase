@@ -1,0 +1,10 @@
+{
+  "include_patterns": [
+    "^\\.github/workflows/e2e-.*\\.yml$",
+    "^30_Projects/P_E2E_Stack/prototype/.*\\.(py|sh|json|yaml|yml)$",
+    "^30_Projects/P_Cloud-Engine/prototype/.*\\.(py|sh|json|yaml|yml)$",
+    "^30_Projects/P_Sim-Engine/prototype/.*\\.(py|sh|json|yaml|yml)$",
+    "^30_Projects/P_Data-Lake-and-Explorer/prototype/.*\\.(py|sh|json|yaml|yml)$",
+    "^30_Projects/P_Validation-Tooling-MVP/prototype/.*\\.(py|sh|json|yaml|yml)$"
+  ]
+}

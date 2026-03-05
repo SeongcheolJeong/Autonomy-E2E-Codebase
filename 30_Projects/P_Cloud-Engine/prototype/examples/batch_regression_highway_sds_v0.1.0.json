@@ -1,0 +1,124 @@
+{
+  "batch_id": "BATCH_REG_HWY_SDS_V0_1_0_0001",
+  "output_root": "../batch_runs",
+  "sim_runner": {
+    "python_bin": "python3",
+    "script_path": "../../../P_Sim-Engine/prototype/core_sim_runner.py"
+  },
+  "defaults": {
+    "seed": 1101,
+    "run_source": "sim_closed_loop",
+    "sds_version": "sds_v0.1.0",
+    "sim_version": "sim_engine_v0_prototype",
+    "fidelity_profile": "dev-fast",
+    "map_id": "map_demo_highway",
+    "map_version": "v0",
+    "odd_tags": "highway,regression,v0"
+  },
+  "execution": {
+    "max_concurrency": 4,
+    "timeout_sec_per_run": 30
+  },
+  "runs": [
+    {
+      "run_id": "RUN_RGA_0001",
+      "scenario": "../../../P_Sim-Engine/prototype/scenario_catalog/highway_regression_v0/SC_HWY_REG_001_safe_far.json",
+      "seed": 1101
+    },
+    {
+      "run_id": "RUN_RGA_0002",
+      "scenario": "../../../P_Sim-Engine/prototype/scenario_catalog/highway_regression_v0/SC_HWY_REG_002_safe_equal_speed.json",
+      "seed": 1102
+    },
+    {
+      "run_id": "RUN_RGA_0003",
+      "scenario": "../../../P_Sim-Engine/prototype/scenario_catalog/highway_regression_v0/SC_HWY_REG_003_near_miss_success.json",
+      "seed": 1103
+    },
+    {
+      "run_id": "RUN_RGA_0004",
+      "scenario": "../../../P_Sim-Engine/prototype/scenario_catalog/highway_regression_v0/SC_HWY_REG_004_collision_fast_close.json",
+      "seed": 1104
+    },
+    {
+      "run_id": "RUN_RGA_0005",
+      "scenario": "../../../P_Sim-Engine/prototype/scenario_catalog/highway_regression_v0/SC_HWY_REG_005_collision_stationary_obstacle.json",
+      "seed": 1105
+    },
+    {
+      "run_id": "RUN_RGA_0006",
+      "scenario": "../../../P_Sim-Engine/prototype/scenario_catalog/highway_regression_v0/SC_HWY_REG_006_safe_dual_npc.json",
+      "seed": 1106
+    },
+    {
+      "run_id": "RUN_RGA_0007",
+      "scenario": "../../../P_Sim-Engine/prototype/scenario_catalog/highway_regression_v0/SC_HWY_REG_007_collision_dual_npc.json",
+      "seed": 1107
+    },
+    {
+      "run_id": "RUN_RGA_0008",
+      "scenario": "../../../P_Sim-Engine/prototype/scenario_catalog/highway_regression_v0/SC_HWY_REG_008_jitter_low_success.json",
+      "seed": 1108
+    },
+    {
+      "run_id": "RUN_RGA_0009",
+      "scenario": "../../../P_Sim-Engine/prototype/scenario_catalog/highway_regression_v0/SC_HWY_REG_009_jitter_high_collision_risk.json",
+      "seed": 1109
+    },
+    {
+      "run_id": "RUN_RGA_0010",
+      "scenario": "../../../P_Sim-Engine/prototype/scenario_catalog/highway_regression_v0/SC_HWY_REG_010_timeout_guard.json",
+      "seed": 1110
+    },
+    {
+      "run_id": "RUN_RGA_0011",
+      "scenario": "../../../P_Sim-Engine/prototype/scenario_catalog/highway_regression_v0/SC_HWY_REG_011_safe_long_gap.json",
+      "seed": 1111
+    },
+    {
+      "run_id": "RUN_RGA_0012",
+      "scenario": "../../../P_Sim-Engine/prototype/scenario_catalog/highway_regression_v0/SC_HWY_REG_012_safe_medium_gap.json",
+      "seed": 1112
+    },
+    {
+      "run_id": "RUN_RGA_0013",
+      "scenario": "../../../P_Sim-Engine/prototype/scenario_catalog/highway_regression_v0/SC_HWY_REG_013_near_miss_low_ttc_success.json",
+      "seed": 1113
+    },
+    {
+      "run_id": "RUN_RGA_0014",
+      "scenario": "../../../P_Sim-Engine/prototype/scenario_catalog/highway_regression_v0/SC_HWY_REG_014_collision_aggressive_close.json",
+      "seed": 1114
+    },
+    {
+      "run_id": "RUN_RGA_0015",
+      "scenario": "../../../P_Sim-Engine/prototype/scenario_catalog/highway_regression_v0/SC_HWY_REG_015_collision_short_stop.json",
+      "seed": 1115
+    },
+    {
+      "run_id": "RUN_RGA_0016",
+      "scenario": "../../../P_Sim-Engine/prototype/scenario_catalog/highway_regression_v0/SC_HWY_REG_016_safe_three_npc.json",
+      "seed": 1116
+    },
+    {
+      "run_id": "RUN_RGA_0017",
+      "scenario": "../../../P_Sim-Engine/prototype/scenario_catalog/highway_regression_v0/SC_HWY_REG_017_collision_with_second_npc.json",
+      "seed": 1117
+    },
+    {
+      "run_id": "RUN_RGA_0018",
+      "scenario": "../../../P_Sim-Engine/prototype/scenario_catalog/highway_regression_v0/SC_HWY_REG_018_jitter_safe_buffer.json",
+      "seed": 1118
+    },
+    {
+      "run_id": "RUN_RGA_0019",
+      "scenario": "../../../P_Sim-Engine/prototype/scenario_catalog/highway_regression_v0/SC_HWY_REG_019_jitter_collision_front.json",
+      "seed": 1119
+    },
+    {
+      "run_id": "RUN_RGA_0020",
+      "scenario": "../../../P_Sim-Engine/prototype/scenario_catalog/highway_regression_v0/SC_HWY_REG_020_timeout_guard_b.json",
+      "seed": 1120
+    }
+  ]
+}

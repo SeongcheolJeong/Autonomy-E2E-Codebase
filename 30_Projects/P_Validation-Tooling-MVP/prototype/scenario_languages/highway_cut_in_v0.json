@@ -1,0 +1,13 @@
+{
+  "profile_id": "highway_cut_in_v0",
+  "logical_scenarios": [
+    {
+      "scenario_id": "scn_highway_cut_in",
+      "parameters": {
+        "ego_speed_kph": [60, 80],
+        "target_speed_kph": [50, 70],
+        "cut_in_gap_sec": [1.0, 1.5]
+      }
+    }
+  ]
+}

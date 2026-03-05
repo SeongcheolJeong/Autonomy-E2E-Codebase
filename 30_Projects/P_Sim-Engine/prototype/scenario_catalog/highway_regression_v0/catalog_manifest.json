@@ -1,0 +1,88 @@
+{
+  "catalog_id": "highway_regression_v0",
+  "schema_version": "scenario_catalog_v0",
+  "description": "Highway following regression seed set (20 scenarios)",
+  "scenario_count": 20,
+  "scenarios": [
+    {
+      "scenario_file": "SC_HWY_REG_001_safe_far.json",
+      "expected_status": "success"
+    },
+    {
+      "scenario_file": "SC_HWY_REG_002_safe_equal_speed.json",
+      "expected_status": "success"
+    },
+    {
+      "scenario_file": "SC_HWY_REG_003_near_miss_success.json",
+      "expected_status": "success"
+    },
+    {
+      "scenario_file": "SC_HWY_REG_004_collision_fast_close.json",
+      "expected_status": "failed"
+    },
+    {
+      "scenario_file": "SC_HWY_REG_005_collision_stationary_obstacle.json",
+      "expected_status": "failed"
+    },
+    {
+      "scenario_file": "SC_HWY_REG_006_safe_dual_npc.json",
+      "expected_status": "success"
+    },
+    {
+      "scenario_file": "SC_HWY_REG_007_collision_dual_npc.json",
+      "expected_status": "failed"
+    },
+    {
+      "scenario_file": "SC_HWY_REG_008_jitter_low_success.json",
+      "expected_status": "success"
+    },
+    {
+      "scenario_file": "SC_HWY_REG_009_jitter_high_collision_risk.json",
+      "expected_status": "failed"
+    },
+    {
+      "scenario_file": "SC_HWY_REG_010_timeout_guard.json",
+      "expected_status": "timeout"
+    },
+    {
+      "scenario_file": "SC_HWY_REG_011_safe_long_gap.json",
+      "expected_status": "success"
+    },
+    {
+      "scenario_file": "SC_HWY_REG_012_safe_medium_gap.json",
+      "expected_status": "success"
+    },
+    {
+      "scenario_file": "SC_HWY_REG_013_near_miss_low_ttc_success.json",
+      "expected_status": "success"
+    },
+    {
+      "scenario_file": "SC_HWY_REG_014_collision_aggressive_close.json",
+      "expected_status": "failed"
+    },
+    {
+      "scenario_file": "SC_HWY_REG_015_collision_short_stop.json",
+      "expected_status": "failed"
+    },
+    {
+      "scenario_file": "SC_HWY_REG_016_safe_three_npc.json",
+      "expected_status": "success"
+    },
+    {
+      "scenario_file": "SC_HWY_REG_017_collision_with_second_npc.json",
+      "expected_status": "failed"
+    },
+    {
+      "scenario_file": "SC_HWY_REG_018_jitter_safe_buffer.json",
+      "expected_status": "success"
+    },
+    {
+      "scenario_file": "SC_HWY_REG_019_jitter_collision_front.json",
+      "expected_status": "failed"
+    },
+    {
+      "scenario_file": "SC_HWY_REG_020_timeout_guard_b.json",
+      "expected_status": "timeout"
+    }
+  ]
+}

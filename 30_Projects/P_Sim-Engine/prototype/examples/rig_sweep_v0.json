@@ -1,0 +1,28 @@
+{
+  "rig_sweep_schema_version": "sensor_rig_sweep_v0",
+  "candidates": [
+    {
+      "rig_id": "rig_camera_only",
+      "sensors": [
+        {
+          "sensor_id": "camera_front",
+          "sensor_type": "camera"
+        }
+      ]
+    },
+    {
+      "rig_id": "rig_camera_lidar",
+      "sensors": [
+        {
+          "sensor_id": "camera_front",
+          "sensor_type": "camera"
+        },
+        {
+          "sensor_id": "lidar_top",
+          "sensor_type": "lidar",
+          "points_per_actor": 80
+        }
+      ]
+    }
+  ]
+}

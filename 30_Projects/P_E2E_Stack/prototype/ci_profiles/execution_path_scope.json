@@ -1,0 +1,17 @@
+{
+  "allowed_projects": [
+    "P_E2E_Stack",
+    "P_Cloud-Engine",
+    "P_Sim-Engine",
+    "P_Data-Lake-and-Explorer",
+    "P_Validation-Tooling-MVP",
+    "P_Map-Toolset-MVP",
+    "P_Autoware-Workspace-CI-MVP"
+  ],
+  "scan_globs": [
+    "30_Projects/P_E2E_Stack/prototype/*.py",
+    "30_Projects/P_E2E_Stack/prototype/*.sh",
+    "30_Projects/P_E2E_Stack/prototype/Makefile",
+    ".github/workflows/e2e-*.yml"
+  ]
+}

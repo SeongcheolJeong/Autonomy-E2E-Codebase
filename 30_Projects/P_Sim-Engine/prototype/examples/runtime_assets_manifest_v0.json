@@ -1,0 +1,150 @@
+{
+  "runtime_assets_schema_version": "sim_runtime_assets_manifest_v0",
+  "manifest_version": "2026-03-01",
+  "sources_checked_at_utc": "2026-03-01T00:00:00Z",
+  "notes": [
+    "CARLA release metadata and AWSIM release metadata were resolved from official GitHub release endpoints.",
+    "Large runtime archives are intentionally not committed to this repository; this manifest drives reproducible local preparation."
+  ],
+  "runtime_defaults": {
+    "carla": {
+      "scene": "log_scene_runtime_carla_v0.json",
+      "sensor_rig": "sensor_rig_v0.json"
+    },
+    "awsim": {
+      "scene": "log_scene_runtime_awsim_v0.json",
+      "sensor_rig": "sensor_rig_v0.json"
+    }
+  },
+  "assets": [
+    {
+      "asset_id": "carla_core_linux_0_9_16",
+      "runtime": "carla",
+      "profiles": [
+        "lightweight",
+        "full"
+      ],
+      "kind": "runtime_binary",
+      "version": "0.9.16",
+      "url": "https://tiny.carla.org/carla-0-9-16-linux",
+      "archive_format": "tar.gz",
+      "archive_name": "CARLA_0.9.16.tar.gz",
+      "extract_subdir": "carla/0.9.16/core",
+      "entrypoint_relpath": "CarlaUE4.sh",
+      "entrypoint_glob": [
+        "**/CarlaUE4.sh"
+      ],
+      "target_platforms": [
+        "linux_x86_64"
+      ],
+      "map_hints": [
+        "**/CarlaUE4/Content/Carla/Maps"
+      ],
+      "scenario_hints": [
+        "**/PythonAPI/examples"
+      ],
+      "sha256": ""
+    },
+    {
+      "asset_id": "carla_additional_maps_linux_0_9_16",
+      "runtime": "carla",
+      "profiles": [
+        "full"
+      ],
+      "kind": "map_pack",
+      "version": "0.9.16",
+      "url": "https://tiny.carla.org/additional-maps-0-9-16-linux",
+      "archive_format": "tar.gz",
+      "archive_name": "AdditionalMaps_0.9.16.tar.gz",
+      "extract_subdir": "carla/0.9.16/additional_maps",
+      "entrypoint_glob": [],
+      "map_hints": [
+        "**/CarlaUE4/Content/Carla/Maps"
+      ],
+      "scenario_hints": [],
+      "sha256": ""
+    },
+    {
+      "asset_id": "carla_scenario_runner_v0_9_16",
+      "runtime": "carla",
+      "profiles": [
+        "lightweight",
+        "full"
+      ],
+      "kind": "scenario_pack",
+      "version": "0.9.16",
+      "url": "https://codeload.github.com/carla-simulator/scenario_runner/tar.gz/refs/tags/v0.9.16",
+      "archive_format": "tar.gz",
+      "archive_name": "scenario_runner_v0.9.16.tar.gz",
+      "extract_subdir": "carla/0.9.16/scenario_runner",
+      "entrypoint_glob": [],
+      "map_hints": [],
+      "scenario_hints": [
+        "**/srunner/examples",
+        "**/srunner/data"
+      ],
+      "sha256": ""
+    },
+    {
+      "asset_id": "awsim_demo_lightweight_v2_0_1",
+      "runtime": "awsim",
+      "profiles": [
+        "lightweight",
+        "full"
+      ],
+      "kind": "runtime_demo_pack",
+      "version": "v2.0.1",
+      "url": "https://github.com/tier4/AWSIM/releases/download/v2.0.1/AWSIM-Demo-Lightweight.zip",
+      "archive_format": "zip",
+      "archive_name": "AWSIM-Demo-Lightweight-v2.0.1.zip",
+      "extract_subdir": "awsim/v2.0.1/demo_lightweight",
+      "entrypoint_glob": [
+        "**/AWSIM*.x86_64",
+        "**/AWSIM*.exe",
+        "**/AWSIM.app/Contents/MacOS/*"
+      ],
+      "target_platforms": [
+        "linux_x86_64"
+      ],
+      "map_hints": [
+        "**/*_Data/Resources",
+        "**/*_Data/globalgamemanagers"
+      ],
+      "scenario_hints": [
+        "**/*_Data/Managed/Assembly-CSharp.dll",
+        "**/*_Data/metadata_ros2_for_unity.xml"
+      ],
+      "sha256": ""
+    },
+    {
+      "asset_id": "awsim_demo_full_v2_0_1",
+      "runtime": "awsim",
+      "profiles": [
+        "full"
+      ],
+      "kind": "runtime_demo_pack",
+      "version": "v2.0.1",
+      "url": "https://github.com/tier4/AWSIM/releases/download/v2.0.1/AWSIM-Demo.zip",
+      "archive_format": "zip",
+      "archive_name": "AWSIM-Demo-v2.0.1.zip",
+      "extract_subdir": "awsim/v2.0.1/demo_full",
+      "entrypoint_glob": [
+        "**/AWSIM*.x86_64",
+        "**/AWSIM*.exe",
+        "**/AWSIM.app/Contents/MacOS/*"
+      ],
+      "target_platforms": [
+        "linux_x86_64"
+      ],
+      "map_hints": [
+        "**/*_Data/Resources",
+        "**/*_Data/globalgamemanagers"
+      ],
+      "scenario_hints": [
+        "**/*_Data/Managed/Assembly-CSharp.dll",
+        "**/*_Data/metadata_ros2_for_unity.xml"
+      ],
+      "sha256": ""
+    }
+  ]
+}

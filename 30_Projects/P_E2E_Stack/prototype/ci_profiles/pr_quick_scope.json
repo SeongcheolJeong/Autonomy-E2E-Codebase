@@ -1,0 +1,19 @@
+{
+  "workflow_globs": [
+    ".github/workflows/e2e-*.yml"
+  ],
+  "runtime_roots": [
+    "30_Projects/P_E2E_Stack/prototype",
+    "30_Projects/P_Cloud-Engine/prototype",
+    "30_Projects/P_Sim-Engine/prototype",
+    "30_Projects/P_Data-Lake-and-Explorer/prototype",
+    "30_Projects/P_Validation-Tooling-MVP/prototype"
+  ],
+  "runtime_extensions": [
+    "py",
+    "sh",
+    "json",
+    "yaml",
+    "yml"
+  ]
+}

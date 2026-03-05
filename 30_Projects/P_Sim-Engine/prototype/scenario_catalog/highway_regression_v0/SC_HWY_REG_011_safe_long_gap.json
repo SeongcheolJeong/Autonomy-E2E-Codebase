@@ -1,0 +1,21 @@
+{
+  "scenario_schema_version": "scenario_definition_v0",
+  "scenario_id": "SC_HWY_REG_011_SAFE_LONG_GAP",
+  "duration_sec": 20.0,
+  "dt_sec": 0.1,
+  "npc_speed_jitter_mps": 0.0,
+  "ego": {
+    "actor_id": "ego",
+    "position_m": 0.0,
+    "speed_mps": 18.0,
+    "length_m": 4.8
+  },
+  "npcs": [
+    {
+      "actor_id": "lead_vehicle",
+      "position_m": 60.0,
+      "speed_mps": 22.0,
+      "length_m": 4.8
+    }
+  ]
+}

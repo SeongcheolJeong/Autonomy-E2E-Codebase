@@ -1,0 +1,30 @@
+{
+  "map_schema_version": "simple_map_v0",
+  "map_id": "map_highway_segment_v0",
+  "roads": [
+    {
+      "road_id": "lane_001",
+      "lane_type": "driving",
+      "speed_limit_kph": 80,
+      "centerline": [
+        [0.0, 0.0],
+        [50.0, 0.0],
+        [100.0, 0.0]
+      ],
+      "predecessor_lane_ids": [],
+      "successor_lane_ids": ["lane_002"]
+    },
+    {
+      "road_id": "lane_002",
+      "lane_type": "driving",
+      "speed_limit_kph": 80,
+      "centerline": [
+        [100.0, 0.0],
+        [150.0, 2.0],
+        [200.0, 5.0]
+      ],
+      "predecessor_lane_ids": ["lane_001"],
+      "successor_lane_ids": []
+    }
+  ]
+}

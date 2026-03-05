@@ -1,0 +1,22 @@
+{
+  "rig_schema_version": "sensor_rig_v0",
+  "sensors": [
+    {
+      "sensor_id": "camera_front",
+      "sensor_type": "camera",
+      "image_width_px": 1920,
+      "image_height_px": 1080
+    },
+    {
+      "sensor_id": "lidar_top",
+      "sensor_type": "lidar",
+      "channel_count": 64,
+      "points_per_actor": 80
+    },
+    {
+      "sensor_id": "radar_front",
+      "sensor_type": "radar",
+      "max_range_m": 200.0
+    }
+  ]
+}

@@ -1,0 +1,30 @@
+{
+  "sequence_schema_version": "hil_test_sequence_v0",
+  "scenario_id": "scenario.hil.smoke",
+  "steps": [
+    {
+      "step_id": "step_001",
+      "trigger": {
+        "trigger_type": "time_offset_sec",
+        "trigger_value": 0.0
+      },
+      "action": {
+        "target_channel_id": "steering_cmd",
+        "value": 0.05
+      },
+      "duration_sec": 1.0
+    },
+    {
+      "step_id": "step_002",
+      "trigger": {
+        "trigger_type": "event",
+        "trigger_value": "ego_stable"
+      },
+      "action": {
+        "target_channel_id": "throttle_cmd",
+        "value": 0.2
+      },
+      "duration_sec": 1.5
+    }
+  ]
+}

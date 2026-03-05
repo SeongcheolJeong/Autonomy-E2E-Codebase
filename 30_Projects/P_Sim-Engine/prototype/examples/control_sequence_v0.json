@@ -1,0 +1,18 @@
+{
+  "sequence_schema_version": "control_sequence_v0",
+  "dt_sec": 0.1,
+  "commands": [
+    {
+      "throttle": 0.5,
+      "brake": 0.0
+    },
+    {
+      "throttle": 0.5,
+      "brake": 0.0
+    },
+    {
+      "throttle": 0.0,
+      "brake": 0.3
+    }
+  ]
+}

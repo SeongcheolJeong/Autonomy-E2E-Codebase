@@ -1,0 +1,2638 @@
+name: E2E Runtime Available Lane
+
+on:
+  workflow_dispatch:
+    inputs:
+      sim_runtime:
+        description: "Runtime target: awsim|carla|both"
+        required: false
+        type: choice
+        options:
+          - awsim
+          - carla
+          - both
+        default: awsim
+      lane:
+        description: "Lane selector: auto|exec|contract"
+        required: false
+        type: choice
+        options:
+          - auto
+          - exec
+          - contract
+        default: auto
+      release_id:
+        description: "Release ID override (optional)"
+        required: false
+        default: ""
+      matrix_profile_ids:
+        description: "Comma-separated runtime matrix profile ids"
+        required: false
+        default: "runtime_carla_smoke_v0,runtime_awsim_smoke_v0"
+      runtime_asset_profile:
+        description: "Runtime asset profile: lightweight|full"
+        required: false
+        type: choice
+        options:
+          - lightweight
+          - full
+        default: lightweight
+      runtime_asset_archive_sha256_mode:
+        description: "Runtime asset archive sha256 mode: always|verify_only|never"
+        required: false
+        type: choice
+        options:
+          - verify_only
+          - always
+          - never
+        default: verify_only
+      install_runtime_deps:
+        description: "Install Linux runtime dependencies for AWSIM/CARLA execution (1/0)"
+        required: false
+        default: "1"
+      use_runtime_asset_cache:
+        description: "Enable runtime asset archive cache across workflow runs (1/0)"
+        required: false
+        default: "1"
+      dry_run:
+        description: "Run dry-run target only (1/0)"
+        required: false
+        default: "0"
+      runtime_native_docker_auto_enable:
+        description: "Run runtime-native docker auto smoke job (1/0)"
+        required: false
+        default: "1"
+      runtime_native_docker_auto_dry_run:
+        description: "Run runtime-native docker auto smoke in dry-run mode (1/0)"
+        required: false
+        default: "0"
+      runtime_native_sim_runtime:
+        description: "Runtime target for runtime-native docker auto smoke: awsim|carla|both"
+        required: false
+        type: choice
+        options:
+          - awsim
+          - carla
+          - both
+        default: carla
+      runtime_native_summary_compare_fail_on_missing:
+        description: "Fail runtime-native docker auto job when both-runtime summary-compare output is missing/invalid (1/0)"
+        required: false
+        default: "0"
+      runtime_native_summary_compare_fail_on_diffs:
+        description: "Fail runtime-native docker auto job when both-runtime summary-compare reports diffs > 0 (1/0)"
+        required: false
+        default: "0"
+      continue_on_runtime_failure:
+        description: "When sim_runtime=both, continue remaining runtimes after one runtime failure (1/0)"
+        required: false
+        default: "1"
+      asset_skip_download:
+        description: "Skip download when archive cache exists (1/0)"
+        required: false
+        default: "1"
+      asset_skip_extract:
+        description: "Skip extraction step (1/0)"
+        required: false
+        default: "0"
+      asset_force_download:
+        description: "Force archive re-download (1/0)"
+        required: false
+        default: "0"
+      asset_force_extract:
+        description: "Force extraction refresh (1/0)"
+        required: false
+        default: "0"
+      runtime_scenario_contract_enable:
+        description: "Enable runtime scenario contract block (1/0)"
+        required: false
+        default: "1"
+      runtime_scenario_contract_require_runtime_ready:
+        description: "Require runtime-ready for scenario contract block (1/0)"
+        required: false
+        default: "1"
+      runtime_scene_result_enable:
+        description: "Enable runtime scene result block (1/0)"
+        required: false
+        default: "1"
+      runtime_scene_result_require_runtime_ready:
+        description: "Require runtime-ready for scene result block (1/0)"
+        required: false
+        default: "1"
+      runtime_interop_contract_enable:
+        description: "Enable runtime interop contract block (1/0)"
+        required: false
+        default: "1"
+      runtime_interop_contract_require_runtime_ready:
+        description: "Require runtime-ready for interop contract block (1/0)"
+        required: false
+        default: "1"
+      runtime_interop_export_road_length_scale:
+        description: "Optional runtime interop export road-length scale (>0 float, empty => default)"
+        required: false
+        default: ""
+      runtime_interop_contract_xosc:
+        description: "Optional runtime interop contract OpenSCENARIO (.xosc) input path (empty => default sample)"
+        required: false
+        default: ""
+      runtime_interop_contract_xodr:
+        description: "Optional runtime interop contract OpenDRIVE (.xodr) input path (empty => default sample)"
+        required: false
+        default: ""
+      runtime_interop_import_manifest_consistency_mode:
+        description: "Runtime interop import manifest consistency mode: require|allow"
+        required: false
+        type: choice
+        options:
+          - require
+          - allow
+        default: allow
+      runtime_interop_import_export_consistency_mode:
+        description: "Runtime interop import/export consistency mode: require|allow"
+        required: false
+        type: choice
+        options:
+          - require
+          - allow
+        default: allow
+      notify_on:
+        description: "Notification policy: always/hold/warn/hold_warn/pass/never"
+        required: false
+        default: "hold_warn"
+      notify_format:
+        description: "Notification format: slack/raw"
+        required: false
+        default: "slack"
+      notify_timeout_sec:
+        description: "Notification webhook timeout seconds (>0)"
+        required: false
+        default: "10"
+      notify_max_retries:
+        description: "Notification retry count (>=0)"
+        required: false
+        default: "2"
+      notify_retry_backoff_sec:
+        description: "Notification retry backoff seconds (>=0)"
+        required: false
+        default: "2"
+      notify_runtime_lane_execution_warn_min_exec_rows:
+        description: "Optional runtime exec-lane WARN threshold override (non-negative integer, empty => lane default)"
+        required: false
+        default: ""
+      notify_runtime_lane_execution_hold_min_exec_rows:
+        description: "Optional runtime exec-lane HOLD threshold override (non-negative integer, empty => lane default)"
+        required: false
+        default: ""
+      notify_runtime_evidence_compare_warn_min_artifacts_with_diffs:
+        description: "Optional runtime evidence compare WARN threshold override for artifacts_with_diffs_count (non-negative integer, empty => profile default)"
+        required: false
+        default: ""
+      notify_runtime_evidence_compare_hold_min_artifacts_with_diffs:
+        description: "Optional runtime evidence compare HOLD threshold override for artifacts_with_diffs_count (non-negative integer, empty => profile default)"
+        required: false
+        default: ""
+      notify_runtime_evidence_compare_warn_min_interop_import_mode_diff_count:
+        description: "Optional runtime evidence compare WARN threshold override for interop import mode diff total (non-negative integer, empty => profile default)"
+        required: false
+        default: ""
+      notify_runtime_evidence_compare_hold_min_interop_import_mode_diff_count:
+        description: "Optional runtime evidence compare HOLD threshold override for interop import mode diff total (non-negative integer, empty => profile default)"
+        required: false
+        default: ""
+      notify_phase2_sensor_fidelity_score_avg_warn_min:
+        description: "Optional phase2 sensor fidelity average score WARN threshold override (non-negative float, empty => profile default)"
+        required: false
+        default: ""
+      notify_phase2_sensor_fidelity_score_avg_hold_min:
+        description: "Optional phase2 sensor fidelity average score HOLD threshold override (non-negative float, empty => profile default)"
+        required: false
+        default: ""
+      notify_phase2_sensor_frame_count_avg_warn_min:
+        description: "Optional phase2 sensor frame-count average WARN threshold override (non-negative float, empty => profile default)"
+        required: false
+        default: ""
+      notify_phase2_sensor_frame_count_avg_hold_min:
+        description: "Optional phase2 sensor frame-count average HOLD threshold override (non-negative float, empty => profile default)"
+        required: false
+        default: ""
+      notify_phase2_sensor_camera_noise_stddev_px_avg_warn_max:
+        description: "Optional phase2 sensor camera-noise stddev px average WARN threshold override (non-negative float, empty => profile default)"
+        required: false
+        default: ""
+      notify_phase2_sensor_camera_noise_stddev_px_avg_hold_max:
+        description: "Optional phase2 sensor camera-noise stddev px average HOLD threshold override (non-negative float, empty => profile default)"
+        required: false
+        default: ""
+      notify_phase2_sensor_lidar_point_count_avg_warn_min:
+        description: "Optional phase2 sensor lidar point-count average WARN threshold override (non-negative float, empty => profile default)"
+        required: false
+        default: ""
+      notify_phase2_sensor_lidar_point_count_avg_hold_min:
+        description: "Optional phase2 sensor lidar point-count average HOLD threshold override (non-negative float, empty => profile default)"
+        required: false
+        default: ""
+      notify_phase2_sensor_radar_false_positive_rate_avg_warn_max:
+        description: "Optional phase2 sensor radar false-positive-rate average WARN threshold override (non-negative float, empty => profile default)"
+        required: false
+        default: ""
+      notify_phase2_sensor_radar_false_positive_rate_avg_hold_max:
+        description: "Optional phase2 sensor radar false-positive-rate average HOLD threshold override (non-negative float, empty => profile default)"
+        required: false
+        default: ""
+      runtime_threshold_drift_fail_on_hold:
+        description: "Fail workflow when runtime threshold drift severity resolves to HOLD (1/0)"
+        required: false
+        default: "0"
+      phase2_log_replay_threshold_fail_on_hold:
+        description: "Fail summary stage when phase2 log replay threshold severity resolves to HOLD (1/0)"
+        required: false
+        default: "1"
+      runtime_native_smoke_threshold_fail_on_hold:
+        description: "Fail summary stage when runtime native smoke threshold severity resolves to HOLD (1/0)"
+        required: false
+        default: "1"
+      runtime_native_evidence_compare_threshold_fail_on_hold:
+        description: "Fail summary stage when runtime native evidence compare threshold severity resolves to HOLD (1/0)"
+        required: false
+        default: "1"
+      notify_phase3_vehicle_control_overlap_ratio_warn_max:
+        description: "Optional phase3 vehicle control overlap ratio WARN threshold override (0~1, empty => disabled)"
+        required: false
+        default: ""
+      notify_phase3_vehicle_control_overlap_ratio_hold_max:
+        description: "Optional phase3 vehicle control overlap ratio HOLD threshold override (0~1, empty => disabled)"
+        required: false
+        default: ""
+      notify_phase3_vehicle_control_steering_rate_warn_max:
+        description: "Optional phase3 vehicle control max steering-rate WARN threshold override in deg/s (non-negative, empty => disabled)"
+        required: false
+        default: ""
+      notify_phase3_vehicle_control_steering_rate_hold_max:
+        description: "Optional phase3 vehicle control max steering-rate HOLD threshold override in deg/s (non-negative, empty => disabled)"
+        required: false
+        default: ""
+      notify_phase3_vehicle_control_throttle_plus_brake_warn_max:
+        description: "Optional phase3 vehicle control max throttle+brake WARN threshold override (non-negative, empty => disabled)"
+        required: false
+        default: ""
+      notify_phase3_vehicle_control_throttle_plus_brake_hold_max:
+        description: "Optional phase3 vehicle control max throttle+brake HOLD threshold override (non-negative, empty => disabled)"
+        required: false
+        default: ""
+      notify_phase3_vehicle_speed_tracking_error_warn_max:
+        description: "Optional phase3 vehicle max speed-tracking error WARN threshold override in m/s (non-negative, empty => disabled)"
+        required: false
+        default: ""
+      notify_phase3_vehicle_speed_tracking_error_hold_max:
+        description: "Optional phase3 vehicle max speed-tracking error HOLD threshold override in m/s (non-negative, empty => disabled)"
+        required: false
+        default: ""
+      notify_phase3_vehicle_speed_tracking_error_abs_warn_max:
+        description: "Optional phase3 vehicle max absolute speed-tracking error WARN threshold override in m/s (non-negative, empty => disabled)"
+        required: false
+        default: ""
+      notify_phase3_vehicle_speed_tracking_error_abs_hold_max:
+        description: "Optional phase3 vehicle max absolute speed-tracking error HOLD threshold override in m/s (non-negative, empty => disabled)"
+        required: false
+        default: ""
+
+permissions:
+  contents: read
+
+concurrency:
+  group: e2e-runtime-available-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  runtime-available:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    outputs:
+      release_id: ${{ steps.run_lane.outputs.release_id }}
+      release_prefix: ${{ steps.run_lane.outputs.release_prefix }}
+      release_ids_csv: ${{ steps.run_lane.outputs.release_ids_csv }}
+      runtime_results_csv: ${{ steps.run_lane.outputs.runtime_results_csv }}
+      failed_runtimes_csv: ${{ steps.run_lane.outputs.failed_runtimes_csv }}
+      runtime_evidence_missing_runtimes_csv: ${{ steps.run_lane.outputs.runtime_evidence_missing_runtimes_csv }}
+      runtime_execution_summary_path: ${{ steps.run_lane.outputs.runtime_execution_summary_path }}
+      runtime_execution_evidence_summary: ${{ steps.run_lane.outputs.runtime_execution_evidence_summary }}
+      runtime_execution_evidence_missing_runtime_counts: ${{ steps.run_lane.outputs.runtime_execution_evidence_missing_runtime_counts }}
+      runtime_evidence_compare_json_path: ${{ steps.run_lane.outputs.runtime_evidence_compare_json_path }}
+      runtime_evidence_compare_text_path: ${{ steps.run_lane.outputs.runtime_evidence_compare_text_path }}
+      runtime_evidence_compare_summary: ${{ steps.run_lane.outputs.runtime_evidence_compare_summary }}
+      runtime_exec_lane_warn_min_rows: ${{ steps.run_lane.outputs.runtime_exec_lane_warn_min_rows }}
+      runtime_exec_lane_hold_min_rows: ${{ steps.run_lane.outputs.runtime_exec_lane_hold_min_rows }}
+      runtime_evidence_compare_warn_min_artifacts_with_diffs: ${{ steps.run_lane.outputs.runtime_evidence_compare_warn_min_artifacts_with_diffs }}
+      runtime_evidence_compare_hold_min_artifacts_with_diffs: ${{ steps.run_lane.outputs.runtime_evidence_compare_hold_min_artifacts_with_diffs }}
+      runtime_evidence_compare_warn_min_interop_import_mode_diff_count: ${{ steps.run_lane.outputs.runtime_evidence_compare_warn_min_interop_import_mode_diff_count }}
+      runtime_evidence_compare_hold_min_interop_import_mode_diff_count: ${{ steps.run_lane.outputs.runtime_evidence_compare_hold_min_interop_import_mode_diff_count }}
+      phase2_sensor_fidelity_score_avg_warn_min: ${{ steps.run_lane.outputs.phase2_sensor_fidelity_score_avg_warn_min }}
+      phase2_sensor_fidelity_score_avg_hold_min: ${{ steps.run_lane.outputs.phase2_sensor_fidelity_score_avg_hold_min }}
+      phase2_sensor_frame_count_avg_warn_min: ${{ steps.run_lane.outputs.phase2_sensor_frame_count_avg_warn_min }}
+      phase2_sensor_frame_count_avg_hold_min: ${{ steps.run_lane.outputs.phase2_sensor_frame_count_avg_hold_min }}
+      phase2_sensor_camera_noise_stddev_px_avg_warn_max: ${{ steps.run_lane.outputs.phase2_sensor_camera_noise_stddev_px_avg_warn_max }}
+      phase2_sensor_camera_noise_stddev_px_avg_hold_max: ${{ steps.run_lane.outputs.phase2_sensor_camera_noise_stddev_px_avg_hold_max }}
+      phase2_sensor_lidar_point_count_avg_warn_min: ${{ steps.run_lane.outputs.phase2_sensor_lidar_point_count_avg_warn_min }}
+      phase2_sensor_lidar_point_count_avg_hold_min: ${{ steps.run_lane.outputs.phase2_sensor_lidar_point_count_avg_hold_min }}
+      phase2_sensor_radar_false_positive_rate_avg_warn_max: ${{ steps.run_lane.outputs.phase2_sensor_radar_false_positive_rate_avg_warn_max }}
+      phase2_sensor_radar_false_positive_rate_avg_hold_max: ${{ steps.run_lane.outputs.phase2_sensor_radar_false_positive_rate_avg_hold_max }}
+      runtime_interop_export_road_length_scale: ${{ steps.run_lane.outputs.runtime_interop_export_road_length_scale }}
+      runtime_interop_contract_xosc: ${{ steps.run_lane.outputs.runtime_interop_contract_xosc }}
+      runtime_interop_contract_xodr: ${{ steps.run_lane.outputs.runtime_interop_contract_xodr }}
+      runtime_interop_import_manifest_consistency_mode: ${{ steps.run_lane.outputs.runtime_interop_import_manifest_consistency_mode }}
+      runtime_interop_import_export_consistency_mode: ${{ steps.run_lane.outputs.runtime_interop_import_export_consistency_mode }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Restore runtime asset archive cache
+        id: runtime_asset_cache
+        if: ${{ github.event.inputs.use_runtime_asset_cache == '1' }}
+        uses: actions/cache@v4
+        with:
+          path: |
+            30_Projects/P_Sim-Engine/prototype/runtime_assets/_archives
+          key: runtime-asset-archives-${{ runner.os }}-${{ runner.arch }}-${{ github.event.inputs.sim_runtime }}-${{ github.event.inputs.runtime_asset_profile }}-${{ hashFiles('30_Projects/P_Sim-Engine/prototype/examples/runtime_assets_manifest_v0.json') }}
+          restore-keys: |
+            runtime-asset-archives-${{ runner.os }}-${{ runner.arch }}-${{ github.event.inputs.sim_runtime }}-${{ github.event.inputs.runtime_asset_profile }}-
+            runtime-asset-archives-${{ runner.os }}-${{ runner.arch }}-${{ github.event.inputs.sim_runtime }}-
+            runtime-asset-archives-${{ runner.os }}-${{ runner.arch }}-
+
+      - name: Install runtime execution dependencies
+        if: ${{ github.event.inputs.install_runtime_deps == '1' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            libasound2 \
+            libglib2.0-0 \
+            libglu1-mesa \
+            libgtk-3-0 \
+            libnss3 \
+            libsdl2-2.0-0 \
+            libvulkan1 \
+            libxcursor1 \
+            libxi6 \
+            libxinerama1 \
+            libxrandr2 \
+            libxss1 \
+            libxtst6 \
+            xvfb
+
+      - name: Run runtime-available lane
+        id: run_lane
+        shell: bash
+        env:
+          INPUT_RELEASE_ID: ${{ github.event.inputs.release_id }}
+          INPUT_SIM_RUNTIME: ${{ github.event.inputs.sim_runtime }}
+          INPUT_LANE: ${{ github.event.inputs.lane }}
+          INPUT_DRY_RUN: ${{ github.event.inputs.dry_run }}
+          INPUT_CONTINUE_ON_RUNTIME_FAILURE: ${{ github.event.inputs.continue_on_runtime_failure }}
+          INPUT_MATRIX_PROFILE_IDS: ${{ github.event.inputs.matrix_profile_ids }}
+          INPUT_RUNTIME_ASSET_PROFILE: ${{ github.event.inputs.runtime_asset_profile }}
+          INPUT_RUNTIME_ASSET_ARCHIVE_SHA256_MODE: ${{ github.event.inputs.runtime_asset_archive_sha256_mode }}
+          INPUT_ASSET_SKIP_DOWNLOAD: ${{ github.event.inputs.asset_skip_download }}
+          INPUT_ASSET_SKIP_EXTRACT: ${{ github.event.inputs.asset_skip_extract }}
+          INPUT_ASSET_FORCE_DOWNLOAD: ${{ github.event.inputs.asset_force_download }}
+          INPUT_ASSET_FORCE_EXTRACT: ${{ github.event.inputs.asset_force_extract }}
+          INPUT_RUNTIME_SCENARIO_CONTRACT_ENABLE: ${{ github.event.inputs.runtime_scenario_contract_enable }}
+          INPUT_RUNTIME_SCENARIO_CONTRACT_REQUIRE_RUNTIME_READY: ${{ github.event.inputs.runtime_scenario_contract_require_runtime_ready }}
+          INPUT_RUNTIME_SCENE_RESULT_ENABLE: ${{ github.event.inputs.runtime_scene_result_enable }}
+          INPUT_RUNTIME_SCENE_RESULT_REQUIRE_RUNTIME_READY: ${{ github.event.inputs.runtime_scene_result_require_runtime_ready }}
+          INPUT_RUNTIME_INTEROP_CONTRACT_ENABLE: ${{ github.event.inputs.runtime_interop_contract_enable }}
+          INPUT_RUNTIME_INTEROP_CONTRACT_REQUIRE_RUNTIME_READY: ${{ github.event.inputs.runtime_interop_contract_require_runtime_ready }}
+          INPUT_RUNTIME_INTEROP_EXPORT_ROAD_LENGTH_SCALE: ${{ github.event.inputs.runtime_interop_export_road_length_scale }}
+          INPUT_RUNTIME_INTEROP_CONTRACT_XOSC: ${{ github.event.inputs.runtime_interop_contract_xosc }}
+          INPUT_RUNTIME_INTEROP_CONTRACT_XODR: ${{ github.event.inputs.runtime_interop_contract_xodr }}
+          INPUT_RUNTIME_INTEROP_IMPORT_MANIFEST_CONSISTENCY_MODE: ${{ github.event.inputs.runtime_interop_import_manifest_consistency_mode }}
+          INPUT_RUNTIME_INTEROP_IMPORT_EXPORT_CONSISTENCY_MODE: ${{ github.event.inputs.runtime_interop_import_export_consistency_mode }}
+          INPUT_NOTIFY_RUNTIME_LANE_EXECUTION_WARN_MIN_EXEC_ROWS: ${{ github.event.inputs.notify_runtime_lane_execution_warn_min_exec_rows }}
+          INPUT_NOTIFY_RUNTIME_LANE_EXECUTION_HOLD_MIN_EXEC_ROWS: ${{ github.event.inputs.notify_runtime_lane_execution_hold_min_exec_rows }}
+          INPUT_NOTIFY_RUNTIME_EVIDENCE_COMPARE_WARN_MIN_ARTIFACTS_WITH_DIFFS: ${{ github.event.inputs.notify_runtime_evidence_compare_warn_min_artifacts_with_diffs }}
+          INPUT_NOTIFY_RUNTIME_EVIDENCE_COMPARE_HOLD_MIN_ARTIFACTS_WITH_DIFFS: ${{ github.event.inputs.notify_runtime_evidence_compare_hold_min_artifacts_with_diffs }}
+          INPUT_NOTIFY_RUNTIME_EVIDENCE_COMPARE_WARN_MIN_INTEROP_IMPORT_MODE_DIFF_COUNT: ${{ github.event.inputs.notify_runtime_evidence_compare_warn_min_interop_import_mode_diff_count }}
+          INPUT_NOTIFY_RUNTIME_EVIDENCE_COMPARE_HOLD_MIN_INTEROP_IMPORT_MODE_DIFF_COUNT: ${{ github.event.inputs.notify_runtime_evidence_compare_hold_min_interop_import_mode_diff_count }}
+          INPUT_NOTIFY_PHASE2_SENSOR_FIDELITY_SCORE_AVG_WARN_MIN: ${{ github.event.inputs.notify_phase2_sensor_fidelity_score_avg_warn_min }}
+          INPUT_NOTIFY_PHASE2_SENSOR_FIDELITY_SCORE_AVG_HOLD_MIN: ${{ github.event.inputs.notify_phase2_sensor_fidelity_score_avg_hold_min }}
+          INPUT_NOTIFY_PHASE2_SENSOR_FRAME_COUNT_AVG_WARN_MIN: ${{ github.event.inputs.notify_phase2_sensor_frame_count_avg_warn_min }}
+          INPUT_NOTIFY_PHASE2_SENSOR_FRAME_COUNT_AVG_HOLD_MIN: ${{ github.event.inputs.notify_phase2_sensor_frame_count_avg_hold_min }}
+          INPUT_NOTIFY_PHASE2_SENSOR_CAMERA_NOISE_STDDEV_PX_AVG_WARN_MAX: ${{ github.event.inputs.notify_phase2_sensor_camera_noise_stddev_px_avg_warn_max }}
+          INPUT_NOTIFY_PHASE2_SENSOR_CAMERA_NOISE_STDDEV_PX_AVG_HOLD_MAX: ${{ github.event.inputs.notify_phase2_sensor_camera_noise_stddev_px_avg_hold_max }}
+          INPUT_NOTIFY_PHASE2_SENSOR_LIDAR_POINT_COUNT_AVG_WARN_MIN: ${{ github.event.inputs.notify_phase2_sensor_lidar_point_count_avg_warn_min }}
+          INPUT_NOTIFY_PHASE2_SENSOR_LIDAR_POINT_COUNT_AVG_HOLD_MIN: ${{ github.event.inputs.notify_phase2_sensor_lidar_point_count_avg_hold_min }}
+          INPUT_NOTIFY_PHASE2_SENSOR_RADAR_FALSE_POSITIVE_RATE_AVG_WARN_MAX: ${{ github.event.inputs.notify_phase2_sensor_radar_false_positive_rate_avg_warn_max }}
+          INPUT_NOTIFY_PHASE2_SENSOR_RADAR_FALSE_POSITIVE_RATE_AVG_HOLD_MAX: ${{ github.event.inputs.notify_phase2_sensor_radar_false_positive_rate_avg_hold_max }}
+          FALLBACK_RUN_ID: ${{ github.run_id }}
+          FALLBACK_RUN_ATTEMPT: ${{ github.run_attempt }}
+        run: |
+          set -euo pipefail
+
+          validate_binary_flag() {
+            local value="$1"
+            local name="$2"
+            case "$value" in
+              0|1) ;;
+              *)
+                echo "[error] ${name} must be 0 or 1, got: ${value}" >&2
+                exit 2
+                ;;
+            esac
+          }
+
+          validate_choice() {
+            local value="$1"
+            local name="$2"
+            shift 2
+            local allowed=""
+            local candidate
+            for candidate in "$@"; do
+              if [ "$value" = "$candidate" ]; then
+                return 0
+              fi
+              if [ -n "$allowed" ]; then
+                allowed="${allowed},${candidate}"
+              else
+                allowed="${candidate}"
+              fi
+            done
+            echo "[error] ${name} must be one of: ${allowed}; got: ${value}" >&2
+            exit 2
+          }
+
+          validate_non_negative_int() {
+            local value="$1"
+            local name="$2"
+            if [ -z "$value" ]; then
+              return 0
+            fi
+            case "$value" in
+              ''|*[!0-9]*)
+                echo "[error] ${name} must be a non-negative integer, got: ${value}" >&2
+                exit 2
+                ;;
+              *)
+                ;;
+            esac
+          }
+
+          validate_non_negative_float() {
+            local value="$1"
+            local name="$2"
+            if [ -z "$value" ]; then
+              return 0
+            fi
+            if ! python3 - "$value" <<'PY'
+          import math
+          import sys
+
+          try:
+              parsed = float(str(sys.argv[1]).strip())
+          except (TypeError, ValueError):
+              sys.exit(1)
+          if not math.isfinite(parsed) or parsed < 0:
+              sys.exit(1)
+          PY
+            then
+              echo "[error] ${name} must be a non-negative float, got: ${value}" >&2
+              exit 2
+            fi
+          }
+
+          validate_positive_float() {
+            local value="$1"
+            local name="$2"
+            if [ -z "$value" ]; then
+              return 0
+            fi
+            if ! python3 - "$value" <<'PY'
+          import math
+          import sys
+
+          try:
+              parsed = float(str(sys.argv[1]).strip())
+          except (TypeError, ValueError):
+              sys.exit(1)
+          if not math.isfinite(parsed) or parsed <= 0:
+              sys.exit(1)
+          PY
+            then
+              echo "[error] ${name} must be a positive float, got: ${value}" >&2
+              exit 2
+            fi
+          }
+
+          validate_hold_not_greater_than_warn() {
+            local warn_value="$1"
+            local hold_value="$2"
+            local metric_name="$3"
+            if ! python3 - "$warn_value" "$hold_value" <<'PY'
+          import math
+          import sys
+
+          try:
+              warn_value = float(sys.argv[1])
+              hold_value = float(sys.argv[2])
+          except (TypeError, ValueError):
+              sys.exit(1)
+          if not math.isfinite(warn_value) or not math.isfinite(hold_value):
+              sys.exit(1)
+          if hold_value > warn_value:
+              sys.exit(1)
+          PY
+            then
+              echo "[error] ${metric_name}: hold threshold must be <= warn threshold (warn=${warn_value}, hold=${hold_value})" >&2
+              exit 2
+            fi
+          }
+
+          validate_warn_not_greater_than_hold() {
+            local warn_value="$1"
+            local hold_value="$2"
+            local metric_name="$3"
+            if ! python3 - "$warn_value" "$hold_value" <<'PY'
+          import math
+          import sys
+
+          try:
+              warn_value = float(sys.argv[1])
+              hold_value = float(sys.argv[2])
+          except (TypeError, ValueError):
+              sys.exit(1)
+          if not math.isfinite(warn_value) or not math.isfinite(hold_value):
+              sys.exit(1)
+          if warn_value > hold_value:
+              sys.exit(1)
+          PY
+            then
+              echo "[error] ${metric_name}: warn threshold must be <= hold threshold (warn=${warn_value}, hold=${hold_value})" >&2
+              exit 2
+            fi
+          }
+
+          trim_text() {
+            local value="$1"
+            value="${value#"${value%%[![:space:]]*}"}"
+            value="${value%"${value##*[![:space:]]}"}"
+            printf '%s' "$value"
+          }
+
+          input_notify_runtime_lane_execution_warn_min_exec_rows="$(
+            trim_text "$INPUT_NOTIFY_RUNTIME_LANE_EXECUTION_WARN_MIN_EXEC_ROWS"
+          )"
+          input_notify_runtime_lane_execution_hold_min_exec_rows="$(
+            trim_text "$INPUT_NOTIFY_RUNTIME_LANE_EXECUTION_HOLD_MIN_EXEC_ROWS"
+          )"
+          input_notify_runtime_evidence_compare_warn_min_artifacts_with_diffs="$(
+            trim_text "$INPUT_NOTIFY_RUNTIME_EVIDENCE_COMPARE_WARN_MIN_ARTIFACTS_WITH_DIFFS"
+          )"
+          input_notify_runtime_evidence_compare_hold_min_artifacts_with_diffs="$(
+            trim_text "$INPUT_NOTIFY_RUNTIME_EVIDENCE_COMPARE_HOLD_MIN_ARTIFACTS_WITH_DIFFS"
+          )"
+          input_notify_runtime_evidence_compare_warn_min_interop_import_mode_diff_count="$(
+            trim_text "$INPUT_NOTIFY_RUNTIME_EVIDENCE_COMPARE_WARN_MIN_INTEROP_IMPORT_MODE_DIFF_COUNT"
+          )"
+          input_notify_runtime_evidence_compare_hold_min_interop_import_mode_diff_count="$(
+            trim_text "$INPUT_NOTIFY_RUNTIME_EVIDENCE_COMPARE_HOLD_MIN_INTEROP_IMPORT_MODE_DIFF_COUNT"
+          )"
+          input_notify_phase2_sensor_fidelity_score_avg_warn_min="$(
+            trim_text "$INPUT_NOTIFY_PHASE2_SENSOR_FIDELITY_SCORE_AVG_WARN_MIN"
+          )"
+          input_notify_phase2_sensor_fidelity_score_avg_hold_min="$(
+            trim_text "$INPUT_NOTIFY_PHASE2_SENSOR_FIDELITY_SCORE_AVG_HOLD_MIN"
+          )"
+          input_notify_phase2_sensor_frame_count_avg_warn_min="$(
+            trim_text "$INPUT_NOTIFY_PHASE2_SENSOR_FRAME_COUNT_AVG_WARN_MIN"
+          )"
+          input_notify_phase2_sensor_frame_count_avg_hold_min="$(
+            trim_text "$INPUT_NOTIFY_PHASE2_SENSOR_FRAME_COUNT_AVG_HOLD_MIN"
+          )"
+          input_notify_phase2_sensor_camera_noise_stddev_px_avg_warn_max="$(
+            trim_text "$INPUT_NOTIFY_PHASE2_SENSOR_CAMERA_NOISE_STDDEV_PX_AVG_WARN_MAX"
+          )"
+          input_notify_phase2_sensor_camera_noise_stddev_px_avg_hold_max="$(
+            trim_text "$INPUT_NOTIFY_PHASE2_SENSOR_CAMERA_NOISE_STDDEV_PX_AVG_HOLD_MAX"
+          )"
+          input_notify_phase2_sensor_lidar_point_count_avg_warn_min="$(
+            trim_text "$INPUT_NOTIFY_PHASE2_SENSOR_LIDAR_POINT_COUNT_AVG_WARN_MIN"
+          )"
+          input_notify_phase2_sensor_lidar_point_count_avg_hold_min="$(
+            trim_text "$INPUT_NOTIFY_PHASE2_SENSOR_LIDAR_POINT_COUNT_AVG_HOLD_MIN"
+          )"
+          input_notify_phase2_sensor_radar_false_positive_rate_avg_warn_max="$(
+            trim_text "$INPUT_NOTIFY_PHASE2_SENSOR_RADAR_FALSE_POSITIVE_RATE_AVG_WARN_MAX"
+          )"
+          input_notify_phase2_sensor_radar_false_positive_rate_avg_hold_max="$(
+            trim_text "$INPUT_NOTIFY_PHASE2_SENSOR_RADAR_FALSE_POSITIVE_RATE_AVG_HOLD_MAX"
+          )"
+          input_runtime_interop_export_road_length_scale="$(
+            trim_text "$INPUT_RUNTIME_INTEROP_EXPORT_ROAD_LENGTH_SCALE"
+          )"
+          input_runtime_interop_contract_xosc="$(
+            trim_text "$INPUT_RUNTIME_INTEROP_CONTRACT_XOSC"
+          )"
+          input_runtime_interop_contract_xodr="$(
+            trim_text "$INPUT_RUNTIME_INTEROP_CONTRACT_XODR"
+          )"
+          input_runtime_interop_import_manifest_consistency_mode="$(
+            trim_text "$INPUT_RUNTIME_INTEROP_IMPORT_MANIFEST_CONSISTENCY_MODE"
+          )"
+          input_runtime_interop_import_export_consistency_mode="$(
+            trim_text "$INPUT_RUNTIME_INTEROP_IMPORT_EXPORT_CONSISTENCY_MODE"
+          )"
+          input_matrix_profile_ids="$(
+            trim_text "$INPUT_MATRIX_PROFILE_IDS"
+          )"
+
+          validate_choice "$INPUT_SIM_RUNTIME" "sim_runtime" awsim carla both
+          validate_choice "$INPUT_LANE" "lane" auto exec contract
+          validate_choice "$INPUT_RUNTIME_ASSET_PROFILE" "runtime_asset_profile" lightweight full
+          validate_choice "$INPUT_RUNTIME_ASSET_ARCHIVE_SHA256_MODE" "runtime_asset_archive_sha256_mode" verify_only always never
+          validate_binary_flag "$INPUT_DRY_RUN" "dry_run"
+          validate_binary_flag "$INPUT_CONTINUE_ON_RUNTIME_FAILURE" "continue_on_runtime_failure"
+          validate_binary_flag "$INPUT_ASSET_SKIP_DOWNLOAD" "asset_skip_download"
+          validate_binary_flag "$INPUT_ASSET_SKIP_EXTRACT" "asset_skip_extract"
+          validate_binary_flag "$INPUT_ASSET_FORCE_DOWNLOAD" "asset_force_download"
+          validate_binary_flag "$INPUT_ASSET_FORCE_EXTRACT" "asset_force_extract"
+          validate_binary_flag "$INPUT_RUNTIME_SCENARIO_CONTRACT_ENABLE" "runtime_scenario_contract_enable"
+          validate_binary_flag "$INPUT_RUNTIME_SCENARIO_CONTRACT_REQUIRE_RUNTIME_READY" "runtime_scenario_contract_require_runtime_ready"
+          validate_binary_flag "$INPUT_RUNTIME_SCENE_RESULT_ENABLE" "runtime_scene_result_enable"
+          validate_binary_flag "$INPUT_RUNTIME_SCENE_RESULT_REQUIRE_RUNTIME_READY" "runtime_scene_result_require_runtime_ready"
+          validate_binary_flag "$INPUT_RUNTIME_INTEROP_CONTRACT_ENABLE" "runtime_interop_contract_enable"
+          validate_binary_flag "$INPUT_RUNTIME_INTEROP_CONTRACT_REQUIRE_RUNTIME_READY" "runtime_interop_contract_require_runtime_ready"
+          validate_choice "$input_runtime_interop_import_manifest_consistency_mode" "runtime_interop_import_manifest_consistency_mode" require allow
+          validate_choice "$input_runtime_interop_import_export_consistency_mode" "runtime_interop_import_export_consistency_mode" require allow
+          validate_positive_float \
+            "$input_runtime_interop_export_road_length_scale" \
+            "runtime_interop_export_road_length_scale"
+          validate_non_negative_int \
+            "$input_notify_runtime_lane_execution_warn_min_exec_rows" \
+            "notify_runtime_lane_execution_warn_min_exec_rows"
+          validate_non_negative_int \
+            "$input_notify_runtime_lane_execution_hold_min_exec_rows" \
+            "notify_runtime_lane_execution_hold_min_exec_rows"
+          validate_non_negative_int \
+            "$input_notify_runtime_evidence_compare_warn_min_artifacts_with_diffs" \
+            "notify_runtime_evidence_compare_warn_min_artifacts_with_diffs"
+          validate_non_negative_int \
+            "$input_notify_runtime_evidence_compare_hold_min_artifacts_with_diffs" \
+            "notify_runtime_evidence_compare_hold_min_artifacts_with_diffs"
+          validate_non_negative_int \
+            "$input_notify_runtime_evidence_compare_warn_min_interop_import_mode_diff_count" \
+            "notify_runtime_evidence_compare_warn_min_interop_import_mode_diff_count"
+          validate_non_negative_int \
+            "$input_notify_runtime_evidence_compare_hold_min_interop_import_mode_diff_count" \
+            "notify_runtime_evidence_compare_hold_min_interop_import_mode_diff_count"
+          validate_non_negative_float \
+            "$input_notify_phase2_sensor_fidelity_score_avg_warn_min" \
+            "notify_phase2_sensor_fidelity_score_avg_warn_min"
+          validate_non_negative_float \
+            "$input_notify_phase2_sensor_fidelity_score_avg_hold_min" \
+            "notify_phase2_sensor_fidelity_score_avg_hold_min"
+          validate_non_negative_float \
+            "$input_notify_phase2_sensor_frame_count_avg_warn_min" \
+            "notify_phase2_sensor_frame_count_avg_warn_min"
+          validate_non_negative_float \
+            "$input_notify_phase2_sensor_frame_count_avg_hold_min" \
+            "notify_phase2_sensor_frame_count_avg_hold_min"
+          validate_non_negative_float \
+            "$input_notify_phase2_sensor_camera_noise_stddev_px_avg_warn_max" \
+            "notify_phase2_sensor_camera_noise_stddev_px_avg_warn_max"
+          validate_non_negative_float \
+            "$input_notify_phase2_sensor_camera_noise_stddev_px_avg_hold_max" \
+            "notify_phase2_sensor_camera_noise_stddev_px_avg_hold_max"
+          validate_non_negative_float \
+            "$input_notify_phase2_sensor_lidar_point_count_avg_warn_min" \
+            "notify_phase2_sensor_lidar_point_count_avg_warn_min"
+          validate_non_negative_float \
+            "$input_notify_phase2_sensor_lidar_point_count_avg_hold_min" \
+            "notify_phase2_sensor_lidar_point_count_avg_hold_min"
+          validate_non_negative_float \
+            "$input_notify_phase2_sensor_radar_false_positive_rate_avg_warn_max" \
+            "notify_phase2_sensor_radar_false_positive_rate_avg_warn_max"
+          validate_non_negative_float \
+            "$input_notify_phase2_sensor_radar_false_positive_rate_avg_hold_max" \
+            "notify_phase2_sensor_radar_false_positive_rate_avg_hold_max"
+
+          select_runtime_matrix_profile_ids() {
+            local runtime_name="$1"
+            local profile_ids_csv="$input_matrix_profile_ids"
+            if [ -z "$profile_ids_csv" ]; then
+              case "$runtime_name" in
+                awsim)
+                  printf '%s' "runtime_awsim_smoke_v0"
+                  ;;
+                carla)
+                  printf '%s' "runtime_carla_smoke_v0"
+                  ;;
+                *)
+                  printf '%s' "runtime_smoke_v0"
+                  ;;
+              esac
+              return 0
+            fi
+            python3 - "$runtime_name" "$profile_ids_csv" <<'PY'
+          import json
+          import sys
+          from pathlib import Path
+
+          runtime_name = str(sys.argv[1]).strip().lower()
+          profile_ids_csv = str(sys.argv[2]).strip()
+
+          ids = [token.strip() for token in profile_ids_csv.split(",") if token.strip()]
+          if not ids:
+              print("")
+              raise SystemExit(0)
+
+          profiles_path = Path("30_Projects/P_E2E_Stack/prototype/ci_profiles/runtime_matrix_profiles.json")
+          runtime_by_id = {}
+          try:
+              payload = json.loads(profiles_path.read_text(encoding="utf-8"))
+          except Exception:
+              print(profile_ids_csv)
+              raise SystemExit(0)
+
+          rows = payload.get("profiles", [])
+          if isinstance(rows, list):
+              for row in rows:
+                  if not isinstance(row, dict):
+                      continue
+                  profile_id = str(row.get("profile_id", "")).strip()
+                  if not profile_id:
+                      continue
+                  runtime_token = str(row.get("sim_runtime", "")).strip().lower()
+                  runtime_by_id[profile_id] = runtime_token
+
+          selected = []
+          for profile_id in ids:
+              runtime_token = runtime_by_id.get(profile_id, "")
+              if runtime_token and runtime_token != runtime_name:
+                  continue
+              selected.append(profile_id)
+
+          if selected:
+              print(",".join(selected))
+          else:
+              print(profile_ids_csv)
+          PY
+          }
+
+          base_release_id="$INPUT_RELEASE_ID"
+          if [ -z "$base_release_id" ]; then
+            base_release_id="REL_RUNTIME_AVAILABLE_${FALLBACK_RUN_ID}_${FALLBACK_RUN_ATTEMPT}"
+          fi
+
+          runtime_values=()
+          if [ "$INPUT_SIM_RUNTIME" = "both" ]; then
+            runtime_values=("awsim" "carla")
+          else
+            runtime_values=("$INPUT_SIM_RUNTIME")
+          fi
+          runtime_count="${#runtime_values[@]}"
+
+          host_os="$(uname -s)"
+          host_arch="$(uname -m)"
+          resolved_lane="$INPUT_LANE"
+          if [ "$resolved_lane" = "auto" ]; then
+            if [ "$host_os" = "Linux" ] && [ "$host_arch" = "x86_64" ]; then
+              resolved_lane="exec"
+            else
+              resolved_lane="contract"
+            fi
+          fi
+          if [ "$resolved_lane" = "exec" ] && { [ "$host_os" != "Linux" ] || [ "$host_arch" != "x86_64" ]; }; then
+            echo "[error] exec lane requires Linux/x86_64 runner, got ${host_os}/${host_arch}" >&2
+            exit 2
+          fi
+          runtime_exec_lane_warn_min_rows="$input_notify_runtime_lane_execution_warn_min_exec_rows"
+          if [ -z "$runtime_exec_lane_warn_min_rows" ]; then
+            if [ "$resolved_lane" = "exec" ]; then
+              runtime_exec_lane_warn_min_rows="1"
+            else
+              runtime_exec_lane_warn_min_rows="0"
+            fi
+          fi
+          runtime_exec_lane_hold_min_rows="$input_notify_runtime_lane_execution_hold_min_exec_rows"
+          if [ -z "$runtime_exec_lane_hold_min_rows" ]; then
+            if [ "$resolved_lane" = "exec" ]; then
+              runtime_exec_lane_hold_min_rows="1"
+            else
+              runtime_exec_lane_hold_min_rows="0"
+            fi
+          fi
+          runtime_evidence_compare_warn_min_artifacts_with_diffs="$input_notify_runtime_evidence_compare_warn_min_artifacts_with_diffs"
+          if [ -z "$runtime_evidence_compare_warn_min_artifacts_with_diffs" ]; then
+            if [ "$runtime_count" -gt 1 ]; then
+              runtime_evidence_compare_warn_min_artifacts_with_diffs="1"
+            else
+              runtime_evidence_compare_warn_min_artifacts_with_diffs="0"
+            fi
+          fi
+          runtime_evidence_compare_hold_min_artifacts_with_diffs="$input_notify_runtime_evidence_compare_hold_min_artifacts_with_diffs"
+          if [ -z "$runtime_evidence_compare_hold_min_artifacts_with_diffs" ]; then
+            runtime_evidence_compare_hold_min_artifacts_with_diffs="0"
+          fi
+          runtime_evidence_compare_warn_min_interop_import_mode_diff_count="$input_notify_runtime_evidence_compare_warn_min_interop_import_mode_diff_count"
+          if [ -z "$runtime_evidence_compare_warn_min_interop_import_mode_diff_count" ]; then
+            runtime_evidence_compare_warn_min_interop_import_mode_diff_count="0"
+          fi
+          runtime_evidence_compare_hold_min_interop_import_mode_diff_count="$input_notify_runtime_evidence_compare_hold_min_interop_import_mode_diff_count"
+          if [ -z "$runtime_evidence_compare_hold_min_interop_import_mode_diff_count" ]; then
+            runtime_evidence_compare_hold_min_interop_import_mode_diff_count="0"
+          fi
+          phase2_sensor_fidelity_score_avg_warn_min="$input_notify_phase2_sensor_fidelity_score_avg_warn_min"
+          if [ -z "$phase2_sensor_fidelity_score_avg_warn_min" ]; then
+            phase2_sensor_fidelity_score_avg_warn_min="0"
+          fi
+          phase2_sensor_fidelity_score_avg_hold_min="$input_notify_phase2_sensor_fidelity_score_avg_hold_min"
+          if [ -z "$phase2_sensor_fidelity_score_avg_hold_min" ]; then
+            phase2_sensor_fidelity_score_avg_hold_min="0"
+          fi
+          phase2_sensor_frame_count_avg_warn_min="$input_notify_phase2_sensor_frame_count_avg_warn_min"
+          if [ -z "$phase2_sensor_frame_count_avg_warn_min" ]; then
+            phase2_sensor_frame_count_avg_warn_min="0"
+          fi
+          phase2_sensor_frame_count_avg_hold_min="$input_notify_phase2_sensor_frame_count_avg_hold_min"
+          if [ -z "$phase2_sensor_frame_count_avg_hold_min" ]; then
+            phase2_sensor_frame_count_avg_hold_min="0"
+          fi
+          phase2_sensor_camera_noise_stddev_px_avg_warn_max="$input_notify_phase2_sensor_camera_noise_stddev_px_avg_warn_max"
+          if [ -z "$phase2_sensor_camera_noise_stddev_px_avg_warn_max" ]; then
+            phase2_sensor_camera_noise_stddev_px_avg_warn_max="0"
+          fi
+          phase2_sensor_camera_noise_stddev_px_avg_hold_max="$input_notify_phase2_sensor_camera_noise_stddev_px_avg_hold_max"
+          if [ -z "$phase2_sensor_camera_noise_stddev_px_avg_hold_max" ]; then
+            phase2_sensor_camera_noise_stddev_px_avg_hold_max="0"
+          fi
+          phase2_sensor_lidar_point_count_avg_warn_min="$input_notify_phase2_sensor_lidar_point_count_avg_warn_min"
+          if [ -z "$phase2_sensor_lidar_point_count_avg_warn_min" ]; then
+            phase2_sensor_lidar_point_count_avg_warn_min="0"
+          fi
+          phase2_sensor_lidar_point_count_avg_hold_min="$input_notify_phase2_sensor_lidar_point_count_avg_hold_min"
+          if [ -z "$phase2_sensor_lidar_point_count_avg_hold_min" ]; then
+            phase2_sensor_lidar_point_count_avg_hold_min="0"
+          fi
+          phase2_sensor_radar_false_positive_rate_avg_warn_max="$input_notify_phase2_sensor_radar_false_positive_rate_avg_warn_max"
+          if [ -z "$phase2_sensor_radar_false_positive_rate_avg_warn_max" ]; then
+            phase2_sensor_radar_false_positive_rate_avg_warn_max="0"
+          fi
+          phase2_sensor_radar_false_positive_rate_avg_hold_max="$input_notify_phase2_sensor_radar_false_positive_rate_avg_hold_max"
+          if [ -z "$phase2_sensor_radar_false_positive_rate_avg_hold_max" ]; then
+            phase2_sensor_radar_false_positive_rate_avg_hold_max="0"
+          fi
+          validate_hold_not_greater_than_warn \
+            "$phase2_sensor_fidelity_score_avg_warn_min" \
+            "$phase2_sensor_fidelity_score_avg_hold_min" \
+            "phase2_sensor_fidelity_score_avg"
+          validate_hold_not_greater_than_warn \
+            "$phase2_sensor_frame_count_avg_warn_min" \
+            "$phase2_sensor_frame_count_avg_hold_min" \
+            "phase2_sensor_frame_count_avg"
+          validate_warn_not_greater_than_hold \
+            "$phase2_sensor_camera_noise_stddev_px_avg_warn_max" \
+            "$phase2_sensor_camera_noise_stddev_px_avg_hold_max" \
+            "phase2_sensor_camera_noise_stddev_px_avg"
+          validate_hold_not_greater_than_warn \
+            "$phase2_sensor_lidar_point_count_avg_warn_min" \
+            "$phase2_sensor_lidar_point_count_avg_hold_min" \
+            "phase2_sensor_lidar_point_count_avg"
+          validate_warn_not_greater_than_hold \
+            "$phase2_sensor_radar_false_positive_rate_avg_warn_max" \
+            "$phase2_sensor_radar_false_positive_rate_avg_hold_max" \
+            "phase2_sensor_radar_false_positive_rate_avg"
+          runtime_interop_export_road_length_scale="$input_runtime_interop_export_road_length_scale"
+          if [ -z "$runtime_interop_export_road_length_scale" ]; then
+            runtime_interop_export_road_length_scale="1.0"
+          fi
+          workspace_root="$(pwd -P)"
+          runtime_interop_contract_xosc="$input_runtime_interop_contract_xosc"
+          if [ -z "$runtime_interop_contract_xosc" ]; then
+            runtime_interop_contract_xosc="${workspace_root}/30_Projects/P_Sim-Engine/prototype/examples/openscenario_minimal_v0.xosc"
+          elif [ "${runtime_interop_contract_xosc#/}" = "$runtime_interop_contract_xosc" ]; then
+            runtime_interop_contract_xosc="${workspace_root}/${runtime_interop_contract_xosc}"
+          fi
+          runtime_interop_contract_xodr="$input_runtime_interop_contract_xodr"
+          if [ -z "$runtime_interop_contract_xodr" ]; then
+            runtime_interop_contract_xodr="${workspace_root}/30_Projects/P_Sim-Engine/prototype/examples/opendrive_minimal_v0.xodr"
+          elif [ "${runtime_interop_contract_xodr#/}" = "$runtime_interop_contract_xodr" ]; then
+            runtime_interop_contract_xodr="${workspace_root}/${runtime_interop_contract_xodr}"
+          fi
+          runtime_interop_import_manifest_consistency_mode="$input_runtime_interop_import_manifest_consistency_mode"
+          if [ -z "$runtime_interop_import_manifest_consistency_mode" ]; then
+            runtime_interop_import_manifest_consistency_mode="allow"
+          fi
+          runtime_interop_import_export_consistency_mode="$input_runtime_interop_import_export_consistency_mode"
+          if [ -z "$runtime_interop_import_export_consistency_mode" ]; then
+            runtime_interop_import_export_consistency_mode="allow"
+          fi
+
+          first_release_id=""
+          release_ids_csv=""
+          runtimes_csv=""
+          runtime_results_csv=""
+          failed_runtimes_csv=""
+          runtime_evidence_missing_runtimes_csv=""
+          runtime_failures=0
+          runtime_result_rows_file="$(mktemp)"
+
+          for runtime_value in "${runtime_values[@]}"; do
+            runtime_matrix_profile_ids="$(
+              select_runtime_matrix_profile_ids "$runtime_value"
+            )"
+            runtime_matrix_profile_ids="$(
+              trim_text "$runtime_matrix_profile_ids"
+            )"
+            if [ -z "$runtime_matrix_profile_ids" ]; then
+              echo "[error] no matrix profiles resolved for sim_runtime=${runtime_value}" >&2
+              exit 2
+            fi
+            runtime_release_id="$base_release_id"
+            if [ "$runtime_count" -gt 1 ]; then
+              runtime_release_id="${base_release_id}_${runtime_value}"
+            fi
+            if [ -z "$first_release_id" ]; then
+              first_release_id="$runtime_release_id"
+            fi
+            if [ -n "$release_ids_csv" ]; then
+              release_ids_csv="${release_ids_csv},${runtime_release_id}"
+              runtimes_csv="${runtimes_csv},${runtime_value}"
+            else
+              release_ids_csv="${runtime_release_id}"
+              runtimes_csv="${runtime_value}"
+            fi
+
+            target="pipeline-runtime-available-auto"
+            if [ "$INPUT_DRY_RUN" = "1" ]; then
+              target="pipeline-runtime-available-auto-dry-run"
+            fi
+            runtime_evidence_suffix="_runtime_available_evidence.json"
+            if [ "$resolved_lane" = "contract" ]; then
+              runtime_evidence_suffix="_runtime_available_contract_evidence.json"
+            fi
+            runtime_evidence_path="30_Projects/P_Validation-Tooling-MVP/prototype/reports/${runtime_release_id}${runtime_evidence_suffix}"
+            runtime_interop_export_xosc_out="${workspace_root}/30_Projects/P_Validation-Tooling-MVP/prototype/reports/${runtime_release_id}_runtime_interop_export_v0.xosc"
+            runtime_interop_export_xodr_out="${workspace_root}/30_Projects/P_Validation-Tooling-MVP/prototype/reports/${runtime_release_id}_runtime_interop_export_v0.xodr"
+            runtime_interop_export_out="${workspace_root}/30_Projects/P_Validation-Tooling-MVP/prototype/reports/${runtime_release_id}_sim_runtime_interop_export_report_v0.json"
+            runtime_interop_contract_out="${workspace_root}/30_Projects/P_Validation-Tooling-MVP/prototype/reports/${runtime_release_id}_sim_runtime_interop_contract_report_v0.json"
+            echo "[info] runtime target=$target lane_input=$INPUT_LANE resolved_lane=$resolved_lane sim_runtime=$runtime_value matrix_profile_ids=$runtime_matrix_profile_ids host=${host_os}/${host_arch} release_id=$runtime_release_id"
+
+            runtime_result="pass"
+            runtime_failure_reason=""
+            runtime_stop_after_row="0"
+            if ! make -C 30_Projects/P_E2E_Stack/prototype "$target" \
+              RELEASE_ID="$runtime_release_id" \
+              RUNTIME_AVAILABLE_AUTO_FORCE_LANE="$resolved_lane" \
+              RUNTIME_AVAILABLE_SIM_RUNTIME="$runtime_value" \
+              RUNTIME_AVAILABLE_MATRIX_PROFILE_IDS="$runtime_matrix_profile_ids" \
+              RUNTIME_AVAILABLE_ASSET_PROFILE="$INPUT_RUNTIME_ASSET_PROFILE" \
+              RUNTIME_AVAILABLE_ASSET_ARCHIVE_SHA256_MODE="$INPUT_RUNTIME_ASSET_ARCHIVE_SHA256_MODE" \
+              RUNTIME_AVAILABLE_ASSET_SKIP_DOWNLOAD="$INPUT_ASSET_SKIP_DOWNLOAD" \
+              RUNTIME_AVAILABLE_ASSET_SKIP_EXTRACT="$INPUT_ASSET_SKIP_EXTRACT" \
+              RUNTIME_AVAILABLE_ASSET_FORCE_DOWNLOAD="$INPUT_ASSET_FORCE_DOWNLOAD" \
+              RUNTIME_AVAILABLE_ASSET_FORCE_EXTRACT="$INPUT_ASSET_FORCE_EXTRACT" \
+              RUNTIME_AVAILABLE_SIM_RUNTIME_SCENARIO_CONTRACT_ENABLE="$INPUT_RUNTIME_SCENARIO_CONTRACT_ENABLE" \
+              RUNTIME_AVAILABLE_SIM_RUNTIME_SCENARIO_CONTRACT_REQUIRE_RUNTIME_READY="$INPUT_RUNTIME_SCENARIO_CONTRACT_REQUIRE_RUNTIME_READY" \
+              RUNTIME_AVAILABLE_SIM_RUNTIME_SCENE_RESULT_ENABLE="$INPUT_RUNTIME_SCENE_RESULT_ENABLE" \
+              RUNTIME_AVAILABLE_SIM_RUNTIME_SCENE_RESULT_REQUIRE_RUNTIME_READY="$INPUT_RUNTIME_SCENE_RESULT_REQUIRE_RUNTIME_READY" \
+              RUNTIME_AVAILABLE_SIM_RUNTIME_INTEROP_CONTRACT_ENABLE="$INPUT_RUNTIME_INTEROP_CONTRACT_ENABLE" \
+              RUNTIME_AVAILABLE_SIM_RUNTIME_INTEROP_CONTRACT_REQUIRE_RUNTIME_READY="$INPUT_RUNTIME_INTEROP_CONTRACT_REQUIRE_RUNTIME_READY" \
+              RUNTIME_AVAILABLE_SIM_RUNTIME_INTEROP_EXPORT_ROAD_LENGTH_SCALE="$runtime_interop_export_road_length_scale" \
+              RUNTIME_AVAILABLE_SIM_RUNTIME_INTEROP_CONTRACT_XOSC="$runtime_interop_contract_xosc" \
+              RUNTIME_AVAILABLE_SIM_RUNTIME_INTEROP_CONTRACT_XODR="$runtime_interop_contract_xodr" \
+              RUNTIME_AVAILABLE_SIM_RUNTIME_INTEROP_IMPORT_MANIFEST_CONSISTENCY_MODE="$runtime_interop_import_manifest_consistency_mode" \
+              RUNTIME_AVAILABLE_SIM_RUNTIME_INTEROP_IMPORT_EXPORT_CONSISTENCY_MODE="$runtime_interop_import_export_consistency_mode" \
+              RUNTIME_AVAILABLE_SIM_RUNTIME_INTEROP_EXPORT_XOSC_OUT="$runtime_interop_export_xosc_out" \
+              RUNTIME_AVAILABLE_SIM_RUNTIME_INTEROP_EXPORT_XODR_OUT="$runtime_interop_export_xodr_out" \
+              RUNTIME_AVAILABLE_SIM_RUNTIME_INTEROP_EXPORT_OUT="$runtime_interop_export_out" \
+              RUNTIME_AVAILABLE_SIM_RUNTIME_INTEROP_CONTRACT_OUT="$runtime_interop_contract_out"; then
+              runtime_result="fail"
+              runtime_failure_reason="runtime_command_failed"
+              runtime_failures=$((runtime_failures + 1))
+              if [ -n "$failed_runtimes_csv" ]; then
+                failed_runtimes_csv="${failed_runtimes_csv},${runtime_value}"
+              else
+                failed_runtimes_csv="${runtime_value}"
+              fi
+              if [ "$INPUT_CONTINUE_ON_RUNTIME_FAILURE" != "1" ]; then
+                echo "[error] runtime failed (sim_runtime=${runtime_value}) and continue_on_runtime_failure=0" >&2
+                runtime_stop_after_row="1"
+              fi
+            fi
+            runtime_evidence_exists="0"
+            if [ -f "$runtime_evidence_path" ]; then
+              runtime_evidence_exists="1"
+            fi
+            if [ "$runtime_result" = "pass" ] && [ "$runtime_evidence_exists" != "1" ]; then
+              runtime_result="fail"
+              runtime_failure_reason="runtime_evidence_missing"
+              runtime_failures=$((runtime_failures + 1))
+              if [ -n "$failed_runtimes_csv" ]; then
+                failed_runtimes_csv="${failed_runtimes_csv},${runtime_value}"
+              else
+                failed_runtimes_csv="${runtime_value}"
+              fi
+              if [ -n "$runtime_evidence_missing_runtimes_csv" ]; then
+                runtime_evidence_missing_runtimes_csv="${runtime_evidence_missing_runtimes_csv},${runtime_value}"
+              else
+                runtime_evidence_missing_runtimes_csv="${runtime_value}"
+              fi
+              echo "[error] runtime evidence missing for successful runtime (sim_runtime=${runtime_value}, evidence_path=${runtime_evidence_path})" >&2
+              if [ "$INPUT_CONTINUE_ON_RUNTIME_FAILURE" != "1" ]; then
+                echo "[error] runtime evidence missing (sim_runtime=${runtime_value}) and continue_on_runtime_failure=0" >&2
+                runtime_stop_after_row="1"
+              fi
+            fi
+            if [ -n "$runtime_results_csv" ]; then
+              runtime_results_csv="${runtime_results_csv},${runtime_value}:${runtime_result}"
+            else
+              runtime_results_csv="${runtime_value}:${runtime_result}"
+            fi
+            printf '%s\t%s\t%s\t%s\t%s\t%s\n' \
+              "$runtime_value" \
+              "$runtime_release_id" \
+              "$runtime_result" \
+              "$runtime_evidence_path" \
+              "$runtime_evidence_exists" \
+              "$runtime_failure_reason" >> "$runtime_result_rows_file"
+            if [ "$runtime_stop_after_row" = "1" ]; then
+              break
+            fi
+          done
+
+          if [ -z "$first_release_id" ]; then
+            echo "[error] no runtime selected for execution" >&2
+            exit 2
+          fi
+
+          runtime_execution_summary_path="30_Projects/P_Validation-Tooling-MVP/prototype/reports/${base_release_id}_runtime_lane_execution_summary.json"
+          mkdir -p "$(dirname "$runtime_execution_summary_path")"
+          resolved_lane="$resolved_lane" \
+          runner_platform="${host_os}/${host_arch}" \
+          runtime_exec_lane_warn_min_rows="$runtime_exec_lane_warn_min_rows" \
+          runtime_exec_lane_hold_min_rows="$runtime_exec_lane_hold_min_rows" \
+          runtime_evidence_compare_warn_min_artifacts_with_diffs="$runtime_evidence_compare_warn_min_artifacts_with_diffs" \
+          runtime_evidence_compare_hold_min_artifacts_with_diffs="$runtime_evidence_compare_hold_min_artifacts_with_diffs" \
+          runtime_evidence_compare_warn_min_interop_import_mode_diff_count="$runtime_evidence_compare_warn_min_interop_import_mode_diff_count" \
+          runtime_evidence_compare_hold_min_interop_import_mode_diff_count="$runtime_evidence_compare_hold_min_interop_import_mode_diff_count" \
+          phase2_sensor_fidelity_score_avg_warn_min="$phase2_sensor_fidelity_score_avg_warn_min" \
+          phase2_sensor_fidelity_score_avg_hold_min="$phase2_sensor_fidelity_score_avg_hold_min" \
+          phase2_sensor_frame_count_avg_warn_min="$phase2_sensor_frame_count_avg_warn_min" \
+          phase2_sensor_frame_count_avg_hold_min="$phase2_sensor_frame_count_avg_hold_min" \
+          phase2_sensor_camera_noise_stddev_px_avg_warn_max="$phase2_sensor_camera_noise_stddev_px_avg_warn_max" \
+          phase2_sensor_camera_noise_stddev_px_avg_hold_max="$phase2_sensor_camera_noise_stddev_px_avg_hold_max" \
+          phase2_sensor_lidar_point_count_avg_warn_min="$phase2_sensor_lidar_point_count_avg_warn_min" \
+          phase2_sensor_lidar_point_count_avg_hold_min="$phase2_sensor_lidar_point_count_avg_hold_min" \
+          phase2_sensor_radar_false_positive_rate_avg_warn_max="$phase2_sensor_radar_false_positive_rate_avg_warn_max" \
+          phase2_sensor_radar_false_positive_rate_avg_hold_max="$phase2_sensor_radar_false_positive_rate_avg_hold_max" \
+          runtime_interop_export_road_length_scale="$runtime_interop_export_road_length_scale" \
+          runtime_interop_contract_xosc="$runtime_interop_contract_xosc" \
+          runtime_interop_contract_xodr="$runtime_interop_contract_xodr" \
+          runtime_interop_import_manifest_consistency_mode="$runtime_interop_import_manifest_consistency_mode" \
+          runtime_interop_import_export_consistency_mode="$runtime_interop_import_export_consistency_mode" \
+          python3 - "$runtime_result_rows_file" "$runtime_execution_summary_path" <<'PY'
+          import json
+          import math
+          import os
+          import sys
+          from datetime import datetime, timezone
+          from pathlib import Path
+          
+          
+          def _to_non_negative_int(value: object) -> int:
+              try:
+                  parsed = int(str(value).strip())
+              except (TypeError, ValueError):
+                  return 0
+              return parsed if parsed >= 0 else 0
+
+          def _to_non_negative_float(value: object) -> float:
+              try:
+                  parsed = float(str(value).strip())
+              except (TypeError, ValueError):
+                  return 0.0
+              if not math.isfinite(parsed) or parsed < 0:
+                  return 0.0
+              return parsed
+          
+          rows_path = Path(sys.argv[1])
+          out_path = Path(sys.argv[2])
+          rows = []
+          if rows_path.exists():
+              for line in rows_path.read_text(encoding="utf-8").splitlines():
+                  parts = line.split("\t")
+                  if len(parts) < 3:
+                      continue
+                  runtime = str(parts[0]).strip()
+                  release_id = str(parts[1]).strip()
+                  result = str(parts[2]).strip()
+                  runtime_evidence_path = str(parts[3]).strip() if len(parts) >= 4 else ""
+                  runtime_evidence_exists = None
+                  runtime_failure_reason = str(parts[5]).strip().lower() if len(parts) >= 6 else ""
+                  if len(parts) >= 5:
+                      exists_token = str(parts[4]).strip().lower()
+                      if exists_token in {"1", "true", "yes"}:
+                          runtime_evidence_exists = True
+                      elif exists_token in {"0", "false", "no"}:
+                          runtime_evidence_exists = False
+                  if not runtime:
+                      continue
+                  rows.append(
+                      {
+                          "runtime": runtime,
+                          "release_id": release_id,
+                          "result": result,
+                          "runtime_evidence_path": runtime_evidence_path,
+                          "runtime_evidence_exists": runtime_evidence_exists,
+                          "runtime_failure_reason": runtime_failure_reason,
+                      }
+                  )
+          runtime_evidence_path_present_count = 0
+          runtime_evidence_exists_true_count = 0
+          runtime_evidence_exists_false_count = 0
+          runtime_evidence_exists_unknown_count = 0
+          runtime_evidence_missing_runtime_counts = {}
+          runtime_failure_reason_counts = {}
+          for row in rows:
+              evidence_path = str(row.get("runtime_evidence_path", "")).strip()
+              evidence_exists = row.get("runtime_evidence_exists", None)
+              runtime_name = str(row.get("runtime", "")).strip().lower()
+              runtime_result = str(row.get("result", "")).strip().lower()
+              runtime_failure_reason = str(row.get("runtime_failure_reason", "")).strip().lower()
+              if evidence_path:
+                  runtime_evidence_path_present_count += 1
+              if evidence_exists is True:
+                  runtime_evidence_exists_true_count += 1
+              elif evidence_exists is False:
+                  runtime_evidence_exists_false_count += 1
+                  if runtime_name:
+                      runtime_evidence_missing_runtime_counts[runtime_name] = (
+                          int(runtime_evidence_missing_runtime_counts.get(runtime_name, 0)) + 1
+                      )
+              else:
+                  runtime_evidence_exists_unknown_count += 1
+              if runtime_result == "fail":
+                  failure_key = runtime_failure_reason or "unknown"
+                  runtime_failure_reason_counts[failure_key] = (
+                      int(runtime_failure_reason_counts.get(failure_key, 0)) + 1
+                  )
+          payload = {
+              "schema_version": "runtime_lane_execution_summary_v0",
+              "generated_at": datetime.now(timezone.utc).isoformat(),
+              "lane_input": str(os.environ.get("INPUT_LANE", "")).strip(),
+              "lane_resolved": str(os.environ.get("resolved_lane", "")).strip(),
+              "runner_platform": str(os.environ.get("runner_platform", "")).strip(),
+              "sim_runtime_input": str(os.environ.get("INPUT_SIM_RUNTIME", "")).strip(),
+              "runtime_asset_profile": str(os.environ.get("INPUT_RUNTIME_ASSET_PROFILE", "")).strip(),
+              "runtime_asset_archive_sha256_mode": str(
+                  os.environ.get("INPUT_RUNTIME_ASSET_ARCHIVE_SHA256_MODE", "")
+              ).strip(),
+              "runtime_scenario_contract_enable": str(
+                  os.environ.get("INPUT_RUNTIME_SCENARIO_CONTRACT_ENABLE", "")
+              ).strip(),
+              "runtime_scenario_contract_require_runtime_ready": str(
+                  os.environ.get("INPUT_RUNTIME_SCENARIO_CONTRACT_REQUIRE_RUNTIME_READY", "")
+              ).strip(),
+              "runtime_scene_result_enable": str(
+                  os.environ.get("INPUT_RUNTIME_SCENE_RESULT_ENABLE", "")
+              ).strip(),
+              "runtime_scene_result_require_runtime_ready": str(
+                  os.environ.get("INPUT_RUNTIME_SCENE_RESULT_REQUIRE_RUNTIME_READY", "")
+              ).strip(),
+              "runtime_interop_contract_enable": str(
+                  os.environ.get("INPUT_RUNTIME_INTEROP_CONTRACT_ENABLE", "")
+              ).strip(),
+              "runtime_interop_contract_require_runtime_ready": str(
+                  os.environ.get("INPUT_RUNTIME_INTEROP_CONTRACT_REQUIRE_RUNTIME_READY", "")
+              ).strip(),
+              "runtime_interop_import_manifest_consistency_mode": str(
+                  os.environ.get("runtime_interop_import_manifest_consistency_mode", "")
+              ).strip(),
+              "runtime_interop_import_export_consistency_mode": str(
+                  os.environ.get("runtime_interop_import_export_consistency_mode", "")
+              ).strip(),
+              "runtime_exec_lane_warn_min_rows": _to_non_negative_int(
+                  os.environ.get("runtime_exec_lane_warn_min_rows", "")
+              ),
+              "runtime_exec_lane_hold_min_rows": _to_non_negative_int(
+                  os.environ.get("runtime_exec_lane_hold_min_rows", "")
+              ),
+              "runtime_evidence_compare_warn_min_artifacts_with_diffs": _to_non_negative_int(
+                  os.environ.get("runtime_evidence_compare_warn_min_artifacts_with_diffs", "")
+              ),
+              "runtime_evidence_compare_hold_min_artifacts_with_diffs": _to_non_negative_int(
+                  os.environ.get("runtime_evidence_compare_hold_min_artifacts_with_diffs", "")
+              ),
+              "runtime_evidence_compare_warn_min_interop_import_mode_diff_count": _to_non_negative_int(
+                  os.environ.get("runtime_evidence_compare_warn_min_interop_import_mode_diff_count", "")
+              ),
+              "runtime_evidence_compare_hold_min_interop_import_mode_diff_count": _to_non_negative_int(
+                  os.environ.get("runtime_evidence_compare_hold_min_interop_import_mode_diff_count", "")
+              ),
+              "phase2_sensor_fidelity_score_avg_warn_min": _to_non_negative_float(
+                  os.environ.get("phase2_sensor_fidelity_score_avg_warn_min", "")
+              ),
+              "phase2_sensor_fidelity_score_avg_hold_min": _to_non_negative_float(
+                  os.environ.get("phase2_sensor_fidelity_score_avg_hold_min", "")
+              ),
+              "phase2_sensor_frame_count_avg_warn_min": _to_non_negative_float(
+                  os.environ.get("phase2_sensor_frame_count_avg_warn_min", "")
+              ),
+              "phase2_sensor_frame_count_avg_hold_min": _to_non_negative_float(
+                  os.environ.get("phase2_sensor_frame_count_avg_hold_min", "")
+              ),
+              "phase2_sensor_camera_noise_stddev_px_avg_warn_max": _to_non_negative_float(
+                  os.environ.get("phase2_sensor_camera_noise_stddev_px_avg_warn_max", "")
+              ),
+              "phase2_sensor_camera_noise_stddev_px_avg_hold_max": _to_non_negative_float(
+                  os.environ.get("phase2_sensor_camera_noise_stddev_px_avg_hold_max", "")
+              ),
+              "phase2_sensor_lidar_point_count_avg_warn_min": _to_non_negative_float(
+                  os.environ.get("phase2_sensor_lidar_point_count_avg_warn_min", "")
+              ),
+              "phase2_sensor_lidar_point_count_avg_hold_min": _to_non_negative_float(
+                  os.environ.get("phase2_sensor_lidar_point_count_avg_hold_min", "")
+              ),
+              "phase2_sensor_radar_false_positive_rate_avg_warn_max": _to_non_negative_float(
+                  os.environ.get("phase2_sensor_radar_false_positive_rate_avg_warn_max", "")
+              ),
+              "phase2_sensor_radar_false_positive_rate_avg_hold_max": _to_non_negative_float(
+                  os.environ.get("phase2_sensor_radar_false_positive_rate_avg_hold_max", "")
+              ),
+              "runtime_interop_export_road_length_scale": _to_non_negative_float(
+                  os.environ.get("runtime_interop_export_road_length_scale", "")
+              ),
+              "runtime_interop_contract_xosc": str(
+                  os.environ.get("runtime_interop_contract_xosc", "")
+              ).strip(),
+              "runtime_interop_contract_xodr": str(
+                  os.environ.get("runtime_interop_contract_xodr", "")
+              ).strip(),
+              "dry_run": str(os.environ.get("INPUT_DRY_RUN", "")).strip(),
+              "continue_on_runtime_failure": str(os.environ.get("INPUT_CONTINUE_ON_RUNTIME_FAILURE", "")).strip(),
+              "runtime_evidence_path_present_count": runtime_evidence_path_present_count,
+              "runtime_evidence_exists_true_count": runtime_evidence_exists_true_count,
+              "runtime_evidence_exists_false_count": runtime_evidence_exists_false_count,
+              "runtime_evidence_exists_unknown_count": runtime_evidence_exists_unknown_count,
+              "runtime_evidence_missing_runtime_counts": {
+                  key: runtime_evidence_missing_runtime_counts[key]
+                  for key in sorted(runtime_evidence_missing_runtime_counts.keys())
+              },
+              "runtime_failure_reason_counts": {
+                  key: runtime_failure_reason_counts[key]
+                  for key in sorted(runtime_failure_reason_counts.keys())
+              },
+              "runtime_rows": rows,
+          }
+          out_path.write_text(json.dumps(payload, indent=2, ensure_ascii=True) + "\n", encoding="utf-8")
+          PY
+          rm -f "$runtime_result_rows_file"
+
+          echo "release_id=$first_release_id" >> "$GITHUB_OUTPUT"
+          echo "release_prefix=$base_release_id" >> "$GITHUB_OUTPUT"
+          echo "release_ids_csv=$release_ids_csv" >> "$GITHUB_OUTPUT"
+          echo "runtimes_csv=$runtimes_csv" >> "$GITHUB_OUTPUT"
+          echo "runtime_results_csv=$runtime_results_csv" >> "$GITHUB_OUTPUT"
+          echo "failed_runtimes_csv=$failed_runtimes_csv" >> "$GITHUB_OUTPUT"
+          echo "runtime_evidence_missing_runtimes_csv=$runtime_evidence_missing_runtimes_csv" >> "$GITHUB_OUTPUT"
+          echo "runtime_execution_summary_path=$runtime_execution_summary_path" >> "$GITHUB_OUTPUT"
+          echo "runtime_exec_lane_warn_min_rows=$runtime_exec_lane_warn_min_rows" >> "$GITHUB_OUTPUT"
+          echo "runtime_exec_lane_hold_min_rows=$runtime_exec_lane_hold_min_rows" >> "$GITHUB_OUTPUT"
+          echo "runtime_evidence_compare_warn_min_artifacts_with_diffs=$runtime_evidence_compare_warn_min_artifacts_with_diffs" >> "$GITHUB_OUTPUT"
+          echo "runtime_evidence_compare_hold_min_artifacts_with_diffs=$runtime_evidence_compare_hold_min_artifacts_with_diffs" >> "$GITHUB_OUTPUT"
+          echo "runtime_evidence_compare_warn_min_interop_import_mode_diff_count=$runtime_evidence_compare_warn_min_interop_import_mode_diff_count" >> "$GITHUB_OUTPUT"
+          echo "runtime_evidence_compare_hold_min_interop_import_mode_diff_count=$runtime_evidence_compare_hold_min_interop_import_mode_diff_count" >> "$GITHUB_OUTPUT"
+          echo "phase2_sensor_fidelity_score_avg_warn_min=$phase2_sensor_fidelity_score_avg_warn_min" >> "$GITHUB_OUTPUT"
+          echo "phase2_sensor_fidelity_score_avg_hold_min=$phase2_sensor_fidelity_score_avg_hold_min" >> "$GITHUB_OUTPUT"
+          echo "phase2_sensor_frame_count_avg_warn_min=$phase2_sensor_frame_count_avg_warn_min" >> "$GITHUB_OUTPUT"
+          echo "phase2_sensor_frame_count_avg_hold_min=$phase2_sensor_frame_count_avg_hold_min" >> "$GITHUB_OUTPUT"
+          echo "phase2_sensor_camera_noise_stddev_px_avg_warn_max=$phase2_sensor_camera_noise_stddev_px_avg_warn_max" >> "$GITHUB_OUTPUT"
+          echo "phase2_sensor_camera_noise_stddev_px_avg_hold_max=$phase2_sensor_camera_noise_stddev_px_avg_hold_max" >> "$GITHUB_OUTPUT"
+          echo "phase2_sensor_lidar_point_count_avg_warn_min=$phase2_sensor_lidar_point_count_avg_warn_min" >> "$GITHUB_OUTPUT"
+          echo "phase2_sensor_lidar_point_count_avg_hold_min=$phase2_sensor_lidar_point_count_avg_hold_min" >> "$GITHUB_OUTPUT"
+          echo "phase2_sensor_radar_false_positive_rate_avg_warn_max=$phase2_sensor_radar_false_positive_rate_avg_warn_max" >> "$GITHUB_OUTPUT"
+          echo "phase2_sensor_radar_false_positive_rate_avg_hold_max=$phase2_sensor_radar_false_positive_rate_avg_hold_max" >> "$GITHUB_OUTPUT"
+          echo "runtime_interop_export_road_length_scale=$runtime_interop_export_road_length_scale" >> "$GITHUB_OUTPUT"
+          echo "runtime_interop_contract_xosc=$runtime_interop_contract_xosc" >> "$GITHUB_OUTPUT"
+          echo "runtime_interop_contract_xodr=$runtime_interop_contract_xodr" >> "$GITHUB_OUTPUT"
+          echo "runtime_interop_import_manifest_consistency_mode=$runtime_interop_import_manifest_consistency_mode" >> "$GITHUB_OUTPUT"
+          echo "runtime_interop_import_export_consistency_mode=$runtime_interop_import_export_consistency_mode" >> "$GITHUB_OUTPUT"
+          runtime_execution_summary_outputs="$(python3 - "$runtime_execution_summary_path" <<'PY'
+          import json
+          import sys
+          from pathlib import Path
+          
+          path = Path(sys.argv[1])
+          runtime_execution_evidence_summary = "n/a"
+          runtime_execution_evidence_missing_runtime_counts = "n/a"
+          try:
+              payload = json.loads(path.read_text(encoding="utf-8"))
+          except Exception:
+              payload = {}
+          
+          def _to_non_negative_int(value: object) -> int:
+              try:
+                  parsed = int(value)
+              except (TypeError, ValueError):
+                  return 0
+              return parsed if parsed >= 0 else 0
+          
+          if isinstance(payload, dict):
+              present = _to_non_negative_int(payload.get("runtime_evidence_path_present_count", 0))
+              exists = _to_non_negative_int(payload.get("runtime_evidence_exists_true_count", 0))
+              missing = _to_non_negative_int(payload.get("runtime_evidence_exists_false_count", 0))
+              unknown = _to_non_negative_int(payload.get("runtime_evidence_exists_unknown_count", 0))
+              runtime_execution_evidence_summary = (
+                  f"present:{present},exists:{exists},missing:{missing},unknown:{unknown}"
+              )
+          
+              counts_raw = payload.get("runtime_evidence_missing_runtime_counts", {})
+              if isinstance(counts_raw, dict):
+                  items = []
+                  for key in sorted(counts_raw.keys()):
+                      runtime_name = str(key).strip().lower()
+                      if not runtime_name:
+                          continue
+                      try:
+                          value = int(counts_raw[key])
+                      except (TypeError, ValueError):
+                          continue
+                      if value <= 0:
+                          continue
+                      items.append(f"{runtime_name}:{value}")
+                  runtime_execution_evidence_missing_runtime_counts = ",".join(items) if items else "n/a"
+          
+          print(f"runtime_execution_evidence_summary={runtime_execution_evidence_summary}")
+          print(
+              "runtime_execution_evidence_missing_runtime_counts="
+              f"{runtime_execution_evidence_missing_runtime_counts}"
+          )
+          PY
+          )"
+          while IFS= read -r output_line; do
+            if [ -n "$output_line" ]; then
+              echo "$output_line" >> "$GITHUB_OUTPUT"
+            fi
+          done <<< "$runtime_execution_summary_outputs"
+          runtime_evidence_compare_json_path="n/a"
+          runtime_evidence_compare_text_path="n/a"
+          runtime_evidence_compare_summary="n/a"
+          if [ "$runtime_count" -gt 1 ]; then
+            runtime_compare_paths="$(python3 - "$runtime_execution_summary_path" <<'PY'
+          import json
+          import sys
+          from pathlib import Path
+
+          path = Path(sys.argv[1])
+          awsim_path = ""
+          carla_path = ""
+          try:
+              payload = json.loads(path.read_text(encoding="utf-8"))
+          except Exception:
+              payload = {}
+
+          rows = payload.get("runtime_rows")
+          if isinstance(rows, list):
+              for row in rows:
+                  if not isinstance(row, dict):
+                      continue
+                  runtime_name = str(row.get("runtime", "")).strip().lower()
+                  evidence_path = str(row.get("runtime_evidence_path", "")).strip()
+                  if not evidence_path:
+                      continue
+                  if runtime_name == "awsim" and not awsim_path:
+                      awsim_path = evidence_path
+                  elif runtime_name == "carla" and not carla_path:
+                      carla_path = evidence_path
+
+          print(f"awsim={awsim_path}")
+          print(f"carla={carla_path}")
+          PY
+            )"
+            runtime_compare_awsim_path=""
+            runtime_compare_carla_path=""
+            while IFS= read -r output_line; do
+              case "$output_line" in
+                awsim=*)
+                  runtime_compare_awsim_path="${output_line#awsim=}"
+                  ;;
+                carla=*)
+                  runtime_compare_carla_path="${output_line#carla=}"
+                  ;;
+              esac
+            done <<< "$runtime_compare_paths"
+            if [ -n "$runtime_compare_awsim_path" ] && [ -n "$runtime_compare_carla_path" ] \
+              && [ -f "$runtime_compare_awsim_path" ] && [ -f "$runtime_compare_carla_path" ]; then
+              runtime_evidence_compare_json_path="30_Projects/P_Validation-Tooling-MVP/prototype/reports/${base_release_id}_runtime_evidence_compare.json"
+              runtime_evidence_compare_text_path="30_Projects/P_Validation-Tooling-MVP/prototype/reports/${base_release_id}_runtime_evidence_compare.txt"
+              python3 30_Projects/P_E2E_Stack/prototype/compare_runtime_evidence.py \
+                --left "$runtime_compare_awsim_path" \
+                --right "$runtime_compare_carla_path" \
+                --left-label awsim \
+                --right-label carla \
+                --out-json "$runtime_evidence_compare_json_path" \
+                --out-text "$runtime_evidence_compare_text_path"
+              runtime_evidence_compare_summary="$(python3 - "$runtime_evidence_compare_json_path" <<'PY'
+          import json
+          import sys
+          from pathlib import Path
+
+          path = Path(sys.argv[1])
+          summary = "n/a"
+          try:
+              payload = json.loads(path.read_text(encoding="utf-8"))
+          except Exception:
+              payload = {}
+
+          if isinstance(payload, dict):
+              diff = payload.get("diff")
+              if isinstance(diff, dict):
+                  top_level_mismatches = diff.get("top_level_mismatches", {})
+                  status_count_diffs = diff.get("status_count_diffs", {})
+                  runtime_count_diffs = diff.get("runtime_count_diffs", {})
+                  profile_diffs = diff.get("profile_diffs", [])
+                  summary = (
+                      "top_level_mismatches:{top},status_count_diffs:{status},"
+                      "runtime_count_diffs:{runtime},profile_diffs:{profiles}"
+                  ).format(
+                      top=len(top_level_mismatches) if isinstance(top_level_mismatches, dict) else 0,
+                      status=len(status_count_diffs) if isinstance(status_count_diffs, dict) else 0,
+                      runtime=len(runtime_count_diffs) if isinstance(runtime_count_diffs, dict) else 0,
+                      profiles=len(profile_diffs) if isinstance(profile_diffs, list) else 0,
+                  )
+
+          print(summary)
+          PY
+              )"
+            else
+              runtime_evidence_compare_summary="skipped:missing_runtime_evidence_paths"
+            fi
+          else
+            runtime_evidence_compare_summary="skipped:single_runtime"
+          fi
+          echo "runtime_evidence_compare_json_path=$runtime_evidence_compare_json_path" >> "$GITHUB_OUTPUT"
+          echo "runtime_evidence_compare_text_path=$runtime_evidence_compare_text_path" >> "$GITHUB_OUTPUT"
+          echo "runtime_evidence_compare_summary=$runtime_evidence_compare_summary" >> "$GITHUB_OUTPUT"
+          echo "resolved_lane=$resolved_lane" >> "$GITHUB_OUTPUT"
+          echo "runner_platform=${host_os}/${host_arch}" >> "$GITHUB_OUTPUT"
+          if [ "$runtime_failures" -gt 0 ]; then
+            exit 2
+          fi
+
+      - name: Publish runtime lane summary
+        id: publish_runtime_lane_summary
+        if: ${{ always() }}
+        shell: bash
+        env:
+          RUNTIME_RELEASE_ID: ${{ steps.run_lane.outputs.release_id }}
+          RUNTIME_RELEASE_IDS_CSV: ${{ steps.run_lane.outputs.release_ids_csv || '' }}
+          RUNTIME_LANE_INPUT: ${{ github.event.inputs.lane }}
+          RUNTIME_LANE_RESOLVED: ${{ steps.run_lane.outputs.resolved_lane || '' }}
+          RUNTIME_RUNNER_PLATFORM: ${{ steps.run_lane.outputs.runner_platform || '' }}
+          RUNTIME_SIM_RUNTIME_INPUT: ${{ github.event.inputs.sim_runtime }}
+          RUNTIME_SIM_RUNTIME_EFFECTIVE: ${{ steps.run_lane.outputs.runtimes_csv || '' }}
+          RUNTIME_DRY_RUN: ${{ github.event.inputs.dry_run }}
+          RUNTIME_CONTINUE_ON_FAILURE: ${{ github.event.inputs.continue_on_runtime_failure }}
+          RUNTIME_RESULTS_CSV: ${{ steps.run_lane.outputs.runtime_results_csv || '' }}
+          RUNTIME_FAILED_RUNTIMES_CSV: ${{ steps.run_lane.outputs.failed_runtimes_csv || '' }}
+          RUNTIME_EVIDENCE_MISSING_RUNTIMES_CSV: ${{ steps.run_lane.outputs.runtime_evidence_missing_runtimes_csv || '' }}
+          RUNTIME_EXECUTION_SUMMARY_PATH: ${{ steps.run_lane.outputs.runtime_execution_summary_path || '' }}
+          RUNTIME_EXECUTION_EVIDENCE_SUMMARY: ${{ steps.run_lane.outputs.runtime_execution_evidence_summary || 'n/a' }}
+          RUNTIME_EXECUTION_EVIDENCE_MISSING_RUNTIME_COUNTS: ${{ steps.run_lane.outputs.runtime_execution_evidence_missing_runtime_counts || 'n/a' }}
+          RUNTIME_EVIDENCE_COMPARE_JSON_PATH: ${{ steps.run_lane.outputs.runtime_evidence_compare_json_path || 'n/a' }}
+          RUNTIME_EVIDENCE_COMPARE_TEXT_PATH: ${{ steps.run_lane.outputs.runtime_evidence_compare_text_path || 'n/a' }}
+          RUNTIME_EVIDENCE_COMPARE_SUMMARY: ${{ steps.run_lane.outputs.runtime_evidence_compare_summary || 'n/a' }}
+          RUNTIME_EXEC_LANE_WARN_MIN_ROWS: ${{ steps.run_lane.outputs.runtime_exec_lane_warn_min_rows || '' }}
+          RUNTIME_EXEC_LANE_HOLD_MIN_ROWS: ${{ steps.run_lane.outputs.runtime_exec_lane_hold_min_rows || '' }}
+          RUNTIME_COMPARE_WARN_MIN_ARTIFACTS_WITH_DIFFS: ${{ steps.run_lane.outputs.runtime_evidence_compare_warn_min_artifacts_with_diffs || '' }}
+          RUNTIME_COMPARE_HOLD_MIN_ARTIFACTS_WITH_DIFFS: ${{ steps.run_lane.outputs.runtime_evidence_compare_hold_min_artifacts_with_diffs || '' }}
+          RUNTIME_COMPARE_WARN_MIN_INTEROP_IMPORT_MODE_DIFF_COUNT: ${{ steps.run_lane.outputs.runtime_evidence_compare_warn_min_interop_import_mode_diff_count || '' }}
+          RUNTIME_COMPARE_HOLD_MIN_INTEROP_IMPORT_MODE_DIFF_COUNT: ${{ steps.run_lane.outputs.runtime_evidence_compare_hold_min_interop_import_mode_diff_count || '' }}
+          RUNTIME_PHASE2_SENSOR_FIDELITY_SCORE_AVG_WARN_MIN: ${{ steps.run_lane.outputs.phase2_sensor_fidelity_score_avg_warn_min || '' }}
+          RUNTIME_PHASE2_SENSOR_FIDELITY_SCORE_AVG_HOLD_MIN: ${{ steps.run_lane.outputs.phase2_sensor_fidelity_score_avg_hold_min || '' }}
+          RUNTIME_PHASE2_SENSOR_FRAME_COUNT_AVG_WARN_MIN: ${{ steps.run_lane.outputs.phase2_sensor_frame_count_avg_warn_min || '' }}
+          RUNTIME_PHASE2_SENSOR_FRAME_COUNT_AVG_HOLD_MIN: ${{ steps.run_lane.outputs.phase2_sensor_frame_count_avg_hold_min || '' }}
+          RUNTIME_PHASE2_SENSOR_CAMERA_NOISE_STDDEV_PX_AVG_WARN_MAX: ${{ steps.run_lane.outputs.phase2_sensor_camera_noise_stddev_px_avg_warn_max || '' }}
+          RUNTIME_PHASE2_SENSOR_CAMERA_NOISE_STDDEV_PX_AVG_HOLD_MAX: ${{ steps.run_lane.outputs.phase2_sensor_camera_noise_stddev_px_avg_hold_max || '' }}
+          RUNTIME_PHASE2_SENSOR_LIDAR_POINT_COUNT_AVG_WARN_MIN: ${{ steps.run_lane.outputs.phase2_sensor_lidar_point_count_avg_warn_min || '' }}
+          RUNTIME_PHASE2_SENSOR_LIDAR_POINT_COUNT_AVG_HOLD_MIN: ${{ steps.run_lane.outputs.phase2_sensor_lidar_point_count_avg_hold_min || '' }}
+          RUNTIME_PHASE2_SENSOR_RADAR_FALSE_POSITIVE_RATE_AVG_WARN_MAX: ${{ steps.run_lane.outputs.phase2_sensor_radar_false_positive_rate_avg_warn_max || '' }}
+          RUNTIME_PHASE2_SENSOR_RADAR_FALSE_POSITIVE_RATE_AVG_HOLD_MAX: ${{ steps.run_lane.outputs.phase2_sensor_radar_false_positive_rate_avg_hold_max || '' }}
+          RUNTIME_INTEROP_EXPORT_ROAD_LENGTH_SCALE: ${{ steps.run_lane.outputs.runtime_interop_export_road_length_scale || '' }}
+          RUNTIME_INTEROP_CONTRACT_XOSC: ${{ steps.run_lane.outputs.runtime_interop_contract_xosc || '' }}
+          RUNTIME_INTEROP_CONTRACT_XODR: ${{ steps.run_lane.outputs.runtime_interop_contract_xodr || '' }}
+          RUNTIME_INTEROP_IMPORT_MANIFEST_CONSISTENCY_MODE: ${{ steps.run_lane.outputs.runtime_interop_import_manifest_consistency_mode || '' }}
+          RUNTIME_INTEROP_IMPORT_EXPORT_CONSISTENCY_MODE: ${{ steps.run_lane.outputs.runtime_interop_import_export_consistency_mode || '' }}
+          RUNTIME_INSTALL_DEPS: ${{ github.event.inputs.install_runtime_deps }}
+          RUNTIME_USE_CACHE: ${{ github.event.inputs.use_runtime_asset_cache }}
+          RUNTIME_CACHE_HIT: ${{ steps.runtime_asset_cache.outputs.cache-hit || '' }}
+          RUNTIME_MATRIX_PROFILE_IDS: ${{ github.event.inputs.matrix_profile_ids }}
+          RUNTIME_ASSET_PROFILE: ${{ github.event.inputs.runtime_asset_profile }}
+          RUNTIME_ASSET_ARCHIVE_SHA256_MODE: ${{ github.event.inputs.runtime_asset_archive_sha256_mode }}
+          RUNTIME_SCENARIO_CONTRACT_ENABLE_INPUT: ${{ github.event.inputs.runtime_scenario_contract_enable }}
+          RUNTIME_SCENARIO_CONTRACT_REQUIRE_RUNTIME_READY_INPUT: ${{ github.event.inputs.runtime_scenario_contract_require_runtime_ready }}
+          RUNTIME_SCENE_RESULT_ENABLE_INPUT: ${{ github.event.inputs.runtime_scene_result_enable }}
+          RUNTIME_SCENE_RESULT_REQUIRE_RUNTIME_READY_INPUT: ${{ github.event.inputs.runtime_scene_result_require_runtime_ready }}
+          RUNTIME_INTEROP_CONTRACT_ENABLE_INPUT: ${{ github.event.inputs.runtime_interop_contract_enable }}
+          RUNTIME_INTEROP_CONTRACT_REQUIRE_RUNTIME_READY_INPUT: ${{ github.event.inputs.runtime_interop_contract_require_runtime_ready }}
+          RUNTIME_INTEROP_EXPORT_ROAD_LENGTH_SCALE_INPUT: ${{ github.event.inputs.runtime_interop_export_road_length_scale }}
+          RUNTIME_INTEROP_CONTRACT_XOSC_INPUT: ${{ github.event.inputs.runtime_interop_contract_xosc }}
+          RUNTIME_INTEROP_CONTRACT_XODR_INPUT: ${{ github.event.inputs.runtime_interop_contract_xodr }}
+          RUNTIME_INTEROP_IMPORT_MANIFEST_CONSISTENCY_MODE_INPUT: ${{ github.event.inputs.runtime_interop_import_manifest_consistency_mode }}
+          RUNTIME_INTEROP_IMPORT_EXPORT_CONSISTENCY_MODE_INPUT: ${{ github.event.inputs.runtime_interop_import_export_consistency_mode }}
+          RUNTIME_NOTIFY_EXEC_WARN_MIN_INPUT: ${{ github.event.inputs.notify_runtime_lane_execution_warn_min_exec_rows }}
+          RUNTIME_NOTIFY_EXEC_HOLD_MIN_INPUT: ${{ github.event.inputs.notify_runtime_lane_execution_hold_min_exec_rows }}
+          RUNTIME_NOTIFY_COMPARE_WARN_MIN_INPUT: ${{ github.event.inputs.notify_runtime_evidence_compare_warn_min_artifacts_with_diffs }}
+          RUNTIME_NOTIFY_COMPARE_HOLD_MIN_INPUT: ${{ github.event.inputs.notify_runtime_evidence_compare_hold_min_artifacts_with_diffs }}
+          RUNTIME_NOTIFY_COMPARE_WARN_MIN_INTEROP_IMPORT_MODE_DIFF_COUNT_INPUT: ${{ github.event.inputs.notify_runtime_evidence_compare_warn_min_interop_import_mode_diff_count }}
+          RUNTIME_NOTIFY_COMPARE_HOLD_MIN_INTEROP_IMPORT_MODE_DIFF_COUNT_INPUT: ${{ github.event.inputs.notify_runtime_evidence_compare_hold_min_interop_import_mode_diff_count }}
+          RUNTIME_NOTIFY_PHASE2_SENSOR_FIDELITY_SCORE_AVG_WARN_MIN_INPUT: ${{ github.event.inputs.notify_phase2_sensor_fidelity_score_avg_warn_min }}
+          RUNTIME_NOTIFY_PHASE2_SENSOR_FIDELITY_SCORE_AVG_HOLD_MIN_INPUT: ${{ github.event.inputs.notify_phase2_sensor_fidelity_score_avg_hold_min }}
+          RUNTIME_NOTIFY_PHASE2_SENSOR_FRAME_COUNT_AVG_WARN_MIN_INPUT: ${{ github.event.inputs.notify_phase2_sensor_frame_count_avg_warn_min }}
+          RUNTIME_NOTIFY_PHASE2_SENSOR_FRAME_COUNT_AVG_HOLD_MIN_INPUT: ${{ github.event.inputs.notify_phase2_sensor_frame_count_avg_hold_min }}
+          RUNTIME_NOTIFY_PHASE2_SENSOR_CAMERA_NOISE_STDDEV_PX_AVG_WARN_MAX_INPUT: ${{ github.event.inputs.notify_phase2_sensor_camera_noise_stddev_px_avg_warn_max }}
+          RUNTIME_NOTIFY_PHASE2_SENSOR_CAMERA_NOISE_STDDEV_PX_AVG_HOLD_MAX_INPUT: ${{ github.event.inputs.notify_phase2_sensor_camera_noise_stddev_px_avg_hold_max }}
+          RUNTIME_NOTIFY_PHASE2_SENSOR_LIDAR_POINT_COUNT_AVG_WARN_MIN_INPUT: ${{ github.event.inputs.notify_phase2_sensor_lidar_point_count_avg_warn_min }}
+          RUNTIME_NOTIFY_PHASE2_SENSOR_LIDAR_POINT_COUNT_AVG_HOLD_MIN_INPUT: ${{ github.event.inputs.notify_phase2_sensor_lidar_point_count_avg_hold_min }}
+          RUNTIME_NOTIFY_PHASE2_SENSOR_RADAR_FALSE_POSITIVE_RATE_AVG_WARN_MAX_INPUT: ${{ github.event.inputs.notify_phase2_sensor_radar_false_positive_rate_avg_warn_max }}
+          RUNTIME_NOTIFY_PHASE2_SENSOR_RADAR_FALSE_POSITIVE_RATE_AVG_HOLD_MAX_INPUT: ${{ github.event.inputs.notify_phase2_sensor_radar_false_positive_rate_avg_hold_max }}
+          RUNTIME_THRESHOLD_DRIFT_FAIL_ON_HOLD_INPUT: ${{ github.event.inputs.runtime_threshold_drift_fail_on_hold }}
+          RUNTIME_NOTIFY_PHASE3_CONTROL_OVERLAP_RATIO_WARN_MAX_INPUT: ${{ github.event.inputs.notify_phase3_vehicle_control_overlap_ratio_warn_max }}
+          RUNTIME_NOTIFY_PHASE3_CONTROL_OVERLAP_RATIO_HOLD_MAX_INPUT: ${{ github.event.inputs.notify_phase3_vehicle_control_overlap_ratio_hold_max }}
+          RUNTIME_NOTIFY_PHASE3_CONTROL_STEERING_RATE_WARN_MAX_INPUT: ${{ github.event.inputs.notify_phase3_vehicle_control_steering_rate_warn_max }}
+          RUNTIME_NOTIFY_PHASE3_CONTROL_STEERING_RATE_HOLD_MAX_INPUT: ${{ github.event.inputs.notify_phase3_vehicle_control_steering_rate_hold_max }}
+          RUNTIME_NOTIFY_PHASE3_CONTROL_THROTTLE_PLUS_BRAKE_WARN_MAX_INPUT: ${{ github.event.inputs.notify_phase3_vehicle_control_throttle_plus_brake_warn_max }}
+          RUNTIME_NOTIFY_PHASE3_CONTROL_THROTTLE_PLUS_BRAKE_HOLD_MAX_INPUT: ${{ github.event.inputs.notify_phase3_vehicle_control_throttle_plus_brake_hold_max }}
+          RUNTIME_NOTIFY_PHASE3_SPEED_TRACKING_ERROR_WARN_MAX_INPUT: ${{ github.event.inputs.notify_phase3_vehicle_speed_tracking_error_warn_max }}
+          RUNTIME_NOTIFY_PHASE3_SPEED_TRACKING_ERROR_HOLD_MAX_INPUT: ${{ github.event.inputs.notify_phase3_vehicle_speed_tracking_error_hold_max }}
+          RUNTIME_NOTIFY_PHASE3_SPEED_TRACKING_ERROR_ABS_WARN_MAX_INPUT: ${{ github.event.inputs.notify_phase3_vehicle_speed_tracking_error_abs_warn_max }}
+          RUNTIME_NOTIFY_PHASE3_SPEED_TRACKING_ERROR_ABS_HOLD_MAX_INPUT: ${{ github.event.inputs.notify_phase3_vehicle_speed_tracking_error_abs_hold_max }}
+        run: |
+          set -euo pipefail
+          runtime_threshold_drift_detected="0"
+          runtime_threshold_drift_severity="NONE"
+          runtime_threshold_drift_summary=""
+          runtime_threshold_drift_reasons=""
+          runtime_threshold_drift_hold_detected="0"
+          runtime_threshold_drift_fail_gate="0"
+          runtime_threshold_drift_fail_on_hold_input="${RUNTIME_THRESHOLD_DRIFT_FAIL_ON_HOLD_INPUT:-0}"
+          if [ -z "$runtime_threshold_drift_fail_on_hold_input" ]; then
+            runtime_threshold_drift_fail_on_hold_input="0"
+          fi
+          case "$runtime_threshold_drift_fail_on_hold_input" in
+            0|1) ;;
+            *)
+              echo "[error] runtime_threshold_drift_fail_on_hold must be 0 or 1, got: ${runtime_threshold_drift_fail_on_hold_input}" >&2
+              exit 2
+              ;;
+          esac
+
+          append_runtime_threshold_drift() {
+            local detail="$1"
+            local reason="$2"
+            if [ -z "$runtime_threshold_drift_summary" ]; then
+              runtime_threshold_drift_summary="$detail"
+            else
+              runtime_threshold_drift_summary="${runtime_threshold_drift_summary}; ${detail}"
+            fi
+            if [ -z "$runtime_threshold_drift_reasons" ]; then
+              runtime_threshold_drift_reasons="$reason"
+            else
+              runtime_threshold_drift_reasons="${runtime_threshold_drift_reasons},${reason}"
+            fi
+          }
+
+          if [ -n "$RUNTIME_NOTIFY_EXEC_WARN_MIN_INPUT" ] && [ -n "$RUNTIME_EXEC_LANE_WARN_MIN_ROWS" ] && [ "$RUNTIME_NOTIFY_EXEC_WARN_MIN_INPUT" != "$RUNTIME_EXEC_LANE_WARN_MIN_ROWS" ]; then
+            append_runtime_threshold_drift \
+              "runtime_exec_lane_warn_min_rows input=${RUNTIME_NOTIFY_EXEC_WARN_MIN_INPUT} effective=${RUNTIME_EXEC_LANE_WARN_MIN_ROWS}" \
+              "runtime_exec_lane_warn_min_rows_input_effective_mismatch"
+          fi
+          if [ -n "$RUNTIME_NOTIFY_EXEC_HOLD_MIN_INPUT" ] && [ -n "$RUNTIME_EXEC_LANE_HOLD_MIN_ROWS" ] && [ "$RUNTIME_NOTIFY_EXEC_HOLD_MIN_INPUT" != "$RUNTIME_EXEC_LANE_HOLD_MIN_ROWS" ]; then
+            runtime_threshold_drift_hold_detected="1"
+            append_runtime_threshold_drift \
+              "runtime_exec_lane_hold_min_rows input=${RUNTIME_NOTIFY_EXEC_HOLD_MIN_INPUT} effective=${RUNTIME_EXEC_LANE_HOLD_MIN_ROWS}" \
+              "runtime_exec_lane_hold_min_rows_input_effective_mismatch"
+          fi
+          if [ -n "$RUNTIME_NOTIFY_COMPARE_WARN_MIN_INPUT" ] && [ -n "$RUNTIME_COMPARE_WARN_MIN_ARTIFACTS_WITH_DIFFS" ] && [ "$RUNTIME_NOTIFY_COMPARE_WARN_MIN_INPUT" != "$RUNTIME_COMPARE_WARN_MIN_ARTIFACTS_WITH_DIFFS" ]; then
+            append_runtime_threshold_drift \
+              "runtime_compare_warn_min_artifacts_with_diffs input=${RUNTIME_NOTIFY_COMPARE_WARN_MIN_INPUT} effective=${RUNTIME_COMPARE_WARN_MIN_ARTIFACTS_WITH_DIFFS}" \
+              "runtime_compare_warn_min_artifacts_with_diffs_input_effective_mismatch"
+          fi
+          if [ -n "$RUNTIME_NOTIFY_COMPARE_HOLD_MIN_INPUT" ] && [ -n "$RUNTIME_COMPARE_HOLD_MIN_ARTIFACTS_WITH_DIFFS" ] && [ "$RUNTIME_NOTIFY_COMPARE_HOLD_MIN_INPUT" != "$RUNTIME_COMPARE_HOLD_MIN_ARTIFACTS_WITH_DIFFS" ]; then
+            runtime_threshold_drift_hold_detected="1"
+            append_runtime_threshold_drift \
+              "runtime_compare_hold_min_artifacts_with_diffs input=${RUNTIME_NOTIFY_COMPARE_HOLD_MIN_INPUT} effective=${RUNTIME_COMPARE_HOLD_MIN_ARTIFACTS_WITH_DIFFS}" \
+              "runtime_compare_hold_min_artifacts_with_diffs_input_effective_mismatch"
+          fi
+          if [ -n "$RUNTIME_NOTIFY_COMPARE_WARN_MIN_INTEROP_IMPORT_MODE_DIFF_COUNT_INPUT" ] && [ -n "$RUNTIME_COMPARE_WARN_MIN_INTEROP_IMPORT_MODE_DIFF_COUNT" ] && [ "$RUNTIME_NOTIFY_COMPARE_WARN_MIN_INTEROP_IMPORT_MODE_DIFF_COUNT_INPUT" != "$RUNTIME_COMPARE_WARN_MIN_INTEROP_IMPORT_MODE_DIFF_COUNT" ]; then
+            append_runtime_threshold_drift \
+              "runtime_compare_warn_min_interop_import_mode_diff_count input=${RUNTIME_NOTIFY_COMPARE_WARN_MIN_INTEROP_IMPORT_MODE_DIFF_COUNT_INPUT} effective=${RUNTIME_COMPARE_WARN_MIN_INTEROP_IMPORT_MODE_DIFF_COUNT}" \
+              "runtime_compare_warn_min_interop_import_mode_diff_count_input_effective_mismatch"
+          fi
+          if [ -n "$RUNTIME_NOTIFY_COMPARE_HOLD_MIN_INTEROP_IMPORT_MODE_DIFF_COUNT_INPUT" ] && [ -n "$RUNTIME_COMPARE_HOLD_MIN_INTEROP_IMPORT_MODE_DIFF_COUNT" ] && [ "$RUNTIME_NOTIFY_COMPARE_HOLD_MIN_INTEROP_IMPORT_MODE_DIFF_COUNT_INPUT" != "$RUNTIME_COMPARE_HOLD_MIN_INTEROP_IMPORT_MODE_DIFF_COUNT" ]; then
+            runtime_threshold_drift_hold_detected="1"
+            append_runtime_threshold_drift \
+              "runtime_compare_hold_min_interop_import_mode_diff_count input=${RUNTIME_NOTIFY_COMPARE_HOLD_MIN_INTEROP_IMPORT_MODE_DIFF_COUNT_INPUT} effective=${RUNTIME_COMPARE_HOLD_MIN_INTEROP_IMPORT_MODE_DIFF_COUNT}" \
+              "runtime_compare_hold_min_interop_import_mode_diff_count_input_effective_mismatch"
+          fi
+          if [ -n "$RUNTIME_NOTIFY_PHASE2_SENSOR_FIDELITY_SCORE_AVG_WARN_MIN_INPUT" ] && [ -n "$RUNTIME_PHASE2_SENSOR_FIDELITY_SCORE_AVG_WARN_MIN" ] && [ "$RUNTIME_NOTIFY_PHASE2_SENSOR_FIDELITY_SCORE_AVG_WARN_MIN_INPUT" != "$RUNTIME_PHASE2_SENSOR_FIDELITY_SCORE_AVG_WARN_MIN" ]; then
+            append_runtime_threshold_drift \
+              "phase2_sensor_fidelity_score_avg_warn_min input=${RUNTIME_NOTIFY_PHASE2_SENSOR_FIDELITY_SCORE_AVG_WARN_MIN_INPUT} effective=${RUNTIME_PHASE2_SENSOR_FIDELITY_SCORE_AVG_WARN_MIN}" \
+              "phase2_sensor_fidelity_score_avg_warn_min_input_effective_mismatch"
+          fi
+          if [ -n "$RUNTIME_NOTIFY_PHASE2_SENSOR_FIDELITY_SCORE_AVG_HOLD_MIN_INPUT" ] && [ -n "$RUNTIME_PHASE2_SENSOR_FIDELITY_SCORE_AVG_HOLD_MIN" ] && [ "$RUNTIME_NOTIFY_PHASE2_SENSOR_FIDELITY_SCORE_AVG_HOLD_MIN_INPUT" != "$RUNTIME_PHASE2_SENSOR_FIDELITY_SCORE_AVG_HOLD_MIN" ]; then
+            runtime_threshold_drift_hold_detected="1"
+            append_runtime_threshold_drift \
+              "phase2_sensor_fidelity_score_avg_hold_min input=${RUNTIME_NOTIFY_PHASE2_SENSOR_FIDELITY_SCORE_AVG_HOLD_MIN_INPUT} effective=${RUNTIME_PHASE2_SENSOR_FIDELITY_SCORE_AVG_HOLD_MIN}" \
+              "phase2_sensor_fidelity_score_avg_hold_min_input_effective_mismatch"
+          fi
+          if [ -n "$RUNTIME_NOTIFY_PHASE2_SENSOR_FRAME_COUNT_AVG_WARN_MIN_INPUT" ] && [ -n "$RUNTIME_PHASE2_SENSOR_FRAME_COUNT_AVG_WARN_MIN" ] && [ "$RUNTIME_NOTIFY_PHASE2_SENSOR_FRAME_COUNT_AVG_WARN_MIN_INPUT" != "$RUNTIME_PHASE2_SENSOR_FRAME_COUNT_AVG_WARN_MIN" ]; then
+            append_runtime_threshold_drift \
+              "phase2_sensor_frame_count_avg_warn_min input=${RUNTIME_NOTIFY_PHASE2_SENSOR_FRAME_COUNT_AVG_WARN_MIN_INPUT} effective=${RUNTIME_PHASE2_SENSOR_FRAME_COUNT_AVG_WARN_MIN}" \
+              "phase2_sensor_frame_count_avg_warn_min_input_effective_mismatch"
+          fi
+          if [ -n "$RUNTIME_NOTIFY_PHASE2_SENSOR_FRAME_COUNT_AVG_HOLD_MIN_INPUT" ] && [ -n "$RUNTIME_PHASE2_SENSOR_FRAME_COUNT_AVG_HOLD_MIN" ] && [ "$RUNTIME_NOTIFY_PHASE2_SENSOR_FRAME_COUNT_AVG_HOLD_MIN_INPUT" != "$RUNTIME_PHASE2_SENSOR_FRAME_COUNT_AVG_HOLD_MIN" ]; then
+            runtime_threshold_drift_hold_detected="1"
+            append_runtime_threshold_drift \
+              "phase2_sensor_frame_count_avg_hold_min input=${RUNTIME_NOTIFY_PHASE2_SENSOR_FRAME_COUNT_AVG_HOLD_MIN_INPUT} effective=${RUNTIME_PHASE2_SENSOR_FRAME_COUNT_AVG_HOLD_MIN}" \
+              "phase2_sensor_frame_count_avg_hold_min_input_effective_mismatch"
+          fi
+          if [ -n "$RUNTIME_NOTIFY_PHASE2_SENSOR_CAMERA_NOISE_STDDEV_PX_AVG_WARN_MAX_INPUT" ] && [ -n "$RUNTIME_PHASE2_SENSOR_CAMERA_NOISE_STDDEV_PX_AVG_WARN_MAX" ] && [ "$RUNTIME_NOTIFY_PHASE2_SENSOR_CAMERA_NOISE_STDDEV_PX_AVG_WARN_MAX_INPUT" != "$RUNTIME_PHASE2_SENSOR_CAMERA_NOISE_STDDEV_PX_AVG_WARN_MAX" ]; then
+            append_runtime_threshold_drift \
+              "phase2_sensor_camera_noise_stddev_px_avg_warn_max input=${RUNTIME_NOTIFY_PHASE2_SENSOR_CAMERA_NOISE_STDDEV_PX_AVG_WARN_MAX_INPUT} effective=${RUNTIME_PHASE2_SENSOR_CAMERA_NOISE_STDDEV_PX_AVG_WARN_MAX}" \
+              "phase2_sensor_camera_noise_stddev_px_avg_warn_max_input_effective_mismatch"
+          fi
+          if [ -n "$RUNTIME_NOTIFY_PHASE2_SENSOR_CAMERA_NOISE_STDDEV_PX_AVG_HOLD_MAX_INPUT" ] && [ -n "$RUNTIME_PHASE2_SENSOR_CAMERA_NOISE_STDDEV_PX_AVG_HOLD_MAX" ] && [ "$RUNTIME_NOTIFY_PHASE2_SENSOR_CAMERA_NOISE_STDDEV_PX_AVG_HOLD_MAX_INPUT" != "$RUNTIME_PHASE2_SENSOR_CAMERA_NOISE_STDDEV_PX_AVG_HOLD_MAX" ]; then
+            runtime_threshold_drift_hold_detected="1"
+            append_runtime_threshold_drift \
+              "phase2_sensor_camera_noise_stddev_px_avg_hold_max input=${RUNTIME_NOTIFY_PHASE2_SENSOR_CAMERA_NOISE_STDDEV_PX_AVG_HOLD_MAX_INPUT} effective=${RUNTIME_PHASE2_SENSOR_CAMERA_NOISE_STDDEV_PX_AVG_HOLD_MAX}" \
+              "phase2_sensor_camera_noise_stddev_px_avg_hold_max_input_effective_mismatch"
+          fi
+          if [ -n "$RUNTIME_NOTIFY_PHASE2_SENSOR_LIDAR_POINT_COUNT_AVG_WARN_MIN_INPUT" ] && [ -n "$RUNTIME_PHASE2_SENSOR_LIDAR_POINT_COUNT_AVG_WARN_MIN" ] && [ "$RUNTIME_NOTIFY_PHASE2_SENSOR_LIDAR_POINT_COUNT_AVG_WARN_MIN_INPUT" != "$RUNTIME_PHASE2_SENSOR_LIDAR_POINT_COUNT_AVG_WARN_MIN" ]; then
+            append_runtime_threshold_drift \
+              "phase2_sensor_lidar_point_count_avg_warn_min input=${RUNTIME_NOTIFY_PHASE2_SENSOR_LIDAR_POINT_COUNT_AVG_WARN_MIN_INPUT} effective=${RUNTIME_PHASE2_SENSOR_LIDAR_POINT_COUNT_AVG_WARN_MIN}" \
+              "phase2_sensor_lidar_point_count_avg_warn_min_input_effective_mismatch"
+          fi
+          if [ -n "$RUNTIME_NOTIFY_PHASE2_SENSOR_LIDAR_POINT_COUNT_AVG_HOLD_MIN_INPUT" ] && [ -n "$RUNTIME_PHASE2_SENSOR_LIDAR_POINT_COUNT_AVG_HOLD_MIN" ] && [ "$RUNTIME_NOTIFY_PHASE2_SENSOR_LIDAR_POINT_COUNT_AVG_HOLD_MIN_INPUT" != "$RUNTIME_PHASE2_SENSOR_LIDAR_POINT_COUNT_AVG_HOLD_MIN" ]; then
+            runtime_threshold_drift_hold_detected="1"
+            append_runtime_threshold_drift \
+              "phase2_sensor_lidar_point_count_avg_hold_min input=${RUNTIME_NOTIFY_PHASE2_SENSOR_LIDAR_POINT_COUNT_AVG_HOLD_MIN_INPUT} effective=${RUNTIME_PHASE2_SENSOR_LIDAR_POINT_COUNT_AVG_HOLD_MIN}" \
+              "phase2_sensor_lidar_point_count_avg_hold_min_input_effective_mismatch"
+          fi
+          if [ -n "$RUNTIME_NOTIFY_PHASE2_SENSOR_RADAR_FALSE_POSITIVE_RATE_AVG_WARN_MAX_INPUT" ] && [ -n "$RUNTIME_PHASE2_SENSOR_RADAR_FALSE_POSITIVE_RATE_AVG_WARN_MAX" ] && [ "$RUNTIME_NOTIFY_PHASE2_SENSOR_RADAR_FALSE_POSITIVE_RATE_AVG_WARN_MAX_INPUT" != "$RUNTIME_PHASE2_SENSOR_RADAR_FALSE_POSITIVE_RATE_AVG_WARN_MAX" ]; then
+            append_runtime_threshold_drift \
+              "phase2_sensor_radar_false_positive_rate_avg_warn_max input=${RUNTIME_NOTIFY_PHASE2_SENSOR_RADAR_FALSE_POSITIVE_RATE_AVG_WARN_MAX_INPUT} effective=${RUNTIME_PHASE2_SENSOR_RADAR_FALSE_POSITIVE_RATE_AVG_WARN_MAX}" \
+              "phase2_sensor_radar_false_positive_rate_avg_warn_max_input_effective_mismatch"
+          fi
+          if [ -n "$RUNTIME_NOTIFY_PHASE2_SENSOR_RADAR_FALSE_POSITIVE_RATE_AVG_HOLD_MAX_INPUT" ] && [ -n "$RUNTIME_PHASE2_SENSOR_RADAR_FALSE_POSITIVE_RATE_AVG_HOLD_MAX" ] && [ "$RUNTIME_NOTIFY_PHASE2_SENSOR_RADAR_FALSE_POSITIVE_RATE_AVG_HOLD_MAX_INPUT" != "$RUNTIME_PHASE2_SENSOR_RADAR_FALSE_POSITIVE_RATE_AVG_HOLD_MAX" ]; then
+            runtime_threshold_drift_hold_detected="1"
+            append_runtime_threshold_drift \
+              "phase2_sensor_radar_false_positive_rate_avg_hold_max input=${RUNTIME_NOTIFY_PHASE2_SENSOR_RADAR_FALSE_POSITIVE_RATE_AVG_HOLD_MAX_INPUT} effective=${RUNTIME_PHASE2_SENSOR_RADAR_FALSE_POSITIVE_RATE_AVG_HOLD_MAX}" \
+              "phase2_sensor_radar_false_positive_rate_avg_hold_max_input_effective_mismatch"
+          fi
+
+          if [ -n "$runtime_threshold_drift_summary" ]; then
+            runtime_threshold_drift_detected="1"
+            if [ "$runtime_threshold_drift_hold_detected" = "1" ]; then
+              runtime_threshold_drift_severity="HOLD"
+            else
+              runtime_threshold_drift_severity="WARN"
+            fi
+            if [ "$runtime_threshold_drift_fail_on_hold_input" = "1" ] && [ "$runtime_threshold_drift_severity" = "HOLD" ]; then
+              runtime_threshold_drift_fail_gate="1"
+            fi
+            python3 30_Projects/P_E2E_Stack/prototype/write_ci_summary_section.py \
+              --title "Runtime Available Threshold Drift" \
+              --item "warning=detected" \
+              --item "detected=${runtime_threshold_drift_detected}" \
+              --item "severity=${runtime_threshold_drift_severity}" \
+              --item "summary=${runtime_threshold_drift_summary}" \
+              --item "reasons=${runtime_threshold_drift_reasons}"
+          fi
+
+          echo "runtime_threshold_drift_detected=$runtime_threshold_drift_detected" >> "$GITHUB_OUTPUT"
+          echo "runtime_threshold_drift_severity=$runtime_threshold_drift_severity" >> "$GITHUB_OUTPUT"
+          echo "runtime_threshold_drift_summary=$runtime_threshold_drift_summary" >> "$GITHUB_OUTPUT"
+          echo "runtime_threshold_drift_hold_detected=$runtime_threshold_drift_hold_detected" >> "$GITHUB_OUTPUT"
+          echo "runtime_threshold_drift_fail_on_hold_input=$runtime_threshold_drift_fail_on_hold_input" >> "$GITHUB_OUTPUT"
+          echo "runtime_threshold_drift_fail_gate=$runtime_threshold_drift_fail_gate" >> "$GITHUB_OUTPUT"
+
+          python3 30_Projects/P_E2E_Stack/prototype/write_ci_summary_section.py \
+            --title "Runtime Available Lane" \
+            --item "runtime_threshold_drift_detected=${runtime_threshold_drift_detected}" \
+            --item "runtime_threshold_drift_severity=${runtime_threshold_drift_severity}" \
+            --item "runtime_threshold_drift_summary=${runtime_threshold_drift_summary:-none}" \
+            --item "runtime_threshold_drift_reasons=${runtime_threshold_drift_reasons:-n/a}" \
+            --item "runtime_threshold_drift_hold_detected=${runtime_threshold_drift_hold_detected}" \
+            --item "runtime_threshold_drift_fail_on_hold_input=${runtime_threshold_drift_fail_on_hold_input}" \
+            --item "runtime_threshold_drift_fail_gate=${runtime_threshold_drift_fail_gate}" \
+            --item "release_id=${RUNTIME_RELEASE_ID}" \
+            --item "release_ids_csv=${RUNTIME_RELEASE_IDS_CSV}" \
+            --item "lane_input=${RUNTIME_LANE_INPUT}" \
+            --item "lane_resolved=${RUNTIME_LANE_RESOLVED}" \
+            --item "runner_platform=${RUNTIME_RUNNER_PLATFORM}" \
+            --item "sim_runtime_input=${RUNTIME_SIM_RUNTIME_INPUT}" \
+            --item "sim_runtime_effective=${RUNTIME_SIM_RUNTIME_EFFECTIVE}" \
+            --item "dry_run=${RUNTIME_DRY_RUN}" \
+            --item "continue_on_runtime_failure=${RUNTIME_CONTINUE_ON_FAILURE}" \
+            --item "runtime_results_csv=${RUNTIME_RESULTS_CSV}" \
+            --item "failed_runtimes_csv=${RUNTIME_FAILED_RUNTIMES_CSV}" \
+            --item "runtime_evidence_missing_runtimes_csv=${RUNTIME_EVIDENCE_MISSING_RUNTIMES_CSV}" \
+            --item "runtime_execution_summary_path=${RUNTIME_EXECUTION_SUMMARY_PATH}" \
+            --item "runtime_execution_evidence_missing_runtime_counts=${RUNTIME_EXECUTION_EVIDENCE_MISSING_RUNTIME_COUNTS}" \
+            --item "runtime_evidence_compare_json_path=${RUNTIME_EVIDENCE_COMPARE_JSON_PATH}" \
+            --item "runtime_evidence_compare_text_path=${RUNTIME_EVIDENCE_COMPARE_TEXT_PATH}" \
+            --item "runtime_evidence_compare_summary=${RUNTIME_EVIDENCE_COMPARE_SUMMARY}" \
+            --item "runtime_exec_lane_warn_min_rows_effective=${RUNTIME_EXEC_LANE_WARN_MIN_ROWS}" \
+            --item "runtime_exec_lane_hold_min_rows_effective=${RUNTIME_EXEC_LANE_HOLD_MIN_ROWS}" \
+            --item "runtime_exec_lane_warn_min_rows_input=${RUNTIME_NOTIFY_EXEC_WARN_MIN_INPUT}" \
+            --item "runtime_exec_lane_hold_min_rows_input=${RUNTIME_NOTIFY_EXEC_HOLD_MIN_INPUT}" \
+            --item "runtime_compare_warn_min_artifacts_with_diffs_effective=${RUNTIME_COMPARE_WARN_MIN_ARTIFACTS_WITH_DIFFS}" \
+            --item "runtime_compare_hold_min_artifacts_with_diffs_effective=${RUNTIME_COMPARE_HOLD_MIN_ARTIFACTS_WITH_DIFFS}" \
+            --item "runtime_compare_warn_min_artifacts_with_diffs_input=${RUNTIME_NOTIFY_COMPARE_WARN_MIN_INPUT}" \
+            --item "runtime_compare_hold_min_artifacts_with_diffs_input=${RUNTIME_NOTIFY_COMPARE_HOLD_MIN_INPUT}" \
+            --item "runtime_compare_warn_min_interop_import_mode_diff_count_effective=${RUNTIME_COMPARE_WARN_MIN_INTEROP_IMPORT_MODE_DIFF_COUNT}" \
+            --item "runtime_compare_hold_min_interop_import_mode_diff_count_effective=${RUNTIME_COMPARE_HOLD_MIN_INTEROP_IMPORT_MODE_DIFF_COUNT}" \
+            --item "runtime_compare_warn_min_interop_import_mode_diff_count_input=${RUNTIME_NOTIFY_COMPARE_WARN_MIN_INTEROP_IMPORT_MODE_DIFF_COUNT_INPUT}" \
+            --item "runtime_compare_hold_min_interop_import_mode_diff_count_input=${RUNTIME_NOTIFY_COMPARE_HOLD_MIN_INTEROP_IMPORT_MODE_DIFF_COUNT_INPUT}" \
+            --item "phase2_sensor_fidelity_score_avg_warn_min_effective=${RUNTIME_PHASE2_SENSOR_FIDELITY_SCORE_AVG_WARN_MIN}" \
+            --item "phase2_sensor_fidelity_score_avg_hold_min_effective=${RUNTIME_PHASE2_SENSOR_FIDELITY_SCORE_AVG_HOLD_MIN}" \
+            --item "phase2_sensor_fidelity_score_avg_warn_min_input=${RUNTIME_NOTIFY_PHASE2_SENSOR_FIDELITY_SCORE_AVG_WARN_MIN_INPUT}" \
+            --item "phase2_sensor_fidelity_score_avg_hold_min_input=${RUNTIME_NOTIFY_PHASE2_SENSOR_FIDELITY_SCORE_AVG_HOLD_MIN_INPUT}" \
+            --item "phase2_sensor_frame_count_avg_warn_min_effective=${RUNTIME_PHASE2_SENSOR_FRAME_COUNT_AVG_WARN_MIN}" \
+            --item "phase2_sensor_frame_count_avg_hold_min_effective=${RUNTIME_PHASE2_SENSOR_FRAME_COUNT_AVG_HOLD_MIN}" \
+            --item "phase2_sensor_frame_count_avg_warn_min_input=${RUNTIME_NOTIFY_PHASE2_SENSOR_FRAME_COUNT_AVG_WARN_MIN_INPUT}" \
+            --item "phase2_sensor_frame_count_avg_hold_min_input=${RUNTIME_NOTIFY_PHASE2_SENSOR_FRAME_COUNT_AVG_HOLD_MIN_INPUT}" \
+            --item "phase2_sensor_camera_noise_stddev_px_avg_warn_max_effective=${RUNTIME_PHASE2_SENSOR_CAMERA_NOISE_STDDEV_PX_AVG_WARN_MAX}" \
+            --item "phase2_sensor_camera_noise_stddev_px_avg_hold_max_effective=${RUNTIME_PHASE2_SENSOR_CAMERA_NOISE_STDDEV_PX_AVG_HOLD_MAX}" \
+            --item "phase2_sensor_camera_noise_stddev_px_avg_warn_max_input=${RUNTIME_NOTIFY_PHASE2_SENSOR_CAMERA_NOISE_STDDEV_PX_AVG_WARN_MAX_INPUT}" \
+            --item "phase2_sensor_camera_noise_stddev_px_avg_hold_max_input=${RUNTIME_NOTIFY_PHASE2_SENSOR_CAMERA_NOISE_STDDEV_PX_AVG_HOLD_MAX_INPUT}" \
+            --item "phase2_sensor_lidar_point_count_avg_warn_min_effective=${RUNTIME_PHASE2_SENSOR_LIDAR_POINT_COUNT_AVG_WARN_MIN}" \
+            --item "phase2_sensor_lidar_point_count_avg_hold_min_effective=${RUNTIME_PHASE2_SENSOR_LIDAR_POINT_COUNT_AVG_HOLD_MIN}" \
+            --item "phase2_sensor_lidar_point_count_avg_warn_min_input=${RUNTIME_NOTIFY_PHASE2_SENSOR_LIDAR_POINT_COUNT_AVG_WARN_MIN_INPUT}" \
+            --item "phase2_sensor_lidar_point_count_avg_hold_min_input=${RUNTIME_NOTIFY_PHASE2_SENSOR_LIDAR_POINT_COUNT_AVG_HOLD_MIN_INPUT}" \
+            --item "phase2_sensor_radar_false_positive_rate_avg_warn_max_effective=${RUNTIME_PHASE2_SENSOR_RADAR_FALSE_POSITIVE_RATE_AVG_WARN_MAX}" \
+            --item "phase2_sensor_radar_false_positive_rate_avg_hold_max_effective=${RUNTIME_PHASE2_SENSOR_RADAR_FALSE_POSITIVE_RATE_AVG_HOLD_MAX}" \
+            --item "phase2_sensor_radar_false_positive_rate_avg_warn_max_input=${RUNTIME_NOTIFY_PHASE2_SENSOR_RADAR_FALSE_POSITIVE_RATE_AVG_WARN_MAX_INPUT}" \
+            --item "phase2_sensor_radar_false_positive_rate_avg_hold_max_input=${RUNTIME_NOTIFY_PHASE2_SENSOR_RADAR_FALSE_POSITIVE_RATE_AVG_HOLD_MAX_INPUT}" \
+            --item "notify_phase3_vehicle_control_overlap_ratio_warn_max_input=${RUNTIME_NOTIFY_PHASE3_CONTROL_OVERLAP_RATIO_WARN_MAX_INPUT}" \
+            --item "notify_phase3_vehicle_control_overlap_ratio_hold_max_input=${RUNTIME_NOTIFY_PHASE3_CONTROL_OVERLAP_RATIO_HOLD_MAX_INPUT}" \
+            --item "notify_phase3_vehicle_control_steering_rate_warn_max_input=${RUNTIME_NOTIFY_PHASE3_CONTROL_STEERING_RATE_WARN_MAX_INPUT}" \
+            --item "notify_phase3_vehicle_control_steering_rate_hold_max_input=${RUNTIME_NOTIFY_PHASE3_CONTROL_STEERING_RATE_HOLD_MAX_INPUT}" \
+            --item "notify_phase3_vehicle_control_throttle_plus_brake_warn_max_input=${RUNTIME_NOTIFY_PHASE3_CONTROL_THROTTLE_PLUS_BRAKE_WARN_MAX_INPUT}" \
+            --item "notify_phase3_vehicle_control_throttle_plus_brake_hold_max_input=${RUNTIME_NOTIFY_PHASE3_CONTROL_THROTTLE_PLUS_BRAKE_HOLD_MAX_INPUT}" \
+            --item "notify_phase3_vehicle_speed_tracking_error_warn_max_input=${RUNTIME_NOTIFY_PHASE3_SPEED_TRACKING_ERROR_WARN_MAX_INPUT}" \
+            --item "notify_phase3_vehicle_speed_tracking_error_hold_max_input=${RUNTIME_NOTIFY_PHASE3_SPEED_TRACKING_ERROR_HOLD_MAX_INPUT}" \
+            --item "notify_phase3_vehicle_speed_tracking_error_abs_warn_max_input=${RUNTIME_NOTIFY_PHASE3_SPEED_TRACKING_ERROR_ABS_WARN_MAX_INPUT}" \
+            --item "notify_phase3_vehicle_speed_tracking_error_abs_hold_max_input=${RUNTIME_NOTIFY_PHASE3_SPEED_TRACKING_ERROR_ABS_HOLD_MAX_INPUT}" \
+            --item "install_runtime_deps=${RUNTIME_INSTALL_DEPS}" \
+            --item "use_runtime_asset_cache=${RUNTIME_USE_CACHE}" \
+            --item "runtime_asset_cache_hit=${RUNTIME_CACHE_HIT}" \
+            --item "matrix_profile_ids=${RUNTIME_MATRIX_PROFILE_IDS}" \
+            --item "runtime_asset_profile=${RUNTIME_ASSET_PROFILE}" \
+            --item "runtime_asset_archive_sha256_mode=${RUNTIME_ASSET_ARCHIVE_SHA256_MODE}" \
+            --item "runtime_scenario_contract_enable_input=${RUNTIME_SCENARIO_CONTRACT_ENABLE_INPUT}" \
+            --item "runtime_scenario_contract_require_runtime_ready_input=${RUNTIME_SCENARIO_CONTRACT_REQUIRE_RUNTIME_READY_INPUT}" \
+            --item "runtime_scene_result_enable_input=${RUNTIME_SCENE_RESULT_ENABLE_INPUT}" \
+            --item "runtime_scene_result_require_runtime_ready_input=${RUNTIME_SCENE_RESULT_REQUIRE_RUNTIME_READY_INPUT}" \
+            --item "runtime_interop_contract_enable_input=${RUNTIME_INTEROP_CONTRACT_ENABLE_INPUT}" \
+            --item "runtime_interop_contract_require_runtime_ready_input=${RUNTIME_INTEROP_CONTRACT_REQUIRE_RUNTIME_READY_INPUT}" \
+            --item "runtime_interop_export_road_length_scale_effective=${RUNTIME_INTEROP_EXPORT_ROAD_LENGTH_SCALE}" \
+            --item "runtime_interop_export_road_length_scale_input=${RUNTIME_INTEROP_EXPORT_ROAD_LENGTH_SCALE_INPUT}" \
+            --item "runtime_interop_contract_xosc_effective=${RUNTIME_INTEROP_CONTRACT_XOSC}" \
+            --item "runtime_interop_contract_xosc_input=${RUNTIME_INTEROP_CONTRACT_XOSC_INPUT}" \
+            --item "runtime_interop_contract_xodr_effective=${RUNTIME_INTEROP_CONTRACT_XODR}" \
+            --item "runtime_interop_contract_xodr_input=${RUNTIME_INTEROP_CONTRACT_XODR_INPUT}" \
+            --item "runtime_interop_import_manifest_consistency_mode_effective=${RUNTIME_INTEROP_IMPORT_MANIFEST_CONSISTENCY_MODE}" \
+            --item "runtime_interop_import_manifest_consistency_mode_input=${RUNTIME_INTEROP_IMPORT_MANIFEST_CONSISTENCY_MODE_INPUT}" \
+            --item "runtime_interop_import_export_consistency_mode_effective=${RUNTIME_INTEROP_IMPORT_EXPORT_CONSISTENCY_MODE}" \
+            --item "runtime_interop_import_export_consistency_mode_input=${RUNTIME_INTEROP_IMPORT_EXPORT_CONSISTENCY_MODE_INPUT}" \
+            --item "runtime_execution_evidence_summary=${RUNTIME_EXECUTION_EVIDENCE_SUMMARY}"
+
+      - name: Build runtime available CI summary
+        if: ${{ always() }}
+        shell: bash
+        env:
+          CI_SUMMARY_PROFILE: runtime_available
+          ARTIFACTS_ROOT: .
+          SUMMARY_FILES_ROOT: .
+          SUMMARY_FILES_SUBPATH: 30_Projects/P_Validation-Tooling-MVP/prototype/reports
+          PIPELINE_MANIFESTS_ROOT: .
+          PIPELINE_MANIFESTS_SUBPATH: 30_Projects/P_Cloud-Engine/prototype/batch_runs
+          RELEASE_PREFIX: ${{ steps.run_lane.outputs.release_prefix || steps.run_lane.outputs.release_id }}
+          SUMMARY_TITLE: Runtime Available CI Summary
+          WORKFLOW_NAME: E2E Runtime Available Lane
+          SUMMARY_OUT_TEXT: runtime_available_release_diff.txt
+          SUMMARY_OUT_JSON: runtime_available_release_summary.json
+          SUMMARY_OUT_DB: runtime_available_release_summary.sqlite
+          NOTIFICATION_OUT_JSON: runtime_available_notification_payload.json
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          NOTIFY_ON: ${{ github.event.inputs.notify_on }}
+          NOTIFY_FORMAT: ${{ github.event.inputs.notify_format }}
+          WEBHOOK_URL: ${{ secrets.E2E_NOTIFICATION_WEBHOOK_URL }}
+          NOTIFY_TIMEOUT_SEC: ${{ github.event.inputs.notify_timeout_sec }}
+          NOTIFY_MAX_RETRIES: ${{ github.event.inputs.notify_max_retries }}
+          NOTIFY_RETRY_BACKOFF_SEC: ${{ github.event.inputs.notify_retry_backoff_sec }}
+          NOTIFY_RUNTIME_LANE_EXECUTION_WARN_MIN_EXEC_ROWS: ${{ steps.run_lane.outputs.runtime_exec_lane_warn_min_rows || '0' }}
+          NOTIFY_RUNTIME_LANE_EXECUTION_HOLD_MIN_EXEC_ROWS: ${{ steps.run_lane.outputs.runtime_exec_lane_hold_min_rows || '0' }}
+          NOTIFY_RUNTIME_EVIDENCE_COMPARE_WARN_MIN_ARTIFACTS_WITH_DIFFS: ${{ steps.run_lane.outputs.runtime_evidence_compare_warn_min_artifacts_with_diffs || '0' }}
+          NOTIFY_RUNTIME_EVIDENCE_COMPARE_HOLD_MIN_ARTIFACTS_WITH_DIFFS: ${{ steps.run_lane.outputs.runtime_evidence_compare_hold_min_artifacts_with_diffs || '0' }}
+          NOTIFY_RUNTIME_EVIDENCE_COMPARE_WARN_MIN_INTEROP_IMPORT_MODE_DIFF_COUNT: ${{ steps.run_lane.outputs.runtime_evidence_compare_warn_min_interop_import_mode_diff_count || '0' }}
+          NOTIFY_RUNTIME_EVIDENCE_COMPARE_HOLD_MIN_INTEROP_IMPORT_MODE_DIFF_COUNT: ${{ steps.run_lane.outputs.runtime_evidence_compare_hold_min_interop_import_mode_diff_count || '0' }}
+          NOTIFY_PHASE2_SENSOR_FIDELITY_SCORE_AVG_WARN_MIN: ${{ steps.run_lane.outputs.phase2_sensor_fidelity_score_avg_warn_min || '0' }}
+          NOTIFY_PHASE2_SENSOR_FIDELITY_SCORE_AVG_HOLD_MIN: ${{ steps.run_lane.outputs.phase2_sensor_fidelity_score_avg_hold_min || '0' }}
+          NOTIFY_PHASE2_SENSOR_FRAME_COUNT_AVG_WARN_MIN: ${{ steps.run_lane.outputs.phase2_sensor_frame_count_avg_warn_min || '0' }}
+          NOTIFY_PHASE2_SENSOR_FRAME_COUNT_AVG_HOLD_MIN: ${{ steps.run_lane.outputs.phase2_sensor_frame_count_avg_hold_min || '0' }}
+          NOTIFY_PHASE2_SENSOR_CAMERA_NOISE_STDDEV_PX_AVG_WARN_MAX: ${{ steps.run_lane.outputs.phase2_sensor_camera_noise_stddev_px_avg_warn_max || '0' }}
+          NOTIFY_PHASE2_SENSOR_CAMERA_NOISE_STDDEV_PX_AVG_HOLD_MAX: ${{ steps.run_lane.outputs.phase2_sensor_camera_noise_stddev_px_avg_hold_max || '0' }}
+          NOTIFY_PHASE2_SENSOR_LIDAR_POINT_COUNT_AVG_WARN_MIN: ${{ steps.run_lane.outputs.phase2_sensor_lidar_point_count_avg_warn_min || '0' }}
+          NOTIFY_PHASE2_SENSOR_LIDAR_POINT_COUNT_AVG_HOLD_MIN: ${{ steps.run_lane.outputs.phase2_sensor_lidar_point_count_avg_hold_min || '0' }}
+          NOTIFY_PHASE2_SENSOR_RADAR_FALSE_POSITIVE_RATE_AVG_WARN_MAX: ${{ steps.run_lane.outputs.phase2_sensor_radar_false_positive_rate_avg_warn_max || '0' }}
+          NOTIFY_PHASE2_SENSOR_RADAR_FALSE_POSITIVE_RATE_AVG_HOLD_MAX: ${{ steps.run_lane.outputs.phase2_sensor_radar_false_positive_rate_avg_hold_max || '0' }}
+          NOTIFY_FAIL_ON_RUNTIME_THRESHOLD_DRIFT_HOLD: ${{ github.event.inputs.runtime_threshold_drift_fail_on_hold }}
+          NOTIFY_FAIL_ON_PHASE2_LOG_REPLAY_THRESHOLD_HOLD: ${{ github.event.inputs.phase2_log_replay_threshold_fail_on_hold }}
+          NOTIFY_FAIL_ON_RUNTIME_NATIVE_SMOKE_THRESHOLD_HOLD: ${{ github.event.inputs.runtime_native_smoke_threshold_fail_on_hold }}
+          NOTIFY_FAIL_ON_RUNTIME_NATIVE_EVIDENCE_COMPARE_THRESHOLD_HOLD: ${{ github.event.inputs.runtime_native_evidence_compare_threshold_fail_on_hold }}
+          NOTIFY_PHASE3_VEHICLE_CONTROL_OVERLAP_RATIO_WARN_MAX: ${{ github.event.inputs.notify_phase3_vehicle_control_overlap_ratio_warn_max }}
+          NOTIFY_PHASE3_VEHICLE_CONTROL_OVERLAP_RATIO_HOLD_MAX: ${{ github.event.inputs.notify_phase3_vehicle_control_overlap_ratio_hold_max }}
+          NOTIFY_PHASE3_VEHICLE_CONTROL_STEERING_RATE_WARN_MAX: ${{ github.event.inputs.notify_phase3_vehicle_control_steering_rate_warn_max }}
+          NOTIFY_PHASE3_VEHICLE_CONTROL_STEERING_RATE_HOLD_MAX: ${{ github.event.inputs.notify_phase3_vehicle_control_steering_rate_hold_max }}
+          NOTIFY_PHASE3_VEHICLE_CONTROL_THROTTLE_PLUS_BRAKE_WARN_MAX: ${{ github.event.inputs.notify_phase3_vehicle_control_throttle_plus_brake_warn_max }}
+          NOTIFY_PHASE3_VEHICLE_CONTROL_THROTTLE_PLUS_BRAKE_HOLD_MAX: ${{ github.event.inputs.notify_phase3_vehicle_control_throttle_plus_brake_hold_max }}
+          NOTIFY_PHASE3_VEHICLE_SPEED_TRACKING_ERROR_WARN_MAX: ${{ github.event.inputs.notify_phase3_vehicle_speed_tracking_error_warn_max }}
+          NOTIFY_PHASE3_VEHICLE_SPEED_TRACKING_ERROR_HOLD_MAX: ${{ github.event.inputs.notify_phase3_vehicle_speed_tracking_error_hold_max }}
+          NOTIFY_PHASE3_VEHICLE_SPEED_TRACKING_ERROR_ABS_WARN_MAX: ${{ github.event.inputs.notify_phase3_vehicle_speed_tracking_error_abs_warn_max }}
+          NOTIFY_PHASE3_VEHICLE_SPEED_TRACKING_ERROR_ABS_HOLD_MAX: ${{ github.event.inputs.notify_phase3_vehicle_speed_tracking_error_abs_hold_max }}
+        run: |
+          set -euo pipefail
+          bash 30_Projects/P_E2E_Stack/prototype/run_ci_summary_entry.sh
+
+      - name: Upload runtime artifacts
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-runtime-available-${{ steps.run_lane.outputs.release_id }}
+          if-no-files-found: warn
+          path: |
+            e2e_pipeline.log
+            runtime_available_release_diff.txt
+            runtime_available_release_summary.json
+            runtime_available_release_summary.sqlite
+            runtime_available_notification_payload.json
+            30_Projects/P_Cloud-Engine/prototype/batch_runs
+            30_Projects/P_Sim-Engine/prototype/runs
+            30_Projects/P_Validation-Tooling-MVP/prototype/reports
+
+  runtime-native-docker-auto-smoke:
+    if: ${{ github.event.inputs.runtime_native_docker_auto_enable != '0' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    outputs:
+      release_id: ${{ steps.run_runtime_native.outputs.release_id }}
+      target: ${{ steps.run_runtime_native.outputs.target }}
+      dry_run: ${{ steps.run_runtime_native.outputs.dry_run }}
+      sim_runtime: ${{ steps.run_runtime_native.outputs.sim_runtime }}
+      manifest_path: ${{ steps.run_runtime_native.outputs.manifest_path }}
+      manifest_paths: ${{ steps.run_runtime_native.outputs.manifest_paths }}
+      manifest_rows_total: ${{ steps.run_runtime_native.outputs.manifest_rows_total }}
+      manifest_pass_count: ${{ steps.run_runtime_native.outputs.manifest_pass_count }}
+      manifest_partial_count: ${{ steps.run_runtime_native.outputs.manifest_partial_count }}
+      manifest_fail_count: ${{ steps.run_runtime_native.outputs.manifest_fail_count }}
+      manifest_missing_count: ${{ steps.run_runtime_native.outputs.manifest_missing_count }}
+      manifest_runtime_results: ${{ steps.run_runtime_native.outputs.manifest_runtime_results }}
+      manifest_missing_runtimes: ${{ steps.run_runtime_native.outputs.manifest_missing_runtimes }}
+      manifest_overall_result: ${{ steps.run_runtime_native.outputs.manifest_overall_result }}
+      summary_compare_path: ${{ steps.run_runtime_native.outputs.summary_compare_path }}
+      summary_compare_artifact_count: ${{ steps.run_runtime_native.outputs.summary_compare_artifact_count }}
+      summary_compare_with_diffs: ${{ steps.run_runtime_native.outputs.summary_compare_with_diffs }}
+      summary_compare_without_diffs: ${{ steps.run_runtime_native.outputs.summary_compare_without_diffs }}
+      summary_compare_status: ${{ steps.run_runtime_native.outputs.summary_compare_status }}
+      summary_compare_issue: ${{ steps.run_runtime_native.outputs.summary_compare_issue }}
+      summary_compare_enforcement_failed: ${{ steps.run_runtime_native.outputs.summary_compare_enforcement_failed }}
+      evidence_compare_path: ${{ steps.run_runtime_native.outputs.evidence_compare_path }}
+      evidence_compare_text_path: ${{ steps.run_runtime_native.outputs.evidence_compare_text_path }}
+      evidence_compare_summary: ${{ steps.run_runtime_native.outputs.evidence_compare_summary }}
+      runtime_interop_contract_xosc: ${{ steps.run_runtime_native.outputs.runtime_interop_contract_xosc }}
+      runtime_interop_contract_xodr: ${{ steps.run_runtime_native.outputs.runtime_interop_contract_xodr }}
+      runtime_interop_import_manifest_consistency_mode: ${{ steps.run_runtime_native.outputs.runtime_interop_import_manifest_consistency_mode }}
+      runtime_interop_import_export_consistency_mode: ${{ steps.run_runtime_native.outputs.runtime_interop_import_export_consistency_mode }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Run runtime-native docker auto smoke
+        id: run_runtime_native
+        shell: bash
+        env:
+          INPUT_RELEASE_ID: ${{ github.event.inputs.release_id }}
+          INPUT_DRY_RUN: ${{ github.event.inputs.runtime_native_docker_auto_dry_run }}
+          INPUT_SIM_RUNTIME: ${{ github.event.inputs.runtime_native_sim_runtime }}
+          INPUT_RUNTIME_NATIVE_SUMMARY_COMPARE_FAIL_ON_MISSING: ${{ github.event.inputs.runtime_native_summary_compare_fail_on_missing }}
+          INPUT_RUNTIME_NATIVE_SUMMARY_COMPARE_FAIL_ON_DIFFS: ${{ github.event.inputs.runtime_native_summary_compare_fail_on_diffs }}
+          INPUT_RUNTIME_SCENARIO_CONTRACT_ENABLE: ${{ github.event.inputs.runtime_scenario_contract_enable }}
+          INPUT_RUNTIME_SCENARIO_CONTRACT_REQUIRE_RUNTIME_READY: ${{ github.event.inputs.runtime_scenario_contract_require_runtime_ready }}
+          INPUT_RUNTIME_SCENE_RESULT_ENABLE: ${{ github.event.inputs.runtime_scene_result_enable }}
+          INPUT_RUNTIME_SCENE_RESULT_REQUIRE_RUNTIME_READY: ${{ github.event.inputs.runtime_scene_result_require_runtime_ready }}
+          INPUT_RUNTIME_INTEROP_CONTRACT_ENABLE: ${{ github.event.inputs.runtime_interop_contract_enable }}
+          INPUT_RUNTIME_INTEROP_CONTRACT_REQUIRE_RUNTIME_READY: ${{ github.event.inputs.runtime_interop_contract_require_runtime_ready }}
+          INPUT_RUNTIME_INTEROP_EXPORT_ROAD_LENGTH_SCALE: ${{ github.event.inputs.runtime_interop_export_road_length_scale }}
+          INPUT_RUNTIME_INTEROP_CONTRACT_XOSC: ${{ github.event.inputs.runtime_interop_contract_xosc }}
+          INPUT_RUNTIME_INTEROP_CONTRACT_XODR: ${{ github.event.inputs.runtime_interop_contract_xodr }}
+          INPUT_RUNTIME_INTEROP_IMPORT_MANIFEST_CONSISTENCY_MODE: ${{ github.event.inputs.runtime_interop_import_manifest_consistency_mode }}
+          INPUT_RUNTIME_INTEROP_IMPORT_EXPORT_CONSISTENCY_MODE: ${{ github.event.inputs.runtime_interop_import_export_consistency_mode }}
+          FALLBACK_RUN_ID: ${{ github.run_id }}
+          FALLBACK_RUN_ATTEMPT: ${{ github.run_attempt }}
+        run: |
+          set -euo pipefail
+
+          case "$INPUT_DRY_RUN" in
+            0|1) ;;
+            *)
+              echo "[error] runtime_native_docker_auto_dry_run must be 0 or 1, got: $INPUT_DRY_RUN" >&2
+              exit 2
+              ;;
+          esac
+          case "$INPUT_RUNTIME_NATIVE_SUMMARY_COMPARE_FAIL_ON_MISSING" in
+            0|1) ;;
+            *)
+              echo "[error] runtime_native_summary_compare_fail_on_missing must be 0 or 1, got: $INPUT_RUNTIME_NATIVE_SUMMARY_COMPARE_FAIL_ON_MISSING" >&2
+              exit 2
+              ;;
+          esac
+          case "$INPUT_RUNTIME_NATIVE_SUMMARY_COMPARE_FAIL_ON_DIFFS" in
+            0|1) ;;
+            *)
+              echo "[error] runtime_native_summary_compare_fail_on_diffs must be 0 or 1, got: $INPUT_RUNTIME_NATIVE_SUMMARY_COMPARE_FAIL_ON_DIFFS" >&2
+              exit 2
+              ;;
+          esac
+          case "$INPUT_RUNTIME_SCENARIO_CONTRACT_REQUIRE_RUNTIME_READY" in
+            0|1) ;;
+            *)
+              echo "[error] runtime_scenario_contract_require_runtime_ready must be 0 or 1, got: $INPUT_RUNTIME_SCENARIO_CONTRACT_REQUIRE_RUNTIME_READY" >&2
+              exit 2
+              ;;
+          esac
+          case "$INPUT_RUNTIME_SCENE_RESULT_REQUIRE_RUNTIME_READY" in
+            0|1) ;;
+            *)
+              echo "[error] runtime_scene_result_require_runtime_ready must be 0 or 1, got: $INPUT_RUNTIME_SCENE_RESULT_REQUIRE_RUNTIME_READY" >&2
+              exit 2
+              ;;
+          esac
+          case "$INPUT_RUNTIME_INTEROP_CONTRACT_REQUIRE_RUNTIME_READY" in
+            0|1) ;;
+            *)
+              echo "[error] runtime_interop_contract_require_runtime_ready must be 0 or 1, got: $INPUT_RUNTIME_INTEROP_CONTRACT_REQUIRE_RUNTIME_READY" >&2
+              exit 2
+              ;;
+          esac
+          case "$INPUT_RUNTIME_INTEROP_IMPORT_MANIFEST_CONSISTENCY_MODE" in
+            require|allow) ;;
+            *)
+              echo "[error] runtime_interop_import_manifest_consistency_mode must be one of: require, allow; got: $INPUT_RUNTIME_INTEROP_IMPORT_MANIFEST_CONSISTENCY_MODE" >&2
+              exit 2
+              ;;
+          esac
+          case "$INPUT_RUNTIME_INTEROP_IMPORT_EXPORT_CONSISTENCY_MODE" in
+            require|allow) ;;
+            *)
+              echo "[error] runtime_interop_import_export_consistency_mode must be one of: require, allow; got: $INPUT_RUNTIME_INTEROP_IMPORT_EXPORT_CONSISTENCY_MODE" >&2
+              exit 2
+              ;;
+          esac
+
+          case "$INPUT_SIM_RUNTIME" in
+            awsim|carla|both) ;;
+            *)
+              echo "[error] runtime_native_sim_runtime must be one of: awsim, carla, both; got: $INPUT_SIM_RUNTIME" >&2
+              exit 2
+              ;;
+          esac
+
+          runtime_release_id="$INPUT_RELEASE_ID"
+          if [ -z "$runtime_release_id" ]; then
+            runtime_release_id="REL_RUNTIME_NATIVE_DOCKER_AUTO_${FALLBACK_RUN_ID}_${FALLBACK_RUN_ATTEMPT}"
+          else
+            runtime_release_id="${runtime_release_id}_RNATIVE"
+          fi
+
+          runtime_interop_export_road_length_scale="$INPUT_RUNTIME_INTEROP_EXPORT_ROAD_LENGTH_SCALE"
+          if [ -z "$runtime_interop_export_road_length_scale" ]; then
+            runtime_interop_export_road_length_scale="1.0"
+          fi
+          workspace_root="$(pwd -P)"
+          runtime_interop_contract_xosc="$INPUT_RUNTIME_INTEROP_CONTRACT_XOSC"
+          if [ -z "$runtime_interop_contract_xosc" ]; then
+            runtime_interop_contract_xosc="${workspace_root}/30_Projects/P_Sim-Engine/prototype/examples/openscenario_minimal_v0.xosc"
+          elif [ "${runtime_interop_contract_xosc#/}" = "$runtime_interop_contract_xosc" ]; then
+            runtime_interop_contract_xosc="${workspace_root}/${runtime_interop_contract_xosc}"
+          fi
+          runtime_interop_contract_xodr="$INPUT_RUNTIME_INTEROP_CONTRACT_XODR"
+          if [ -z "$runtime_interop_contract_xodr" ]; then
+            runtime_interop_contract_xodr="${workspace_root}/30_Projects/P_Sim-Engine/prototype/examples/opendrive_minimal_v0.xodr"
+          elif [ "${runtime_interop_contract_xodr#/}" = "$runtime_interop_contract_xodr" ]; then
+            runtime_interop_contract_xodr="${workspace_root}/${runtime_interop_contract_xodr}"
+          fi
+          runtime_interop_import_manifest_consistency_mode="$INPUT_RUNTIME_INTEROP_IMPORT_MANIFEST_CONSISTENCY_MODE"
+          if [ -z "$runtime_interop_import_manifest_consistency_mode" ]; then
+            runtime_interop_import_manifest_consistency_mode="allow"
+          fi
+          runtime_interop_import_export_consistency_mode="$INPUT_RUNTIME_INTEROP_IMPORT_EXPORT_CONSISTENCY_MODE"
+          if [ -z "$runtime_interop_import_export_consistency_mode" ]; then
+            runtime_interop_import_export_consistency_mode="allow"
+          fi
+
+          target="pipeline-runtime-native-entry-smoke-docker-linux-auto"
+          if [ "$INPUT_SIM_RUNTIME" = "both" ]; then
+            target="pipeline-runtime-native-entry-smoke-auto-both-compare-summary"
+          fi
+          if [ "$INPUT_DRY_RUN" = "1" ]; then
+            if [ "$INPUT_SIM_RUNTIME" = "both" ]; then
+              target="pipeline-runtime-native-entry-smoke-auto-both-compare-summary-dry-run"
+            else
+              target="pipeline-runtime-native-entry-smoke-docker-linux-auto-dry-run"
+            fi
+          fi
+
+          echo "release_id=$runtime_release_id" >> "$GITHUB_OUTPUT"
+          echo "target=$target" >> "$GITHUB_OUTPUT"
+          echo "dry_run=$INPUT_DRY_RUN" >> "$GITHUB_OUTPUT"
+          echo "sim_runtime=$INPUT_SIM_RUNTIME" >> "$GITHUB_OUTPUT"
+          echo "runtime_interop_contract_xosc=$runtime_interop_contract_xosc" >> "$GITHUB_OUTPUT"
+          echo "runtime_interop_contract_xodr=$runtime_interop_contract_xodr" >> "$GITHUB_OUTPUT"
+          echo "runtime_interop_import_manifest_consistency_mode=$runtime_interop_import_manifest_consistency_mode" >> "$GITHUB_OUTPUT"
+          echo "runtime_interop_import_export_consistency_mode=$runtime_interop_import_export_consistency_mode" >> "$GITHUB_OUTPUT"
+          echo "[info] runtime-native docker auto target=${target} sim_runtime=${INPUT_SIM_RUNTIME} release_id=${runtime_release_id}"
+
+          make -C 30_Projects/P_E2E_Stack/prototype "$target" \
+            RELEASE_ID="$runtime_release_id" \
+            RUNTIME_NATIVE_ENTRY_SIM_RUNTIME="$INPUT_SIM_RUNTIME" \
+            RUNTIME_NATIVE_ENTRY_SIM_RUNTIME_PROBE_ENABLE="1" \
+            RUNTIME_NATIVE_ENTRY_SIM_RUNTIME_PROBE_EXECUTE="0" \
+            RUNTIME_NATIVE_ENTRY_SIM_RUNTIME_PROBE_REQUIRE_AVAILABILITY="0" \
+            RUNTIME_NATIVE_ENTRY_SIM_RUNTIME_SCENARIO_CONTRACT_ENABLE="$INPUT_RUNTIME_SCENARIO_CONTRACT_ENABLE" \
+            RUNTIME_NATIVE_ENTRY_SIM_RUNTIME_SCENARIO_CONTRACT_REQUIRE_RUNTIME_READY="$INPUT_RUNTIME_SCENARIO_CONTRACT_REQUIRE_RUNTIME_READY" \
+            RUNTIME_NATIVE_ENTRY_SIM_RUNTIME_SCENE_RESULT_ENABLE="$INPUT_RUNTIME_SCENE_RESULT_ENABLE" \
+            RUNTIME_NATIVE_ENTRY_SIM_RUNTIME_SCENE_RESULT_REQUIRE_RUNTIME_READY="$INPUT_RUNTIME_SCENE_RESULT_REQUIRE_RUNTIME_READY" \
+            RUNTIME_NATIVE_ENTRY_SIM_RUNTIME_INTEROP_CONTRACT_ENABLE="$INPUT_RUNTIME_INTEROP_CONTRACT_ENABLE" \
+            RUNTIME_NATIVE_ENTRY_SIM_RUNTIME_INTEROP_CONTRACT_REQUIRE_RUNTIME_READY="$INPUT_RUNTIME_INTEROP_CONTRACT_REQUIRE_RUNTIME_READY" \
+            RUNTIME_NATIVE_ENTRY_SIM_RUNTIME_INTEROP_EXPORT_ROAD_LENGTH_SCALE="$runtime_interop_export_road_length_scale" \
+            RUNTIME_NATIVE_ENTRY_SIM_RUNTIME_INTEROP_CONTRACT_XOSC="$runtime_interop_contract_xosc" \
+            RUNTIME_NATIVE_ENTRY_SIM_RUNTIME_INTEROP_CONTRACT_XODR="$runtime_interop_contract_xodr" \
+            RUNTIME_NATIVE_ENTRY_SIM_RUNTIME_INTEROP_IMPORT_MANIFEST_CONSISTENCY_MODE="$runtime_interop_import_manifest_consistency_mode" \
+            RUNTIME_NATIVE_ENTRY_SIM_RUNTIME_INTEROP_IMPORT_EXPORT_CONSISTENCY_MODE="$runtime_interop_import_export_consistency_mode" \
+            RUNTIME_NATIVE_ENTRY_AUTO_FORCE_LANE="docker" \
+            RUNTIME_NATIVE_ENTRY_PHASE4_ENABLE_HOOKS="0" \
+            RUNTIME_NATIVE_ENTRY_PHASE4_REQUIRE_DONE="0"
+
+          manifest_path=""
+          manifest_paths=""
+          manifest_rows_total="0"
+          manifest_pass_count="0"
+          manifest_partial_count="0"
+          manifest_fail_count="0"
+          manifest_missing_count="0"
+          manifest_runtime_results=""
+          manifest_missing_runtimes=""
+          manifest_overall_result="n/a"
+          summary_compare_path=""
+          summary_compare_artifact_count="0"
+          summary_compare_with_diffs="0"
+          summary_compare_without_diffs="0"
+          summary_compare_status="n/a"
+          summary_compare_issue="not_applicable_single_runtime"
+          summary_compare_enforcement_failed="0"
+          evidence_compare_path=""
+          evidence_compare_text_path=""
+          evidence_compare_summary="not_applicable_single_runtime"
+          if [ "$INPUT_SIM_RUNTIME" = "both" ]; then
+            summary_compare_status="pending"
+            summary_compare_issue="awaiting_compare_evaluation"
+            evidence_compare_summary="pending"
+          fi
+          if [ "$INPUT_DRY_RUN" != "1" ]; then
+            if [ "$INPUT_SIM_RUNTIME" = "both" ]; then
+              both_manifest_metrics="$(python3 - "$runtime_release_id" <<'PY'
+          import json
+          import sys
+          from pathlib import Path
+
+          base_release_id = str(sys.argv[1]).strip()
+          root = Path("30_Projects/P_Cloud-Engine/prototype/batch_runs")
+          targets = [f"{base_release_id}_awsim", f"{base_release_id}_carla"]
+          selected_paths = {target: "" for target in targets}
+          latest_mtimes = {target: -1.0 for target in targets}
+          if root.exists():
+              for path in root.rglob("pipeline_result.json"):
+                  try:
+                      payload = json.loads(path.read_text(encoding="utf-8"))
+                  except Exception:
+                      continue
+                  release_id = str(payload.get("release_id", "")).strip()
+                  if release_id not in selected_paths:
+                      continue
+                  try:
+                      mtime = path.stat().st_mtime
+                  except OSError:
+                      mtime = -1.0
+                  if mtime >= latest_mtimes[release_id]:
+                      latest_mtimes[release_id] = mtime
+                      selected_paths[release_id] = str(path.resolve())
+
+          found_paths = []
+          pass_count = 0
+          partial_count = 0
+          fail_count = 0
+          missing_count = 0
+          runtime_result_tokens = []
+          missing_runtime_tokens = []
+          for target in targets:
+              runtime_name = target.rsplit("_", 1)[-1]
+              manifest_path = selected_paths.get(target, "")
+              if not manifest_path:
+                  missing_count += 1
+                  runtime_result_tokens.append(f"{runtime_name}:missing")
+                  missing_runtime_tokens.append(runtime_name)
+                  continue
+              found_paths.append(manifest_path)
+              overall_result = "n/a"
+              try:
+                  payload = json.loads(Path(manifest_path).read_text(encoding="utf-8"))
+              except Exception:
+                  payload = {}
+              if isinstance(payload, dict):
+                  raw = payload.get("overall_result")
+                  if isinstance(raw, str) and raw.strip():
+                      overall_result = raw.strip().lower()
+              if overall_result == "pass":
+                  pass_count += 1
+              elif overall_result == "fail":
+                  fail_count += 1
+              elif overall_result in {"partial", "warn", "hold"}:
+                  overall_result = "partial"
+                  partial_count += 1
+              else:
+                  overall_result = "partial"
+                  partial_count += 1
+              runtime_result_tokens.append(f"{runtime_name}:{overall_result}")
+
+          found_count = len(found_paths)
+          if fail_count > 0:
+              overall = "fail"
+          elif partial_count > 0:
+              overall = "partial"
+          elif pass_count == len(targets):
+              overall = "pass"
+          else:
+              overall = "n/a"
+
+          first_path = found_paths[0] if found_paths else ""
+          joined_paths = "|".join(found_paths)
+          runtime_results_text = "|".join(runtime_result_tokens)
+          missing_runtimes_text = ",".join(missing_runtime_tokens)
+          print(f"manifest_path={first_path}")
+          print(f"manifest_paths={joined_paths}")
+          print(f"manifest_rows_total={found_count}")
+          print(f"manifest_pass_count={pass_count}")
+          print(f"manifest_partial_count={partial_count}")
+          print(f"manifest_fail_count={fail_count}")
+          print(f"manifest_missing_count={missing_count}")
+          print(f"manifest_runtime_results={runtime_results_text}")
+          print(f"manifest_missing_runtimes={missing_runtimes_text}")
+          print(f"manifest_overall_result={overall}")
+          PY
+          )"
+              while IFS='=' read -r key value; do
+                case "$key" in
+                  manifest_path) manifest_path="$value" ;;
+                  manifest_paths) manifest_paths="$value" ;;
+                  manifest_rows_total) manifest_rows_total="$value" ;;
+                  manifest_pass_count) manifest_pass_count="$value" ;;
+                  manifest_partial_count) manifest_partial_count="$value" ;;
+                  manifest_fail_count) manifest_fail_count="$value" ;;
+                  manifest_missing_count) manifest_missing_count="$value" ;;
+                  manifest_runtime_results) manifest_runtime_results="$value" ;;
+                  manifest_missing_runtimes) manifest_missing_runtimes="$value" ;;
+                  manifest_overall_result) manifest_overall_result="$value" ;;
+                esac
+              done <<EOF
+          $both_manifest_metrics
+          EOF
+            else
+              manifest_path="$(python3 - "$runtime_release_id" <<'PY'
+          import json
+          import sys
+          from pathlib import Path
+
+          target_release_id = str(sys.argv[1]).strip()
+          root = Path("30_Projects/P_Cloud-Engine/prototype/batch_runs")
+          selected = ""
+          latest_mtime = -1.0
+          if root.exists():
+              for path in root.rglob("pipeline_result.json"):
+                  try:
+                      payload = json.loads(path.read_text(encoding="utf-8"))
+                  except Exception:
+                      continue
+                  release_id = str(payload.get("release_id", "")).strip()
+                  if release_id != target_release_id:
+                      continue
+                  try:
+                      mtime = path.stat().st_mtime
+                  except OSError:
+                      mtime = -1.0
+                  if mtime >= latest_mtime:
+                      latest_mtime = mtime
+                      selected = str(path.resolve())
+          print(selected)
+          PY
+          )"
+              if [ -n "$manifest_path" ] && [ -f "$manifest_path" ]; then
+                manifest_overall_result="$(python3 - "$manifest_path" <<'PY'
+          import json
+          import sys
+          from pathlib import Path
+
+          value = "n/a"
+          try:
+              payload = json.loads(Path(sys.argv[1]).read_text(encoding="utf-8"))
+          except Exception:
+              payload = {}
+          if isinstance(payload, dict):
+              raw = payload.get("overall_result")
+              if isinstance(raw, str) and raw.strip():
+                  value = raw.strip()
+          print(value)
+          PY
+          )"
+                manifest_paths="$manifest_path"
+                manifest_rows_total="1"
+                case "$manifest_overall_result" in
+                  pass) manifest_pass_count="1" ;;
+                  partial|warn|hold) manifest_partial_count="1" ;;
+                  fail) manifest_fail_count="1" ;;
+                  *) manifest_partial_count="1" ;;
+                esac
+                manifest_runtime_results="${INPUT_SIM_RUNTIME}:${manifest_overall_result}"
+              else
+                manifest_missing_count="1"
+                manifest_runtime_results="${INPUT_SIM_RUNTIME}:missing"
+                manifest_missing_runtimes="${INPUT_SIM_RUNTIME}"
+              fi
+            fi
+            if [ "$INPUT_SIM_RUNTIME" = "both" ]; then
+              summary_compare_status="missing"
+              summary_compare_issue="summary_compare_file_missing"
+              candidate_summary_compare_path="30_Projects/P_Validation-Tooling-MVP/prototype/reports/${runtime_release_id}_runtime_native_both_compare_e2e.summary.json"
+              summary_compare_eval_json="$(mktemp)"
+              summary_compare_eval_issue_sentinel="__EMPTY__"
+              if [ -f "$candidate_summary_compare_path" ]; then
+                summary_compare_path="$candidate_summary_compare_path"
+              fi
+              summary_compare_eval_rc=0
+              python3 30_Projects/P_E2E_Stack/prototype/check_runtime_native_summary_compare_strict.py \
+                --summary-json "$candidate_summary_compare_path" \
+                --fail-on-missing "$INPUT_RUNTIME_NATIVE_SUMMARY_COMPARE_FAIL_ON_MISSING" \
+                --fail-on-diffs "$INPUT_RUNTIME_NATIVE_SUMMARY_COMPARE_FAIL_ON_DIFFS" \
+                --out-json "$summary_compare_eval_json" \
+                || summary_compare_eval_rc=$?
+              summary_compare_eval_values="$(python3 - "$summary_compare_eval_json" "$summary_compare_eval_issue_sentinel" <<'PY'
+          import json
+          import sys
+          from pathlib import Path
+
+          payload = {}
+          issue_sentinel = str(sys.argv[2]).strip() or "__EMPTY__"
+          try:
+              payload = json.loads(Path(sys.argv[1]).read_text(encoding="utf-8"))
+          except Exception:
+              payload = {}
+          if not isinstance(payload, dict):
+              payload = {}
+
+          def as_int(name: str, default: int) -> int:
+              try:
+                  return int(payload.get(name, default))
+              except Exception:
+                  return default
+
+          def as_text(name: str, default: str) -> str:
+              raw = payload.get(name, default)
+              token = str(raw).strip()
+              if token:
+                  return token
+              return default
+
+          artifact_count = str(as_int("artifact_count", 0))
+          with_diffs = str(as_int("with_diffs", 0))
+          without_diffs = str(as_int("without_diffs", 0))
+          status = as_text("status", "invalid")
+          issue = str(payload.get("issue", "")).strip()
+          if not issue:
+              issue = issue_sentinel
+          enforcement_failed = str(1 if as_int("enforcement_failed", 0) > 0 else 0)
+          print("\t".join((artifact_count, with_diffs, without_diffs, status, issue, enforcement_failed)))
+          PY
+          )"
+              if [ -n "$summary_compare_eval_values" ]; then
+                summary_compare_artifact_count="${summary_compare_eval_values%%$'\t'*}"
+                summary_compare_eval_values_remainder="${summary_compare_eval_values#*$'\t'}"
+                summary_compare_with_diffs="${summary_compare_eval_values_remainder%%$'\t'*}"
+                summary_compare_eval_values_remainder="${summary_compare_eval_values_remainder#*$'\t'}"
+                summary_compare_without_diffs="${summary_compare_eval_values_remainder%%$'\t'*}"
+                summary_compare_eval_values_remainder="${summary_compare_eval_values_remainder#*$'\t'}"
+                summary_compare_status="${summary_compare_eval_values_remainder%%$'\t'*}"
+                summary_compare_eval_values_remainder="${summary_compare_eval_values_remainder#*$'\t'}"
+                summary_compare_issue="${summary_compare_eval_values_remainder%%$'\t'*}"
+                summary_compare_enforcement_failed="${summary_compare_eval_values_remainder#*$'\t'}"
+              fi
+              if [ "$summary_compare_issue" = "$summary_compare_eval_issue_sentinel" ]; then
+                summary_compare_issue=""
+              fi
+              if [ "$summary_compare_eval_rc" -ne 0 ] && [ "$summary_compare_enforcement_failed" != "1" ]; then
+                summary_compare_enforcement_failed="1"
+                  if [ -z "$summary_compare_issue" ]; then
+                    summary_compare_issue="summary_compare_policy_check_failed"
+                  fi
+                  echo "[error] runtime-native summary-compare policy check execution failed: rc=${summary_compare_eval_rc}" >&2
+                fi
+                candidate_evidence_compare_path="30_Projects/P_Validation-Tooling-MVP/prototype/reports/${runtime_release_id}_runtime_native_both_evidence_compare.json"
+                candidate_evidence_compare_text_path="30_Projects/P_Validation-Tooling-MVP/prototype/reports/${runtime_release_id}_runtime_native_both_evidence_compare.txt"
+                if [ -f "$candidate_evidence_compare_path" ]; then
+                  evidence_compare_path="$candidate_evidence_compare_path"
+                  if [ -f "$candidate_evidence_compare_text_path" ]; then
+                    evidence_compare_text_path="$candidate_evidence_compare_text_path"
+                  fi
+                  evidence_compare_summary="$(python3 - "$candidate_evidence_compare_path" <<'PY'
+          import json
+          import sys
+          from pathlib import Path
+
+          summary = "invalid:unreadable_json"
+          try:
+              payload = json.loads(Path(sys.argv[1]).read_text(encoding="utf-8"))
+          except Exception:
+              payload = {}
+          if isinstance(payload, dict):
+              diff = payload.get("diff")
+              if isinstance(diff, dict):
+                  def count_dict(name: str) -> int:
+                      value = diff.get(name, {})
+                      return len(value) if isinstance(value, dict) else 0
+
+                  def count_list(name: str) -> int:
+                      value = diff.get(name, [])
+                      return len(value) if isinstance(value, list) else 0
+
+                  interop_mode_diffs = (
+                      count_dict("interop_import_manifest_mode_count_diffs")
+                      + count_dict("interop_import_export_mode_count_diffs")
+                      + count_dict("interop_import_require_manifest_input_count_diffs")
+                      + count_dict("interop_import_require_export_input_count_diffs")
+                  )
+                  summary = (
+                      "top_level_mismatches:{top},status_count_diffs:{status},runtime_count_diffs:{runtime},"
+                      "interop_import_mode_diffs:{interop_mode},profile_diffs:{profiles},"
+                      "interop_import_profile_diffs:{interop_profiles}"
+                  ).format(
+                      top=count_dict("top_level_mismatches"),
+                      status=count_dict("status_count_diffs"),
+                      runtime=count_dict("runtime_count_diffs"),
+                      interop_mode=interop_mode_diffs,
+                      profiles=count_list("profile_diffs"),
+                      interop_profiles=count_list("interop_import_profile_diffs"),
+                  )
+          print(summary)
+          PY
+                  )"
+                else
+                  evidence_compare_summary="missing:runtime_native_both_evidence_compare_file"
+                fi
+              fi
+          elif [ "$INPUT_SIM_RUNTIME" = "both" ]; then
+            summary_compare_status="dry_run"
+            summary_compare_issue="summary_compare_not_evaluated_in_dry_run"
+            evidence_compare_summary="dry_run:runtime_native_both_evidence_compare_not_evaluated"
+          fi
+          echo "manifest_path=$manifest_path" >> "$GITHUB_OUTPUT"
+          echo "manifest_paths=$manifest_paths" >> "$GITHUB_OUTPUT"
+          echo "manifest_rows_total=$manifest_rows_total" >> "$GITHUB_OUTPUT"
+          echo "manifest_pass_count=$manifest_pass_count" >> "$GITHUB_OUTPUT"
+          echo "manifest_partial_count=$manifest_partial_count" >> "$GITHUB_OUTPUT"
+          echo "manifest_fail_count=$manifest_fail_count" >> "$GITHUB_OUTPUT"
+          echo "manifest_missing_count=$manifest_missing_count" >> "$GITHUB_OUTPUT"
+          echo "manifest_runtime_results=$manifest_runtime_results" >> "$GITHUB_OUTPUT"
+          echo "manifest_missing_runtimes=$manifest_missing_runtimes" >> "$GITHUB_OUTPUT"
+          echo "manifest_overall_result=$manifest_overall_result" >> "$GITHUB_OUTPUT"
+          echo "evidence_compare_path=$evidence_compare_path" >> "$GITHUB_OUTPUT"
+          echo "evidence_compare_text_path=$evidence_compare_text_path" >> "$GITHUB_OUTPUT"
+          echo "evidence_compare_summary=$evidence_compare_summary" >> "$GITHUB_OUTPUT"
+          echo "summary_compare_path=$summary_compare_path" >> "$GITHUB_OUTPUT"
+          echo "summary_compare_artifact_count=$summary_compare_artifact_count" >> "$GITHUB_OUTPUT"
+          echo "summary_compare_with_diffs=$summary_compare_with_diffs" >> "$GITHUB_OUTPUT"
+          echo "summary_compare_without_diffs=$summary_compare_without_diffs" >> "$GITHUB_OUTPUT"
+          echo "summary_compare_status=$summary_compare_status" >> "$GITHUB_OUTPUT"
+          echo "summary_compare_issue=$summary_compare_issue" >> "$GITHUB_OUTPUT"
+          echo "summary_compare_enforcement_failed=$summary_compare_enforcement_failed" >> "$GITHUB_OUTPUT"
+          if [ "$summary_compare_enforcement_failed" = "1" ]; then
+            exit 1
+          fi
+
+      - name: Publish runtime-native docker auto summary
+        if: ${{ always() }}
+        shell: bash
+        env:
+          RUNTIME_NATIVE_JOB_RESULT: ${{ job.status }}
+          RUNTIME_NATIVE_STEP_OUTCOME: ${{ steps.run_runtime_native.outcome }}
+          RUNTIME_NATIVE_RELEASE_ID: ${{ steps.run_runtime_native.outputs.release_id || '' }}
+          RUNTIME_NATIVE_TARGET: ${{ steps.run_runtime_native.outputs.target || '' }}
+          RUNTIME_NATIVE_DRY_RUN: ${{ steps.run_runtime_native.outputs.dry_run || '' }}
+          RUNTIME_NATIVE_SIM_RUNTIME: ${{ steps.run_runtime_native.outputs.sim_runtime || '' }}
+          RUNTIME_NATIVE_MANIFEST_PATH: ${{ steps.run_runtime_native.outputs.manifest_path || '' }}
+          RUNTIME_NATIVE_MANIFEST_PATHS: ${{ steps.run_runtime_native.outputs.manifest_paths || '' }}
+          RUNTIME_NATIVE_MANIFEST_ROWS_TOTAL: ${{ steps.run_runtime_native.outputs.manifest_rows_total || '0' }}
+          RUNTIME_NATIVE_MANIFEST_PASS_COUNT: ${{ steps.run_runtime_native.outputs.manifest_pass_count || '0' }}
+          RUNTIME_NATIVE_MANIFEST_PARTIAL_COUNT: ${{ steps.run_runtime_native.outputs.manifest_partial_count || '0' }}
+          RUNTIME_NATIVE_MANIFEST_FAIL_COUNT: ${{ steps.run_runtime_native.outputs.manifest_fail_count || '0' }}
+          RUNTIME_NATIVE_MANIFEST_MISSING_COUNT: ${{ steps.run_runtime_native.outputs.manifest_missing_count || '0' }}
+          RUNTIME_NATIVE_MANIFEST_RUNTIME_RESULTS: ${{ steps.run_runtime_native.outputs.manifest_runtime_results || '' }}
+          RUNTIME_NATIVE_MANIFEST_MISSING_RUNTIMES: ${{ steps.run_runtime_native.outputs.manifest_missing_runtimes || '' }}
+          RUNTIME_NATIVE_MANIFEST_OVERALL_RESULT: ${{ steps.run_runtime_native.outputs.manifest_overall_result || 'n/a' }}
+          RUNTIME_NATIVE_EVIDENCE_COMPARE_PATH: ${{ steps.run_runtime_native.outputs.evidence_compare_path || '' }}
+          RUNTIME_NATIVE_EVIDENCE_COMPARE_TEXT_PATH: ${{ steps.run_runtime_native.outputs.evidence_compare_text_path || '' }}
+          RUNTIME_NATIVE_EVIDENCE_COMPARE_SUMMARY: ${{ steps.run_runtime_native.outputs.evidence_compare_summary || '' }}
+          RUNTIME_NATIVE_SUMMARY_COMPARE_PATH: ${{ steps.run_runtime_native.outputs.summary_compare_path || '' }}
+          RUNTIME_NATIVE_SUMMARY_COMPARE_ARTIFACT_COUNT: ${{ steps.run_runtime_native.outputs.summary_compare_artifact_count || '0' }}
+          RUNTIME_NATIVE_SUMMARY_COMPARE_WITH_DIFFS: ${{ steps.run_runtime_native.outputs.summary_compare_with_diffs || '0' }}
+          RUNTIME_NATIVE_SUMMARY_COMPARE_WITHOUT_DIFFS: ${{ steps.run_runtime_native.outputs.summary_compare_without_diffs || '0' }}
+          RUNTIME_NATIVE_SUMMARY_COMPARE_STATUS: ${{ steps.run_runtime_native.outputs.summary_compare_status || 'n/a' }}
+          RUNTIME_NATIVE_SUMMARY_COMPARE_ISSUE: ${{ steps.run_runtime_native.outputs.summary_compare_issue || '' }}
+          RUNTIME_NATIVE_SUMMARY_COMPARE_ENFORCEMENT_FAILED: ${{ steps.run_runtime_native.outputs.summary_compare_enforcement_failed || '0' }}
+          RUNTIME_NATIVE_SUMMARY_COMPARE_FAIL_ON_MISSING_INPUT: ${{ github.event.inputs.runtime_native_summary_compare_fail_on_missing }}
+          RUNTIME_NATIVE_SUMMARY_COMPARE_FAIL_ON_DIFFS_INPUT: ${{ github.event.inputs.runtime_native_summary_compare_fail_on_diffs }}
+          RUNTIME_NATIVE_INTEROP_CONTRACT_XOSC: ${{ steps.run_runtime_native.outputs.runtime_interop_contract_xosc || '' }}
+          RUNTIME_NATIVE_INTEROP_CONTRACT_XODR: ${{ steps.run_runtime_native.outputs.runtime_interop_contract_xodr || '' }}
+          RUNTIME_NATIVE_INTEROP_CONTRACT_XOSC_INPUT: ${{ github.event.inputs.runtime_interop_contract_xosc }}
+          RUNTIME_NATIVE_INTEROP_CONTRACT_XODR_INPUT: ${{ github.event.inputs.runtime_interop_contract_xodr }}
+          RUNTIME_NATIVE_INTEROP_IMPORT_MANIFEST_CONSISTENCY_MODE: ${{ steps.run_runtime_native.outputs.runtime_interop_import_manifest_consistency_mode || '' }}
+          RUNTIME_NATIVE_INTEROP_IMPORT_EXPORT_CONSISTENCY_MODE: ${{ steps.run_runtime_native.outputs.runtime_interop_import_export_consistency_mode || '' }}
+          RUNTIME_NATIVE_INTEROP_IMPORT_MANIFEST_CONSISTENCY_MODE_INPUT: ${{ github.event.inputs.runtime_interop_import_manifest_consistency_mode }}
+          RUNTIME_NATIVE_INTEROP_IMPORT_EXPORT_CONSISTENCY_MODE_INPUT: ${{ github.event.inputs.runtime_interop_import_export_consistency_mode }}
+        run: |
+          set -euo pipefail
+          python3 30_Projects/P_E2E_Stack/prototype/write_ci_summary_section.py \
+            --title "Runtime Native Docker Auto Smoke" \
+            --item "job_result=${RUNTIME_NATIVE_JOB_RESULT}" \
+            --item "step_outcome=${RUNTIME_NATIVE_STEP_OUTCOME}" \
+            --item "release_id=${RUNTIME_NATIVE_RELEASE_ID}" \
+            --item "target=${RUNTIME_NATIVE_TARGET}" \
+            --item "dry_run=${RUNTIME_NATIVE_DRY_RUN}" \
+            --item "sim_runtime=${RUNTIME_NATIVE_SIM_RUNTIME}" \
+            --item "manifest_path=${RUNTIME_NATIVE_MANIFEST_PATH:-n/a}" \
+            --item "manifest_paths=${RUNTIME_NATIVE_MANIFEST_PATHS:-n/a}" \
+            --item "manifest_rows_total=${RUNTIME_NATIVE_MANIFEST_ROWS_TOTAL}" \
+            --item "manifest_pass_count=${RUNTIME_NATIVE_MANIFEST_PASS_COUNT}" \
+            --item "manifest_partial_count=${RUNTIME_NATIVE_MANIFEST_PARTIAL_COUNT}" \
+            --item "manifest_fail_count=${RUNTIME_NATIVE_MANIFEST_FAIL_COUNT}" \
+            --item "manifest_missing_count=${RUNTIME_NATIVE_MANIFEST_MISSING_COUNT}" \
+            --item "manifest_runtime_results=${RUNTIME_NATIVE_MANIFEST_RUNTIME_RESULTS:-n/a}" \
+            --item "manifest_missing_runtimes=${RUNTIME_NATIVE_MANIFEST_MISSING_RUNTIMES:-n/a}" \
+            --item "manifest_overall_result=${RUNTIME_NATIVE_MANIFEST_OVERALL_RESULT}" \
+            --item "evidence_compare_path=${RUNTIME_NATIVE_EVIDENCE_COMPARE_PATH:-n/a}" \
+            --item "evidence_compare_text_path=${RUNTIME_NATIVE_EVIDENCE_COMPARE_TEXT_PATH:-n/a}" \
+            --item "evidence_compare_summary=${RUNTIME_NATIVE_EVIDENCE_COMPARE_SUMMARY:-n/a}" \
+            --item "summary_compare_path=${RUNTIME_NATIVE_SUMMARY_COMPARE_PATH:-n/a}" \
+            --item "summary_compare_artifact_count=${RUNTIME_NATIVE_SUMMARY_COMPARE_ARTIFACT_COUNT}" \
+            --item "summary_compare_with_diffs=${RUNTIME_NATIVE_SUMMARY_COMPARE_WITH_DIFFS}" \
+            --item "summary_compare_without_diffs=${RUNTIME_NATIVE_SUMMARY_COMPARE_WITHOUT_DIFFS}" \
+            --item "summary_compare_status=${RUNTIME_NATIVE_SUMMARY_COMPARE_STATUS}" \
+            --item "summary_compare_issue=${RUNTIME_NATIVE_SUMMARY_COMPARE_ISSUE:-n/a}" \
+            --item "summary_compare_enforcement_failed=${RUNTIME_NATIVE_SUMMARY_COMPARE_ENFORCEMENT_FAILED}" \
+            --item "summary_compare_fail_on_missing_input=${RUNTIME_NATIVE_SUMMARY_COMPARE_FAIL_ON_MISSING_INPUT}" \
+            --item "summary_compare_fail_on_diffs_input=${RUNTIME_NATIVE_SUMMARY_COMPARE_FAIL_ON_DIFFS_INPUT}" \
+            --item "runtime_native_interop_contract_xosc_effective=${RUNTIME_NATIVE_INTEROP_CONTRACT_XOSC:-n/a}" \
+            --item "runtime_native_interop_contract_xosc_input=${RUNTIME_NATIVE_INTEROP_CONTRACT_XOSC_INPUT:-n/a}" \
+            --item "runtime_native_interop_contract_xodr_effective=${RUNTIME_NATIVE_INTEROP_CONTRACT_XODR:-n/a}" \
+            --item "runtime_native_interop_contract_xodr_input=${RUNTIME_NATIVE_INTEROP_CONTRACT_XODR_INPUT:-n/a}" \
+            --item "runtime_native_interop_import_manifest_consistency_mode_effective=${RUNTIME_NATIVE_INTEROP_IMPORT_MANIFEST_CONSISTENCY_MODE:-n/a}" \
+            --item "runtime_native_interop_import_manifest_consistency_mode_input=${RUNTIME_NATIVE_INTEROP_IMPORT_MANIFEST_CONSISTENCY_MODE_INPUT:-n/a}" \
+            --item "runtime_native_interop_import_export_consistency_mode_effective=${RUNTIME_NATIVE_INTEROP_IMPORT_EXPORT_CONSISTENCY_MODE:-n/a}" \
+            --item "runtime_native_interop_import_export_consistency_mode_input=${RUNTIME_NATIVE_INTEROP_IMPORT_EXPORT_CONSISTENCY_MODE_INPUT:-n/a}"
+
+      - name: Upload runtime-native docker auto artifacts
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-runtime-native-docker-auto-${{ steps.run_runtime_native.outputs.release_id }}
+          if-no-files-found: warn
+          path: |
+            e2e_pipeline.log
+            30_Projects/P_Cloud-Engine/prototype/batch_runs
+            30_Projects/P_Data-Lake-and-Explorer/prototype/data
+            30_Projects/P_Sim-Engine/prototype/runs
+            30_Projects/P_Validation-Tooling-MVP/prototype/reports
+
+  runtime-lanes-combined-summary:
+    needs:
+      - runtime-available
+      - runtime-native-docker-auto-smoke
+    if: ${{ always() }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Publish runtime lanes combined summary
+        shell: bash
+        env:
+          RUNTIME_AVAILABLE_JOB_RESULT: ${{ needs.runtime-available.result }}
+          RUNTIME_AVAILABLE_RELEASE_ID: ${{ needs.runtime-available.outputs.release_id || '' }}
+          RUNTIME_AVAILABLE_RELEASE_PREFIX: ${{ needs.runtime-available.outputs.release_prefix || '' }}
+          RUNTIME_NATIVE_JOB_RESULT: ${{ needs.runtime-native-docker-auto-smoke.result }}
+          RUNTIME_NATIVE_RELEASE_ID: ${{ needs.runtime-native-docker-auto-smoke.outputs.release_id || '' }}
+          RUNTIME_NATIVE_TARGET: ${{ needs.runtime-native-docker-auto-smoke.outputs.target || '' }}
+          RUNTIME_NATIVE_DRY_RUN: ${{ needs.runtime-native-docker-auto-smoke.outputs.dry_run || '' }}
+          RUNTIME_NATIVE_SIM_RUNTIME: ${{ needs.runtime-native-docker-auto-smoke.outputs.sim_runtime || '' }}
+          RUNTIME_NATIVE_MANIFEST_PATH: ${{ needs.runtime-native-docker-auto-smoke.outputs.manifest_path || '' }}
+          RUNTIME_NATIVE_MANIFEST_PATHS: ${{ needs.runtime-native-docker-auto-smoke.outputs.manifest_paths || '' }}
+          RUNTIME_NATIVE_MANIFEST_ROWS_TOTAL: ${{ needs.runtime-native-docker-auto-smoke.outputs.manifest_rows_total || '0' }}
+          RUNTIME_NATIVE_MANIFEST_PASS_COUNT: ${{ needs.runtime-native-docker-auto-smoke.outputs.manifest_pass_count || '0' }}
+          RUNTIME_NATIVE_MANIFEST_PARTIAL_COUNT: ${{ needs.runtime-native-docker-auto-smoke.outputs.manifest_partial_count || '0' }}
+          RUNTIME_NATIVE_MANIFEST_FAIL_COUNT: ${{ needs.runtime-native-docker-auto-smoke.outputs.manifest_fail_count || '0' }}
+          RUNTIME_NATIVE_MANIFEST_MISSING_COUNT: ${{ needs.runtime-native-docker-auto-smoke.outputs.manifest_missing_count || '0' }}
+          RUNTIME_NATIVE_MANIFEST_RUNTIME_RESULTS: ${{ needs.runtime-native-docker-auto-smoke.outputs.manifest_runtime_results || '' }}
+          RUNTIME_NATIVE_MANIFEST_MISSING_RUNTIMES: ${{ needs.runtime-native-docker-auto-smoke.outputs.manifest_missing_runtimes || '' }}
+          RUNTIME_NATIVE_MANIFEST_OVERALL_RESULT: ${{ needs.runtime-native-docker-auto-smoke.outputs.manifest_overall_result || 'n/a' }}
+          RUNTIME_NATIVE_EVIDENCE_COMPARE_PATH: ${{ needs.runtime-native-docker-auto-smoke.outputs.evidence_compare_path || '' }}
+          RUNTIME_NATIVE_EVIDENCE_COMPARE_TEXT_PATH: ${{ needs.runtime-native-docker-auto-smoke.outputs.evidence_compare_text_path || '' }}
+          RUNTIME_NATIVE_EVIDENCE_COMPARE_SUMMARY: ${{ needs.runtime-native-docker-auto-smoke.outputs.evidence_compare_summary || '' }}
+          RUNTIME_NATIVE_SUMMARY_COMPARE_PATH: ${{ needs.runtime-native-docker-auto-smoke.outputs.summary_compare_path || '' }}
+          RUNTIME_NATIVE_SUMMARY_COMPARE_ARTIFACT_COUNT: ${{ needs.runtime-native-docker-auto-smoke.outputs.summary_compare_artifact_count || '0' }}
+          RUNTIME_NATIVE_SUMMARY_COMPARE_WITH_DIFFS: ${{ needs.runtime-native-docker-auto-smoke.outputs.summary_compare_with_diffs || '0' }}
+          RUNTIME_NATIVE_SUMMARY_COMPARE_WITHOUT_DIFFS: ${{ needs.runtime-native-docker-auto-smoke.outputs.summary_compare_without_diffs || '0' }}
+          RUNTIME_NATIVE_SUMMARY_COMPARE_STATUS: ${{ needs.runtime-native-docker-auto-smoke.outputs.summary_compare_status || 'n/a' }}
+          RUNTIME_NATIVE_SUMMARY_COMPARE_ISSUE: ${{ needs.runtime-native-docker-auto-smoke.outputs.summary_compare_issue || '' }}
+          RUNTIME_NATIVE_SUMMARY_COMPARE_ENFORCEMENT_FAILED: ${{ needs.runtime-native-docker-auto-smoke.outputs.summary_compare_enforcement_failed || '0' }}
+          RUNTIME_NATIVE_AUTO_ENABLE_INPUT: ${{ github.event.inputs.runtime_native_docker_auto_enable }}
+          RUNTIME_NATIVE_SUMMARY_COMPARE_FAIL_ON_MISSING_INPUT: ${{ github.event.inputs.runtime_native_summary_compare_fail_on_missing }}
+          RUNTIME_NATIVE_SUMMARY_COMPARE_FAIL_ON_DIFFS_INPUT: ${{ github.event.inputs.runtime_native_summary_compare_fail_on_diffs }}
+          RUNTIME_NATIVE_INTEROP_CONTRACT_XOSC: ${{ needs.runtime-native-docker-auto-smoke.outputs.runtime_interop_contract_xosc || '' }}
+          RUNTIME_NATIVE_INTEROP_CONTRACT_XODR: ${{ needs.runtime-native-docker-auto-smoke.outputs.runtime_interop_contract_xodr || '' }}
+          RUNTIME_NATIVE_INTEROP_CONTRACT_XOSC_INPUT: ${{ github.event.inputs.runtime_interop_contract_xosc }}
+          RUNTIME_NATIVE_INTEROP_CONTRACT_XODR_INPUT: ${{ github.event.inputs.runtime_interop_contract_xodr }}
+          RUNTIME_NATIVE_INTEROP_IMPORT_MANIFEST_CONSISTENCY_MODE: ${{ needs.runtime-native-docker-auto-smoke.outputs.runtime_interop_import_manifest_consistency_mode || '' }}
+          RUNTIME_NATIVE_INTEROP_IMPORT_EXPORT_CONSISTENCY_MODE: ${{ needs.runtime-native-docker-auto-smoke.outputs.runtime_interop_import_export_consistency_mode || '' }}
+          RUNTIME_NATIVE_INTEROP_IMPORT_MANIFEST_CONSISTENCY_MODE_INPUT: ${{ github.event.inputs.runtime_interop_import_manifest_consistency_mode }}
+          RUNTIME_NATIVE_INTEROP_IMPORT_EXPORT_CONSISTENCY_MODE_INPUT: ${{ github.event.inputs.runtime_interop_import_export_consistency_mode }}
+        run: |
+          set -euo pipefail
+          python3 30_Projects/P_E2E_Stack/prototype/write_ci_summary_section.py \
+            --title "Runtime Combined Lanes" \
+            --item "runtime_available_job_result=${RUNTIME_AVAILABLE_JOB_RESULT}" \
+            --item "runtime_available_release_id=${RUNTIME_AVAILABLE_RELEASE_ID}" \
+            --item "runtime_available_release_prefix=${RUNTIME_AVAILABLE_RELEASE_PREFIX}" \
+            --item "runtime_native_auto_enable_input=${RUNTIME_NATIVE_AUTO_ENABLE_INPUT}" \
+            --item "runtime_native_job_result=${RUNTIME_NATIVE_JOB_RESULT}" \
+            --item "runtime_native_release_id=${RUNTIME_NATIVE_RELEASE_ID:-n/a}" \
+            --item "runtime_native_target=${RUNTIME_NATIVE_TARGET:-n/a}" \
+            --item "runtime_native_dry_run=${RUNTIME_NATIVE_DRY_RUN:-n/a}" \
+            --item "runtime_native_sim_runtime=${RUNTIME_NATIVE_SIM_RUNTIME:-n/a}" \
+            --item "runtime_native_manifest_path=${RUNTIME_NATIVE_MANIFEST_PATH:-n/a}" \
+            --item "runtime_native_manifest_paths=${RUNTIME_NATIVE_MANIFEST_PATHS:-n/a}" \
+            --item "runtime_native_manifest_rows_total=${RUNTIME_NATIVE_MANIFEST_ROWS_TOTAL}" \
+            --item "runtime_native_manifest_pass_count=${RUNTIME_NATIVE_MANIFEST_PASS_COUNT}" \
+            --item "runtime_native_manifest_partial_count=${RUNTIME_NATIVE_MANIFEST_PARTIAL_COUNT}" \
+            --item "runtime_native_manifest_fail_count=${RUNTIME_NATIVE_MANIFEST_FAIL_COUNT}" \
+            --item "runtime_native_manifest_missing_count=${RUNTIME_NATIVE_MANIFEST_MISSING_COUNT}" \
+            --item "runtime_native_manifest_runtime_results=${RUNTIME_NATIVE_MANIFEST_RUNTIME_RESULTS:-n/a}" \
+            --item "runtime_native_manifest_missing_runtimes=${RUNTIME_NATIVE_MANIFEST_MISSING_RUNTIMES:-n/a}" \
+            --item "runtime_native_manifest_overall_result=${RUNTIME_NATIVE_MANIFEST_OVERALL_RESULT}" \
+            --item "runtime_native_evidence_compare_path=${RUNTIME_NATIVE_EVIDENCE_COMPARE_PATH:-n/a}" \
+            --item "runtime_native_evidence_compare_text_path=${RUNTIME_NATIVE_EVIDENCE_COMPARE_TEXT_PATH:-n/a}" \
+            --item "runtime_native_evidence_compare_summary=${RUNTIME_NATIVE_EVIDENCE_COMPARE_SUMMARY:-n/a}" \
+            --item "runtime_native_summary_compare_path=${RUNTIME_NATIVE_SUMMARY_COMPARE_PATH:-n/a}" \
+            --item "runtime_native_summary_compare_artifact_count=${RUNTIME_NATIVE_SUMMARY_COMPARE_ARTIFACT_COUNT}" \
+            --item "runtime_native_summary_compare_with_diffs=${RUNTIME_NATIVE_SUMMARY_COMPARE_WITH_DIFFS}" \
+            --item "runtime_native_summary_compare_without_diffs=${RUNTIME_NATIVE_SUMMARY_COMPARE_WITHOUT_DIFFS}" \
+            --item "runtime_native_summary_compare_status=${RUNTIME_NATIVE_SUMMARY_COMPARE_STATUS}" \
+            --item "runtime_native_summary_compare_issue=${RUNTIME_NATIVE_SUMMARY_COMPARE_ISSUE:-n/a}" \
+            --item "runtime_native_summary_compare_enforcement_failed=${RUNTIME_NATIVE_SUMMARY_COMPARE_ENFORCEMENT_FAILED}" \
+            --item "runtime_native_summary_compare_fail_on_missing_input=${RUNTIME_NATIVE_SUMMARY_COMPARE_FAIL_ON_MISSING_INPUT}" \
+            --item "runtime_native_summary_compare_fail_on_diffs_input=${RUNTIME_NATIVE_SUMMARY_COMPARE_FAIL_ON_DIFFS_INPUT}" \
+            --item "runtime_native_interop_contract_xosc_effective=${RUNTIME_NATIVE_INTEROP_CONTRACT_XOSC:-n/a}" \
+            --item "runtime_native_interop_contract_xosc_input=${RUNTIME_NATIVE_INTEROP_CONTRACT_XOSC_INPUT:-n/a}" \
+            --item "runtime_native_interop_contract_xodr_effective=${RUNTIME_NATIVE_INTEROP_CONTRACT_XODR:-n/a}" \
+            --item "runtime_native_interop_contract_xodr_input=${RUNTIME_NATIVE_INTEROP_CONTRACT_XODR_INPUT:-n/a}" \
+            --item "runtime_native_interop_import_manifest_consistency_mode_effective=${RUNTIME_NATIVE_INTEROP_IMPORT_MANIFEST_CONSISTENCY_MODE:-n/a}" \
+            --item "runtime_native_interop_import_manifest_consistency_mode_input=${RUNTIME_NATIVE_INTEROP_IMPORT_MANIFEST_CONSISTENCY_MODE_INPUT:-n/a}" \
+            --item "runtime_native_interop_import_export_consistency_mode_effective=${RUNTIME_NATIVE_INTEROP_IMPORT_EXPORT_CONSISTENCY_MODE:-n/a}" \
+            --item "runtime_native_interop_import_export_consistency_mode_input=${RUNTIME_NATIVE_INTEROP_IMPORT_EXPORT_CONSISTENCY_MODE_INPUT:-n/a}"

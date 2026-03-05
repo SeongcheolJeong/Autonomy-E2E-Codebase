@@ -1,0 +1,12 @@
+.DS_Store
+**/.DS_Store
+**/__pycache__/
+30_Projects/P_Sim-Engine/prototype/runtime_assets/
+
+# generated runtime artifacts
+**/runs/
+**/reports/
+**/batch_runs/
+**/*.sqlite
+**/*.db
+**/*.log

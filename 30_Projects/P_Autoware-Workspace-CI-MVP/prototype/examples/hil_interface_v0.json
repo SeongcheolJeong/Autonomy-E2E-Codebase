@@ -1,0 +1,21 @@
+{
+  "interface_schema_version": "hil_interface_v0",
+  "rig_id": "hil_rig_demo_v0",
+  "channels": [
+    {
+      "channel_id": "steering_cmd",
+      "direction": "sim_to_hil",
+      "signal_type": "float"
+    },
+    {
+      "channel_id": "throttle_cmd",
+      "direction": "sim_to_hil",
+      "signal_type": "float"
+    },
+    {
+      "channel_id": "speed_feedback",
+      "direction": "hil_to_sim",
+      "signal_type": "float"
+    }
+  ]
+}

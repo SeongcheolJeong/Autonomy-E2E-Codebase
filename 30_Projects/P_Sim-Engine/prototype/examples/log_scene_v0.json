@@ -1,0 +1,11 @@
+{
+  "log_scene_schema_version": "log_scene_v0",
+  "log_id": "LOG_0001",
+  "map_id": "map_highway_segment_v0",
+  "map_version": "v0",
+  "ego_initial_speed_mps": 18.0,
+  "lead_vehicle_initial_gap_m": 55.0,
+  "lead_vehicle_speed_mps": 17.0,
+  "duration_sec": 5.0,
+  "dt_sec": 0.1
+}

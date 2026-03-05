@@ -1,0 +1,84 @@
+{
+  "schema_version": "reference_repo_inventory_v1",
+  "generated_at_utc": "2026-03-01T00:00:00Z",
+  "local_root": "/Users/seongcheoljeong/Documents/Autonomy-E2E/_reference_repos",
+  "repos": [
+    {
+      "name": "apollo",
+      "url": "https://github.com/ApolloAuto/apollo.git",
+      "commit": "40c8a0127adb0bfdf32e03d412969575e8ab861a",
+      "license_file": "/Users/seongcheoljeong/Documents/Autonomy-E2E/_reference_repos/apollo/LICENSE",
+      "focus_blocks": ["planning", "control", "simulation_integration"]
+    },
+    {
+      "name": "autoware",
+      "url": "https://github.com/autowarefoundation/autoware.git",
+      "commit": "b4c171b3d643321deb1af5831cc9de164b364364",
+      "license_file": "/Users/seongcheoljeong/Documents/Autonomy-E2E/_reference_repos/autoware/LICENSE",
+      "focus_blocks": ["planning", "control", "map_pipeline", "ros2_integration"]
+    },
+    {
+      "name": "awsim",
+      "url": "https://github.com/tier4/AWSIM.git",
+      "commit": "08fdcc67a43c3c3c43d7f7dd8eeffb91d050ee39",
+      "license_file": "/Users/seongcheoljeong/Documents/Autonomy-E2E/_reference_repos/awsim/LICENSE",
+      "focus_blocks": ["runtime_rendering", "sim_runtime_integration"]
+    },
+    {
+      "name": "carla",
+      "url": "https://github.com/carla-simulator/carla.git",
+      "commit": "fc52f323c1f05d615f0dce0e250bb235c8d8d39b",
+      "license_file": "/Users/seongcheoljeong/Documents/Autonomy-E2E/_reference_repos/carla/LICENSE",
+      "focus_blocks": ["runtime_rendering", "sensor_simulation", "sim_runtime_integration"]
+    },
+    {
+      "name": "scenario_runner",
+      "url": "https://github.com/carla-simulator/scenario_runner.git",
+      "commit": "94ff3b8af752bad2b9d464ad5105868906aa34c0",
+      "license_file": "/Users/seongcheoljeong/Documents/Autonomy-E2E/_reference_repos/scenario_runner/LICENSE",
+      "focus_blocks": ["scenario_execution", "evaluation_contract"]
+    },
+    {
+      "name": "openpilot",
+      "url": "https://github.com/commaai/openpilot.git",
+      "commit": "ca5234a32f9b0331b11ed33f418a82669c5ac8e1",
+      "license_file": "/Users/seongcheoljeong/Documents/Autonomy-E2E/_reference_repos/openpilot/LICENSE",
+      "focus_blocks": ["vehicle_interface", "control", "safety_contract"]
+    },
+    {
+      "name": "lanelet2",
+      "url": "https://github.com/fzi-forschungszentrum-informatik/Lanelet2.git",
+      "commit": "2d95b7d8e50eb9032256b2f41d2951a2bc6b0511",
+      "license_file": "/Users/seongcheoljeong/Documents/Autonomy-E2E/_reference_repos/lanelet2/LICENSE",
+      "focus_blocks": ["map_model", "routing", "map_validation"]
+    },
+    {
+      "name": "sumo",
+      "url": "https://github.com/eclipse-sumo/sumo.git",
+      "commit": "39fee3a49df6bc255fc6eb72893546517bdca982",
+      "license_file": "/Users/seongcheoljeong/Documents/Autonomy-E2E/_reference_repos/sumo/LICENSE",
+      "focus_blocks": ["traffic_simulation", "actor_behavior", "batch_scale"]
+    },
+    {
+      "name": "esmini",
+      "url": "https://github.com/esmini/esmini.git",
+      "commit": "77b4bbc00cb8b4e74e6659526f6c4e45703b1bc1",
+      "license_file": "/Users/seongcheoljeong/Documents/Autonomy-E2E/_reference_repos/esmini/LICENSE",
+      "focus_blocks": ["openscenario_runtime", "standard_compliance"]
+    },
+    {
+      "name": "scenariogeneration",
+      "url": "https://github.com/pyoscx/scenariogeneration.git",
+      "commit": "8c964333cfb575ad80105008a6f3e83bcbd69116",
+      "license_file": "/Users/seongcheoljeong/Documents/Autonomy-E2E/_reference_repos/scenariogeneration/LICENSE",
+      "focus_blocks": ["scenario_authoring", "openscenario_generation"]
+    },
+    {
+      "name": "libopendrive",
+      "url": "https://github.com/pageldev/libOpenDRIVE.git",
+      "commit": "c3a5c8c8a3a16483f6a8ae9efb6fcb096f7ce2fb",
+      "license_file": "/Users/seongcheoljeong/Documents/Autonomy-E2E/_reference_repos/libopendrive/LICENSE",
+      "focus_blocks": ["opendrive_parsing", "map_conversion"]
+    }
+  ]
+}

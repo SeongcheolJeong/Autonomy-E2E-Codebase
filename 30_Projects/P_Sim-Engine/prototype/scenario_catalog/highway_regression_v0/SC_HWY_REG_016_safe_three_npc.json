@@ -1,0 +1,33 @@
+{
+  "scenario_schema_version": "scenario_definition_v0",
+  "scenario_id": "SC_HWY_REG_016_SAFE_THREE_NPC",
+  "duration_sec": 20.0,
+  "dt_sec": 0.1,
+  "npc_speed_jitter_mps": 0.0,
+  "ego": {
+    "actor_id": "ego",
+    "position_m": 0.0,
+    "speed_mps": 19.0,
+    "length_m": 4.8
+  },
+  "npcs": [
+    {
+      "actor_id": "lead_vehicle_a",
+      "position_m": 30.0,
+      "speed_mps": 20.0,
+      "length_m": 4.8
+    },
+    {
+      "actor_id": "lead_vehicle_b",
+      "position_m": 55.0,
+      "speed_mps": 22.0,
+      "length_m": 4.8
+    },
+    {
+      "actor_id": "lead_vehicle_c",
+      "position_m": 90.0,
+      "speed_mps": 24.0,
+      "length_m": 4.8
+    }
+  ]
+}

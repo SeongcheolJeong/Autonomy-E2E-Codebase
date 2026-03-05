@@ -1,0 +1,16 @@
+{
+  "world_state_schema_version": "world_state_v0",
+  "frame_timestamp": "2026-02-27T00:00:00Z",
+  "actors": [
+    {
+      "actor_id": "ego",
+      "position_m": [0.0, 0.0],
+      "speed_mps": 20.0
+    },
+    {
+      "actor_id": "npc_001",
+      "position_m": [35.0, 1.5],
+      "speed_mps": 18.0
+    }
+  ]
+}

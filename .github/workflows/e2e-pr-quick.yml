@@ -1,0 +1,784 @@
+name: E2E PR Quick Pipeline
+
+on:
+  pull_request:
+    paths:
+      # BEGIN AUTO-GENERATED PR QUICK PATHS
+      - '.github/workflows/e2e-*.yml'
+      - '30_Projects/P_E2E_Stack/prototype/**'
+      - '30_Projects/P_Cloud-Engine/prototype/**'
+      - '30_Projects/P_Sim-Engine/prototype/**'
+      - '30_Projects/P_Data-Lake-and-Explorer/prototype/**'
+      - '30_Projects/P_Validation-Tooling-MVP/prototype/**'
+      # END AUTO-GENERATED PR QUICK PATHS
+  workflow_dispatch:
+    inputs:
+      batch_spec:
+        description: "Path to quick batch spec JSON/YAML"
+        required: false
+        default: ""
+      quick_profile_file:
+        description: "Path to quick profile JSON (optional)"
+        required: false
+        default: ""
+      quick_profile_id:
+        description: "profile_id to select when batch_spec is empty (optional)"
+        required: false
+        default: ""
+      notify_on:
+        description: "Notification policy: always/hold/warn/hold_warn/pass/never"
+        required: false
+        default: "hold_warn"
+      notify_format:
+        description: "Notification format: slack/raw"
+        required: false
+        default: "slack"
+      notify_timeout_sec:
+        description: "Notification webhook timeout seconds (>0)"
+        required: false
+        default: "10"
+      notify_max_retries:
+        description: "Notification retry count (>=0)"
+        required: false
+        default: "2"
+      notify_retry_backoff_sec:
+        description: "Notification retry backoff seconds (>=0)"
+        required: false
+        default: "2"
+      notify_timing_total_warn_ms:
+        description: "Promote PASS/INFO to WARN when summary timing total exceeds threshold ms (0 disables)"
+        required: false
+        default: "120000"
+      notify_timing_regression_baseline_ms:
+        description: "Timing regression baseline in ms for summary timing total (0 disables)"
+        required: false
+        default: "0"
+      notify_timing_regression_warn_ratio:
+        description: "Promote PASS/INFO to WARN when (current-baseline)/baseline ratio exceeds this value (0 disables)"
+        required: false
+        default: "0"
+      notify_timing_regression_history_window:
+        description: "Use latest N *_release_summary.json files to derive timing regression baseline median (0 disables)"
+        required: false
+        default: "0"
+      notify_timing_regression_history_dir:
+        description: "Optional directory for timing regression history scan (empty uses summary output directory)"
+        required: false
+        default: ""
+      notify_timing_regression_history_outlier_method:
+        description: "History outlier filter for regression baseline: none/iqr"
+        required: false
+        default: "none"
+      notify_timing_regression_history_trim_ratio:
+        description: "History symmetric trim ratio for regression baseline [0, 0.5)"
+        required: false
+        default: "0"
+      notify_phase4_primary_warn_ratio:
+        description: "Promote PASS/INFO to WARN when phase4 primary total coverage is below this ratio (0 disables)"
+        required: false
+        default: "0"
+      notify_phase4_primary_hold_ratio:
+        description: "Promote status to HOLD when phase4 primary total coverage is below this ratio (0 disables)"
+        required: false
+        default: "0"
+      notify_phase4_primary_module_warn_thresholds:
+        description: "Optional per-module phase4 primary coverage thresholds (module=ratio CSV)"
+        required: false
+        default: ""
+      notify_phase4_primary_module_hold_thresholds:
+        description: "Optional per-module phase4 primary HOLD thresholds (module=ratio CSV)"
+        required: false
+        default: ""
+      notify_phase4_secondary_warn_ratio:
+        description: "Promote PASS/INFO to WARN when phase4 secondary total coverage is below this ratio (0 disables)"
+        required: false
+        default: "0"
+      notify_phase4_secondary_hold_ratio:
+        description: "Promote status to HOLD when phase4 secondary total coverage is below this ratio (0 disables)"
+        required: false
+        default: "0"
+      notify_phase4_secondary_warn_min_modules:
+        description: "Minimum secondary-module count required before phase4 secondary total coverage warning evaluation (>0)"
+        required: false
+        default: "1"
+      notify_phase4_secondary_module_warn_thresholds:
+        description: "Optional per-module phase4 secondary coverage thresholds (module=ratio CSV)"
+        required: false
+        default: ""
+      notify_phase4_secondary_module_hold_thresholds:
+        description: "Optional per-module phase4 secondary HOLD thresholds (module=ratio CSV)"
+        required: false
+        default: ""
+      notify_runtime_lane_execution_warn_min_exec_rows:
+        description: "Promote PASS/INFO to WARN when runtime lane execution exec lane row count is below this minimum (0 disables)"
+        required: false
+        default: "1"
+      notify_runtime_lane_execution_hold_min_exec_rows:
+        description: "Promote status to HOLD when runtime lane execution exec lane row count is below this minimum (0 disables)"
+        required: false
+        default: "0"
+      notify_runtime_evidence_compare_warn_min_artifacts_with_diffs:
+        description: "Promote PASS/INFO to WARN when runtime evidence compare artifacts_with_diffs_count is at or above this minimum (empty => profile default, 0 disables)"
+        required: false
+        default: ""
+      notify_runtime_evidence_compare_hold_min_artifacts_with_diffs:
+        description: "Promote status to HOLD when runtime evidence compare artifacts_with_diffs_count is at or above this minimum (empty => profile default, 0 disables)"
+        required: false
+        default: ""
+      notify_runtime_evidence_compare_warn_min_interop_import_mode_diff_count:
+        description: "Promote PASS/INFO to WARN when runtime evidence compare interop import mode diff total is at or above this minimum (empty => profile default, 0 disables)"
+        required: false
+        default: ""
+      notify_runtime_evidence_compare_hold_min_interop_import_mode_diff_count:
+        description: "Promote status to HOLD when runtime evidence compare interop import mode diff total is at or above this minimum (empty => profile default, 0 disables)"
+        required: false
+        default: ""
+      notify_phase2_sensor_fidelity_score_avg_warn_min:
+        description: "Promote PASS/INFO to WARN when phase2 sensor fidelity average score is below this minimum (empty => profile default, 0 disables)"
+        required: false
+        default: ""
+      notify_phase2_sensor_fidelity_score_avg_hold_min:
+        description: "Promote status to HOLD when phase2 sensor fidelity average score is below this minimum (empty => profile default, 0 disables)"
+        required: false
+        default: ""
+      notify_phase2_sensor_frame_count_avg_warn_min:
+        description: "Promote PASS/INFO to WARN when phase2 sensor frame-count average is below this minimum (empty => profile default, 0 disables)"
+        required: false
+        default: ""
+      notify_phase2_sensor_frame_count_avg_hold_min:
+        description: "Promote status to HOLD when phase2 sensor frame-count average is below this minimum (empty => profile default, 0 disables)"
+        required: false
+        default: ""
+      notify_phase2_sensor_camera_noise_stddev_px_avg_warn_max:
+        description: "Promote PASS/INFO to WARN when phase2 camera noise average exceeds this maximum (empty => profile default, 0 disables)"
+        required: false
+        default: ""
+      notify_phase2_sensor_camera_noise_stddev_px_avg_hold_max:
+        description: "Promote status to HOLD when phase2 camera noise average exceeds this maximum (empty => profile default, 0 disables)"
+        required: false
+        default: ""
+      notify_phase2_sensor_lidar_point_count_avg_warn_min:
+        description: "Promote PASS/INFO to WARN when phase2 lidar point-count average is below this minimum (empty => profile default, 0 disables)"
+        required: false
+        default: ""
+      notify_phase2_sensor_lidar_point_count_avg_hold_min:
+        description: "Promote status to HOLD when phase2 lidar point-count average is below this minimum (empty => profile default, 0 disables)"
+        required: false
+        default: ""
+      notify_phase2_sensor_radar_false_positive_rate_avg_warn_max:
+        description: "Promote PASS/INFO to WARN when phase2 radar false-positive-rate average exceeds this maximum (empty => profile default, 0 disables)"
+        required: false
+        default: ""
+      notify_phase2_sensor_radar_false_positive_rate_avg_hold_max:
+        description: "Promote status to HOLD when phase2 radar false-positive-rate average exceeds this maximum (empty => profile default, 0 disables)"
+        required: false
+        default: ""
+      runtime_threshold_drift_fail_on_hold:
+        description: "Fail CI summary when runtime threshold drift severity resolves to HOLD (1 enables, 0 disables)"
+        required: false
+        default: "0"
+      phase2_log_replay_threshold_fail_on_hold:
+        description: "Fail CI summary when phase2 log replay threshold severity resolves to HOLD (1 enables, 0 disables)"
+        required: false
+        default: "0"
+      runtime_native_smoke_threshold_fail_on_hold:
+        description: "Fail CI summary when runtime native smoke threshold severity resolves to HOLD (1 enables, 0 disables)"
+        required: false
+        default: "0"
+      runtime_native_evidence_compare_threshold_fail_on_hold:
+        description: "Fail CI summary when runtime native evidence compare threshold severity resolves to HOLD (1 enables, 0 disables)"
+        required: false
+        default: "0"
+      phase3_enable_hooks:
+        description: "Enable Phase-3 hooks in pipeline entry (true/false, empty => default)"
+        required: false
+        default: ""
+      sim_runtime:
+        description: "Runtime adapter target (none|awsim|carla, empty => default)"
+        required: false
+        default: ""
+      sim_runtime_probe_enable:
+        description: "Enable runtime probe hook (true/false, empty => default)"
+        required: false
+        default: ""
+      sim_runtime_probe_execute:
+        description: "Execute runtime probe command (true/false, empty => default)"
+        required: false
+        default: ""
+      sim_runtime_probe_require_availability:
+        description: "Require runtime availability in probe (true/false, empty => default)"
+        required: false
+        default: ""
+      sim_runtime_probe_runtime_bin:
+        description: "Optional runtime probe executable path override"
+        required: false
+        default: ""
+      sim_runtime_probe_args_shlex:
+        description: "Optional shell-like probe args for runtime probe hook"
+        required: false
+        default: ""
+      sim_runtime_scenario_contract_enable:
+        description: "Enable runtime scenario contract hook (true/false, empty => default)"
+        required: false
+        default: ""
+      sim_runtime_scenario_contract_require_runtime_ready:
+        description: "Require runtime-ready for scenario contract hook (true/false, empty => default)"
+        required: false
+        default: ""
+      sim_runtime_scene_result_enable:
+        description: "Enable runtime scene result hook (true/false, empty => default)"
+        required: false
+        default: ""
+      sim_runtime_scene_result_require_runtime_ready:
+        description: "Require runtime-ready for scene result hook (true/false, empty => default)"
+        required: false
+        default: ""
+      sim_runtime_interop_contract_enable:
+        description: "Enable runtime interop contract hook (true/false, empty => default)"
+        required: false
+        default: ""
+      sim_runtime_interop_contract_require_runtime_ready:
+        description: "Require runtime-ready for interop contract hook (true/false, empty => default)"
+        required: false
+        default: ""
+      sim_runtime_interop_export_road_length_scale:
+        description: "Optional runtime interop export road-length scale (>0 float)"
+        required: false
+        default: ""
+      sim_runtime_interop_contract_xosc:
+        description: "Optional runtime interop contract OpenSCENARIO (.xosc) path"
+        required: false
+        default: ""
+      sim_runtime_interop_contract_xodr:
+        description: "Optional runtime interop contract OpenDRIVE (.xodr) path"
+        required: false
+        default: ""
+      sim_runtime_interop_import_manifest_consistency_mode:
+        description: "Runtime interop import manifest consistency mode (require/allow, empty => default)"
+        required: false
+        default: ""
+      sim_runtime_interop_import_export_consistency_mode:
+        description: "Runtime interop import/export consistency mode (require/allow, empty => default)"
+        required: false
+        default: ""
+      notify_phase3_vehicle_final_speed_warn_max:
+        description: "Promote PASS/INFO to WARN when phase3 vehicle dynamics max final speed exceeds this value in m/s (0 disables)"
+        required: false
+        default: "0"
+      notify_phase3_vehicle_final_speed_hold_max:
+        description: "Promote status to HOLD when phase3 vehicle dynamics max final speed exceeds this value in m/s (0 disables)"
+        required: false
+        default: "0"
+      notify_phase3_vehicle_final_position_warn_max:
+        description: "Promote PASS/INFO to WARN when phase3 vehicle dynamics max final position exceeds this value in m (0 disables)"
+        required: false
+        default: "0"
+      notify_phase3_vehicle_final_position_hold_max:
+        description: "Promote status to HOLD when phase3 vehicle dynamics max final position exceeds this value in m (0 disables)"
+        required: false
+        default: "0"
+      notify_phase3_vehicle_delta_speed_warn_max:
+        description: "Promote PASS/INFO to WARN when phase3 vehicle dynamics max delta speed exceeds this value in m/s (0 disables)"
+        required: false
+        default: "0"
+      notify_phase3_vehicle_delta_speed_hold_max:
+        description: "Promote status to HOLD when phase3 vehicle dynamics max delta speed exceeds this value in m/s (0 disables)"
+        required: false
+        default: "0"
+      notify_phase3_vehicle_delta_position_warn_max:
+        description: "Promote PASS/INFO to WARN when phase3 vehicle dynamics max delta position exceeds this value in m (0 disables)"
+        required: false
+        default: "0"
+      notify_phase3_vehicle_delta_position_hold_max:
+        description: "Promote status to HOLD when phase3 vehicle dynamics max delta position exceeds this value in m (0 disables)"
+        required: false
+        default: "0"
+      notify_phase3_vehicle_final_heading_abs_warn_max:
+        description: "Promote PASS/INFO to WARN when phase3 vehicle dynamics max absolute final heading exceeds this value in deg (0 disables)"
+        required: false
+        default: "0"
+      notify_phase3_vehicle_final_heading_abs_hold_max:
+        description: "Promote status to HOLD when phase3 vehicle dynamics max absolute final heading exceeds this value in deg (0 disables)"
+        required: false
+        default: "0"
+      notify_phase3_vehicle_final_lateral_position_abs_warn_max:
+        description: "Promote PASS/INFO to WARN when phase3 vehicle dynamics max absolute final lateral position exceeds this value in m (0 disables)"
+        required: false
+        default: "0"
+      notify_phase3_vehicle_final_lateral_position_abs_hold_max:
+        description: "Promote status to HOLD when phase3 vehicle dynamics max absolute final lateral position exceeds this value in m (0 disables)"
+        required: false
+        default: "0"
+      notify_phase3_vehicle_delta_heading_abs_warn_max:
+        description: "Promote PASS/INFO to WARN when phase3 vehicle dynamics max absolute delta heading exceeds this value in deg (0 disables)"
+        required: false
+        default: "0"
+      notify_phase3_vehicle_delta_heading_abs_hold_max:
+        description: "Promote status to HOLD when phase3 vehicle dynamics max absolute delta heading exceeds this value in deg (0 disables)"
+        required: false
+        default: "0"
+      notify_phase3_vehicle_delta_lateral_position_abs_warn_max:
+        description: "Promote PASS/INFO to WARN when phase3 vehicle dynamics max absolute delta lateral position exceeds this value in m (0 disables)"
+        required: false
+        default: "0"
+      notify_phase3_vehicle_delta_lateral_position_abs_hold_max:
+        description: "Promote status to HOLD when phase3 vehicle dynamics max absolute delta lateral position exceeds this value in m (0 disables)"
+        required: false
+        default: "0"
+      notify_phase3_vehicle_yaw_rate_abs_warn_max:
+        description: "Promote PASS/INFO to WARN when phase3 vehicle dynamics max absolute yaw rate exceeds this value in rad/s (0 disables)"
+        required: false
+        default: "0"
+      notify_phase3_vehicle_yaw_rate_abs_hold_max:
+        description: "Promote status to HOLD when phase3 vehicle dynamics max absolute yaw rate exceeds this value in rad/s (0 disables)"
+        required: false
+        default: "0"
+      notify_phase3_vehicle_delta_yaw_rate_abs_warn_max:
+        description: "Promote PASS/INFO to WARN when phase3 vehicle dynamics max absolute delta yaw rate exceeds this value in rad/s (0 disables)"
+        required: false
+        default: "0"
+      notify_phase3_vehicle_delta_yaw_rate_abs_hold_max:
+        description: "Promote status to HOLD when phase3 vehicle dynamics max absolute delta yaw rate exceeds this value in rad/s (0 disables)"
+        required: false
+        default: "0"
+      notify_phase3_vehicle_lateral_velocity_abs_warn_max:
+        description: "Promote PASS/INFO to WARN when phase3 vehicle dynamics max absolute lateral velocity (trace peak) exceeds this value in m/s (0 disables)"
+        required: false
+        default: "0"
+      notify_phase3_vehicle_lateral_velocity_abs_hold_max:
+        description: "Promote status to HOLD when phase3 vehicle dynamics max absolute lateral velocity (trace peak) exceeds this value in m/s (0 disables)"
+        required: false
+        default: "0"
+      notify_phase3_vehicle_accel_abs_warn_max:
+        description: "Promote PASS/INFO to WARN when phase3 vehicle dynamics max absolute longitudinal acceleration (trace peak) exceeds this value in m/s^2 (0 disables)"
+        required: false
+        default: "0"
+      notify_phase3_vehicle_accel_abs_hold_max:
+        description: "Promote status to HOLD when phase3 vehicle dynamics max absolute longitudinal acceleration (trace peak) exceeds this value in m/s^2 (0 disables)"
+        required: false
+        default: "0"
+      notify_phase3_vehicle_lateral_accel_abs_warn_max:
+        description: "Promote PASS/INFO to WARN when phase3 vehicle dynamics max absolute lateral acceleration (trace peak) exceeds this value in m/s^2 (0 disables)"
+        required: false
+        default: "0"
+      notify_phase3_vehicle_lateral_accel_abs_hold_max:
+        description: "Promote status to HOLD when phase3 vehicle dynamics max absolute lateral acceleration (trace peak) exceeds this value in m/s^2 (0 disables)"
+        required: false
+        default: "0"
+      notify_phase3_vehicle_yaw_accel_abs_warn_max:
+        description: "Promote PASS/INFO to WARN when phase3 vehicle dynamics max absolute yaw acceleration (trace peak) exceeds this value in rad/s^2 (0 disables)"
+        required: false
+        default: "0"
+      notify_phase3_vehicle_yaw_accel_abs_hold_max:
+        description: "Promote status to HOLD when phase3 vehicle dynamics max absolute yaw acceleration (trace peak) exceeds this value in rad/s^2 (0 disables)"
+        required: false
+        default: "0"
+      notify_phase3_vehicle_jerk_abs_warn_max:
+        description: "Promote PASS/INFO to WARN when phase3 vehicle dynamics max absolute longitudinal jerk (trace peak) exceeds this value in m/s^3 (0 disables)"
+        required: false
+        default: "0"
+      notify_phase3_vehicle_jerk_abs_hold_max:
+        description: "Promote status to HOLD when phase3 vehicle dynamics max absolute longitudinal jerk (trace peak) exceeds this value in m/s^3 (0 disables)"
+        required: false
+        default: "0"
+      notify_phase3_vehicle_lateral_jerk_abs_warn_max:
+        description: "Promote PASS/INFO to WARN when phase3 vehicle dynamics max absolute lateral jerk (trace peak) exceeds this value in m/s^3 (0 disables)"
+        required: false
+        default: "0"
+      notify_phase3_vehicle_lateral_jerk_abs_hold_max:
+        description: "Promote status to HOLD when phase3 vehicle dynamics max absolute lateral jerk (trace peak) exceeds this value in m/s^3 (0 disables)"
+        required: false
+        default: "0"
+      notify_phase3_vehicle_yaw_jerk_abs_warn_max:
+        description: "Promote PASS/INFO to WARN when phase3 vehicle dynamics max absolute yaw jerk (trace peak) exceeds this value in rad/s^3 (0 disables)"
+        required: false
+        default: "0"
+      notify_phase3_vehicle_yaw_jerk_abs_hold_max:
+        description: "Promote status to HOLD when phase3 vehicle dynamics max absolute yaw jerk (trace peak) exceeds this value in rad/s^3 (0 disables)"
+        required: false
+        default: "0"
+      notify_phase3_vehicle_lateral_position_abs_warn_max:
+        description: "Promote PASS/INFO to WARN when phase3 vehicle dynamics max absolute lateral position (trace peak) exceeds this value in m (0 disables)"
+        required: false
+        default: "0"
+      notify_phase3_vehicle_lateral_position_abs_hold_max:
+        description: "Promote status to HOLD when phase3 vehicle dynamics max absolute lateral position (trace peak) exceeds this value in m (0 disables)"
+        required: false
+        default: "0"
+      notify_phase3_vehicle_road_grade_abs_warn_max:
+        description: "Promote PASS/INFO to WARN when phase3 vehicle dynamics max absolute road grade exceeds this value in % (0 disables)"
+        required: false
+        default: "0"
+      notify_phase3_vehicle_road_grade_abs_hold_max:
+        description: "Promote status to HOLD when phase3 vehicle dynamics max absolute road grade exceeds this value in % (0 disables)"
+        required: false
+        default: "0"
+      notify_phase3_vehicle_grade_force_warn_max:
+        description: "Promote PASS/INFO to WARN when phase3 vehicle dynamics max absolute grade force exceeds this value in N (0 disables)"
+        required: false
+        default: "0"
+      notify_phase3_vehicle_grade_force_hold_max:
+        description: "Promote status to HOLD when phase3 vehicle dynamics max absolute grade force exceeds this value in N (0 disables)"
+        required: false
+        default: "0"
+      notify_phase3_vehicle_control_overlap_ratio_warn_max:
+        description: "Promote PASS/INFO to WARN when phase3 vehicle control throttle+brake overlap ratio exceeds this value (0~1, 0 disables)"
+        required: false
+        default: "0"
+      notify_phase3_vehicle_control_overlap_ratio_hold_max:
+        description: "Promote status to HOLD when phase3 vehicle control throttle+brake overlap ratio exceeds this value (0~1, 0 disables)"
+        required: false
+        default: "0"
+      notify_phase3_vehicle_control_steering_rate_warn_max:
+        description: "Promote PASS/INFO to WARN when phase3 vehicle control max absolute steering rate exceeds this value in deg/s (0 disables)"
+        required: false
+        default: "0"
+      notify_phase3_vehicle_control_steering_rate_hold_max:
+        description: "Promote status to HOLD when phase3 vehicle control max absolute steering rate exceeds this value in deg/s (0 disables)"
+        required: false
+        default: "0"
+      notify_phase3_vehicle_control_throttle_plus_brake_warn_max:
+        description: "Promote PASS/INFO to WARN when phase3 vehicle control max throttle+brake sum exceeds this value (0 disables)"
+        required: false
+        default: "0"
+      notify_phase3_vehicle_control_throttle_plus_brake_hold_max:
+        description: "Promote status to HOLD when phase3 vehicle control max throttle+brake sum exceeds this value (0 disables)"
+        required: false
+        default: "0"
+      notify_phase3_vehicle_speed_tracking_error_warn_max:
+        description: "Promote PASS/INFO to WARN when phase3 vehicle dynamics max speed-tracking error exceeds this value in m/s (empty => profile default, 0 disables)"
+        required: false
+        default: ""
+      notify_phase3_vehicle_speed_tracking_error_hold_max:
+        description: "Promote status to HOLD when phase3 vehicle dynamics max speed-tracking error exceeds this value in m/s (empty => profile default, 0 disables)"
+        required: false
+        default: ""
+      notify_phase3_vehicle_speed_tracking_error_abs_warn_max:
+        description: "Promote PASS/INFO to WARN when phase3 vehicle dynamics max absolute speed-tracking error exceeds this value in m/s (empty => profile default, 0 disables)"
+        required: false
+        default: ""
+      notify_phase3_vehicle_speed_tracking_error_abs_hold_max:
+        description: "Promote status to HOLD when phase3 vehicle dynamics max absolute speed-tracking error exceeds this value in m/s (empty => profile default, 0 disables)"
+        required: false
+        default: ""
+      gate_profile:
+        description: "Path to gate profile JSON (optional)"
+        required: false
+        default: "30_Projects/P_Validation-Tooling-MVP/prototype/gate_profiles/h0_highway_sanity_v0.json"
+      requirement_map:
+        description: "Path to requirement map JSON (optional)"
+        required: false
+        default: "30_Projects/P_Validation-Tooling-MVP/prototype/requirement_maps/h0_highway_trace_v0.json"
+      strict_gate:
+        description: "Fail job when overall release decision is HOLD (true/false)"
+        required: false
+        default: "false"
+      trend_window:
+        description: "Trend gate window (0 to disable)"
+        required: false
+        default: "0"
+      trend_min_pass_rate:
+        description: "Trend gate minimum pass rate (0.0~1.0)"
+        required: false
+        default: "0.8"
+      trend_min_samples:
+        description: "Trend gate minimum samples per SDS version"
+        required: false
+        default: "3"
+      sds_versions:
+        description: "Comma-separated SDS versions (optional)"
+        required: false
+        default: ""
+
+permissions:
+  contents: read
+
+concurrency:
+  group: e2e-pr-quick-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  precheck:
+    runs-on: ubuntu-latest
+    outputs:
+      should_run: ${{ steps.decide.outputs.should_run }}
+      reason: ${{ steps.decide.outputs.reason }}
+      matched_file: ${{ steps.decide.outputs.matched_file }}
+      matched_pattern: ${{ steps.decide.outputs.matched_pattern }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Decide if quick pipeline should run
+        id: decide
+        shell: bash
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+          bash 30_Projects/P_E2E_Stack/prototype/run_ci_precheck_entry.sh
+
+      - name: Publish precheck summary
+        if: ${{ always() }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 30_Projects/P_E2E_Stack/prototype/write_ci_summary_section.py \
+            --title "PR Quick Precheck" \
+            --item "should_run=${{ steps.decide.outputs.should_run }}" \
+            --item "reason=${{ steps.decide.outputs.reason }}" \
+            --item "matched_file=${{ steps.decide.outputs.matched_file }}" \
+            --item "matched_pattern=${{ steps.decide.outputs.matched_pattern }}"
+
+  run-e2e-quick:
+    needs: precheck
+    if: ${{ needs.precheck.outputs.should_run == 'true' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    outputs:
+      release_id: ${{ steps.run_pipeline.outputs.release_id }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Run CI preflight checks
+        id: preflight
+        shell: bash
+        run: |
+          set -euo pipefail
+          bash 30_Projects/P_E2E_Stack/prototype/run_ci_preflight_entry.sh
+
+      - name: Publish preflight stage summary
+        if: ${{ always() }}
+        shell: bash
+        env:
+          PREFLIGHT_SUMMARY_TITLE: "PR Quick Preflight Stages"
+          PHASE1_OUTCOME: ${{ steps.preflight.outputs.phase1_outcome }}
+          PHASE4_OUTCOME: ${{ steps.preflight.outputs.phase4_outcome }}
+          VALIDATE_OUTCOME: ${{ steps.preflight.outputs.validate_outcome }}
+          PREFLIGHT_RESULT: ${{ steps.preflight.outputs.result }}
+          FIRST_FAILED_STAGE: ${{ steps.preflight.outputs.first_failed_stage }}
+          FIRST_FAILED_COMMAND: ${{ steps.preflight.outputs.first_failed_command }}
+        run: |
+          set -euo pipefail
+          bash 30_Projects/P_E2E_Stack/prototype/run_ci_preflight_summary_entry.sh
+
+      - name: Run quick E2E pipeline
+        id: run_pipeline
+        shell: bash
+        env:
+          BATCH_SPEC: ${{ github.event.inputs.batch_spec }}
+          FALLBACK_BATCH_SPEC: "30_Projects/P_Cloud-Engine/prototype/examples/batch_smoke_v0.json"
+          PROFILE_FILE: ${{ github.event.inputs.quick_profile_file }}
+          PROFILE_ID: ${{ github.event.inputs.quick_profile_id }}
+          PROFILE_DEFAULT_FILE: "30_Projects/P_E2E_Stack/prototype/ci_profiles/nightly_matrix_profiles.json"
+          RELEASE_ID_FALLBACK_PREFIX: "REL_PR"
+          RELEASE_ID_FALLBACK_RUN_ID: ${{ github.run_id }}
+          RELEASE_ID_FALLBACK_RUN_ATTEMPT: ${{ github.run_attempt }}
+          GATE_PROFILE: ${{ github.event.inputs.gate_profile }}
+          REQUIREMENT_MAP: ${{ github.event.inputs.requirement_map }}
+          STRICT_GATE_INPUT: ${{ github.event.inputs.strict_gate }}
+          STRICT_GATE_DEFAULT: "false"
+          PHASE3_ENABLE_HOOKS_INPUT: ${{ github.event.inputs.phase3_enable_hooks || 'true' }}
+          SIM_RUNTIME: ${{ github.event.inputs.sim_runtime || 'carla' }}
+          SIM_RUNTIME_PROBE_ENABLE_INPUT: ${{ github.event.inputs.sim_runtime_probe_enable || 'true' }}
+          SIM_RUNTIME_PROBE_EXECUTE_INPUT: ${{ github.event.inputs.sim_runtime_probe_execute || 'false' }}
+          SIM_RUNTIME_PROBE_REQUIRE_AVAILABILITY_INPUT: ${{ github.event.inputs.sim_runtime_probe_require_availability || 'false' }}
+          SIM_RUNTIME_PROBE_RUNTIME_BIN: ${{ github.event.inputs.sim_runtime_probe_runtime_bin || '' }}
+          SIM_RUNTIME_PROBE_ARGS_SHLEX: ${{ github.event.inputs.sim_runtime_probe_args_shlex || '' }}
+          SIM_RUNTIME_SCENARIO_CONTRACT_ENABLE_INPUT: ${{ github.event.inputs.sim_runtime_scenario_contract_enable || 'true' }}
+          SIM_RUNTIME_SCENARIO_CONTRACT_REQUIRE_RUNTIME_READY_INPUT: ${{ github.event.inputs.sim_runtime_scenario_contract_require_runtime_ready || 'false' }}
+          SIM_RUNTIME_SCENE_RESULT_ENABLE_INPUT: ${{ github.event.inputs.sim_runtime_scene_result_enable || 'true' }}
+          SIM_RUNTIME_SCENE_RESULT_REQUIRE_RUNTIME_READY_INPUT: ${{ github.event.inputs.sim_runtime_scene_result_require_runtime_ready || 'false' }}
+          SIM_RUNTIME_INTEROP_CONTRACT_ENABLE_INPUT: ${{ github.event.inputs.sim_runtime_interop_contract_enable || 'true' }}
+          SIM_RUNTIME_INTEROP_CONTRACT_REQUIRE_RUNTIME_READY_INPUT: ${{ github.event.inputs.sim_runtime_interop_contract_require_runtime_ready || 'false' }}
+          SIM_RUNTIME_INTEROP_EXPORT_ROAD_LENGTH_SCALE: ${{ github.event.inputs.sim_runtime_interop_export_road_length_scale || '1.0' }}
+          SIM_RUNTIME_INTEROP_CONTRACT_XOSC: ${{ github.event.inputs.sim_runtime_interop_contract_xosc || '' }}
+          SIM_RUNTIME_INTEROP_CONTRACT_XODR: ${{ github.event.inputs.sim_runtime_interop_contract_xodr || '' }}
+          SIM_RUNTIME_INTEROP_IMPORT_MANIFEST_CONSISTENCY_MODE: ${{ github.event.inputs.sim_runtime_interop_import_manifest_consistency_mode || 'allow' }}
+          SIM_RUNTIME_INTEROP_IMPORT_EXPORT_CONSISTENCY_MODE: ${{ github.event.inputs.sim_runtime_interop_import_export_consistency_mode || 'allow' }}
+          PHASE4_ENABLE_HOOKS_INPUT: "true"
+          PHASE4_REQUIRE_DONE_INPUT: "true"
+          TREND_WINDOW: ${{ github.event.inputs.trend_window }}
+          TREND_MIN_PASS_RATE: ${{ github.event.inputs.trend_min_pass_rate }}
+          TREND_MIN_SAMPLES: ${{ github.event.inputs.trend_min_samples }}
+          SDS_VERSIONS_CSV: ${{ github.event.inputs.sds_versions }}
+        run: |
+          set -euo pipefail
+          bash 30_Projects/P_E2E_Stack/prototype/run_ci_pipeline_entry.sh
+
+      - name: Upload quick artifacts
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-pr-quick-${{ steps.run_pipeline.outputs.release_id }}
+          if-no-files-found: warn
+          path: |
+            e2e_pipeline.log
+            30_Projects/P_Cloud-Engine/prototype/batch_runs
+            30_Projects/P_Data-Lake-and-Explorer/prototype/data
+            30_Projects/P_Validation-Tooling-MVP/prototype/reports
+
+  summarize-quick:
+    needs: [precheck, run-e2e-quick]
+    if: ${{ always() && needs.precheck.outputs.should_run == 'true' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Download quick artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: downloaded_artifacts
+        continue-on-error: true
+
+      - name: Build and publish quick summary
+        if: ${{ always() }}
+        shell: bash
+        env:
+          CI_SUMMARY_PROFILE: pr_quick
+          RELEASE_PREFIX: ${{ needs.run-e2e-quick.outputs.release_id }}
+          NOTIFY_ON: ${{ github.event.inputs.notify_on }}
+          NOTIFY_FORMAT: ${{ github.event.inputs.notify_format }}
+          WEBHOOK_URL: ${{ secrets.E2E_NOTIFICATION_WEBHOOK_URL }}
+          NOTIFY_TIMEOUT_SEC: ${{ github.event.inputs.notify_timeout_sec }}
+          NOTIFY_MAX_RETRIES: ${{ github.event.inputs.notify_max_retries }}
+          NOTIFY_RETRY_BACKOFF_SEC: ${{ github.event.inputs.notify_retry_backoff_sec }}
+          NOTIFY_TIMING_TOTAL_WARN_MS: ${{ github.event.inputs.notify_timing_total_warn_ms }}
+          NOTIFY_TIMING_REGRESSION_BASELINE_MS: ${{ github.event.inputs.notify_timing_regression_baseline_ms }}
+          NOTIFY_TIMING_REGRESSION_WARN_RATIO: ${{ github.event.inputs.notify_timing_regression_warn_ratio }}
+          NOTIFY_TIMING_REGRESSION_HISTORY_WINDOW: ${{ github.event.inputs.notify_timing_regression_history_window }}
+          NOTIFY_TIMING_REGRESSION_HISTORY_DIR: ${{ github.event.inputs.notify_timing_regression_history_dir }}
+          NOTIFY_TIMING_REGRESSION_HISTORY_OUTLIER_METHOD: ${{ github.event.inputs.notify_timing_regression_history_outlier_method }}
+          NOTIFY_TIMING_REGRESSION_HISTORY_TRIM_RATIO: ${{ github.event.inputs.notify_timing_regression_history_trim_ratio }}
+          NOTIFY_PHASE4_PRIMARY_WARN_RATIO: ${{ github.event.inputs.notify_phase4_primary_warn_ratio }}
+          NOTIFY_PHASE4_PRIMARY_HOLD_RATIO: ${{ github.event.inputs.notify_phase4_primary_hold_ratio }}
+          NOTIFY_PHASE4_PRIMARY_MODULE_WARN_THRESHOLDS: ${{ github.event.inputs.notify_phase4_primary_module_warn_thresholds }}
+          NOTIFY_PHASE4_PRIMARY_MODULE_HOLD_THRESHOLDS: ${{ github.event.inputs.notify_phase4_primary_module_hold_thresholds }}
+          NOTIFY_PHASE4_SECONDARY_WARN_RATIO: ${{ github.event.inputs.notify_phase4_secondary_warn_ratio }}
+          NOTIFY_PHASE4_SECONDARY_HOLD_RATIO: ${{ github.event.inputs.notify_phase4_secondary_hold_ratio }}
+          NOTIFY_PHASE4_SECONDARY_WARN_MIN_MODULES: ${{ github.event.inputs.notify_phase4_secondary_warn_min_modules }}
+          NOTIFY_PHASE4_SECONDARY_MODULE_WARN_THRESHOLDS: ${{ github.event.inputs.notify_phase4_secondary_module_warn_thresholds }}
+          NOTIFY_PHASE4_SECONDARY_MODULE_HOLD_THRESHOLDS: ${{ github.event.inputs.notify_phase4_secondary_module_hold_thresholds }}
+          NOTIFY_RUNTIME_LANE_EXECUTION_WARN_MIN_EXEC_ROWS: ${{ github.event.inputs.notify_runtime_lane_execution_warn_min_exec_rows }}
+          NOTIFY_RUNTIME_LANE_EXECUTION_HOLD_MIN_EXEC_ROWS: ${{ github.event.inputs.notify_runtime_lane_execution_hold_min_exec_rows }}
+          NOTIFY_RUNTIME_EVIDENCE_COMPARE_WARN_MIN_ARTIFACTS_WITH_DIFFS: ${{ github.event.inputs.notify_runtime_evidence_compare_warn_min_artifacts_with_diffs }}
+          NOTIFY_RUNTIME_EVIDENCE_COMPARE_HOLD_MIN_ARTIFACTS_WITH_DIFFS: ${{ github.event.inputs.notify_runtime_evidence_compare_hold_min_artifacts_with_diffs }}
+          NOTIFY_RUNTIME_EVIDENCE_COMPARE_WARN_MIN_INTEROP_IMPORT_MODE_DIFF_COUNT: ${{ github.event.inputs.notify_runtime_evidence_compare_warn_min_interop_import_mode_diff_count }}
+          NOTIFY_RUNTIME_EVIDENCE_COMPARE_HOLD_MIN_INTEROP_IMPORT_MODE_DIFF_COUNT: ${{ github.event.inputs.notify_runtime_evidence_compare_hold_min_interop_import_mode_diff_count }}
+          NOTIFY_PHASE2_SENSOR_FIDELITY_SCORE_AVG_WARN_MIN: ${{ github.event.inputs.notify_phase2_sensor_fidelity_score_avg_warn_min }}
+          NOTIFY_PHASE2_SENSOR_FIDELITY_SCORE_AVG_HOLD_MIN: ${{ github.event.inputs.notify_phase2_sensor_fidelity_score_avg_hold_min }}
+          NOTIFY_PHASE2_SENSOR_FRAME_COUNT_AVG_WARN_MIN: ${{ github.event.inputs.notify_phase2_sensor_frame_count_avg_warn_min }}
+          NOTIFY_PHASE2_SENSOR_FRAME_COUNT_AVG_HOLD_MIN: ${{ github.event.inputs.notify_phase2_sensor_frame_count_avg_hold_min }}
+          NOTIFY_PHASE2_SENSOR_CAMERA_NOISE_STDDEV_PX_AVG_WARN_MAX: ${{ github.event.inputs.notify_phase2_sensor_camera_noise_stddev_px_avg_warn_max }}
+          NOTIFY_PHASE2_SENSOR_CAMERA_NOISE_STDDEV_PX_AVG_HOLD_MAX: ${{ github.event.inputs.notify_phase2_sensor_camera_noise_stddev_px_avg_hold_max }}
+          NOTIFY_PHASE2_SENSOR_LIDAR_POINT_COUNT_AVG_WARN_MIN: ${{ github.event.inputs.notify_phase2_sensor_lidar_point_count_avg_warn_min }}
+          NOTIFY_PHASE2_SENSOR_LIDAR_POINT_COUNT_AVG_HOLD_MIN: ${{ github.event.inputs.notify_phase2_sensor_lidar_point_count_avg_hold_min }}
+          NOTIFY_PHASE2_SENSOR_RADAR_FALSE_POSITIVE_RATE_AVG_WARN_MAX: ${{ github.event.inputs.notify_phase2_sensor_radar_false_positive_rate_avg_warn_max }}
+          NOTIFY_PHASE2_SENSOR_RADAR_FALSE_POSITIVE_RATE_AVG_HOLD_MAX: ${{ github.event.inputs.notify_phase2_sensor_radar_false_positive_rate_avg_hold_max }}
+          NOTIFY_FAIL_ON_RUNTIME_THRESHOLD_DRIFT_HOLD: ${{ github.event.inputs.runtime_threshold_drift_fail_on_hold }}
+          NOTIFY_FAIL_ON_PHASE2_LOG_REPLAY_THRESHOLD_HOLD: ${{ github.event.inputs.phase2_log_replay_threshold_fail_on_hold }}
+          NOTIFY_FAIL_ON_RUNTIME_NATIVE_SMOKE_THRESHOLD_HOLD: ${{ github.event.inputs.runtime_native_smoke_threshold_fail_on_hold }}
+          NOTIFY_FAIL_ON_RUNTIME_NATIVE_EVIDENCE_COMPARE_THRESHOLD_HOLD: ${{ github.event.inputs.runtime_native_evidence_compare_threshold_fail_on_hold }}
+          NOTIFY_PHASE3_VEHICLE_FINAL_SPEED_WARN_MAX: ${{ github.event.inputs.notify_phase3_vehicle_final_speed_warn_max }}
+          NOTIFY_PHASE3_VEHICLE_FINAL_SPEED_HOLD_MAX: ${{ github.event.inputs.notify_phase3_vehicle_final_speed_hold_max }}
+          NOTIFY_PHASE3_VEHICLE_FINAL_POSITION_WARN_MAX: ${{ github.event.inputs.notify_phase3_vehicle_final_position_warn_max }}
+          NOTIFY_PHASE3_VEHICLE_FINAL_POSITION_HOLD_MAX: ${{ github.event.inputs.notify_phase3_vehicle_final_position_hold_max }}
+          NOTIFY_PHASE3_VEHICLE_DELTA_SPEED_WARN_MAX: ${{ github.event.inputs.notify_phase3_vehicle_delta_speed_warn_max }}
+          NOTIFY_PHASE3_VEHICLE_DELTA_SPEED_HOLD_MAX: ${{ github.event.inputs.notify_phase3_vehicle_delta_speed_hold_max }}
+          NOTIFY_PHASE3_VEHICLE_DELTA_POSITION_WARN_MAX: ${{ github.event.inputs.notify_phase3_vehicle_delta_position_warn_max }}
+          NOTIFY_PHASE3_VEHICLE_DELTA_POSITION_HOLD_MAX: ${{ github.event.inputs.notify_phase3_vehicle_delta_position_hold_max }}
+          NOTIFY_PHASE3_VEHICLE_FINAL_HEADING_ABS_WARN_MAX: ${{ github.event.inputs.notify_phase3_vehicle_final_heading_abs_warn_max }}
+          NOTIFY_PHASE3_VEHICLE_FINAL_HEADING_ABS_HOLD_MAX: ${{ github.event.inputs.notify_phase3_vehicle_final_heading_abs_hold_max }}
+          NOTIFY_PHASE3_VEHICLE_FINAL_LATERAL_POSITION_ABS_WARN_MAX: ${{ github.event.inputs.notify_phase3_vehicle_final_lateral_position_abs_warn_max }}
+          NOTIFY_PHASE3_VEHICLE_FINAL_LATERAL_POSITION_ABS_HOLD_MAX: ${{ github.event.inputs.notify_phase3_vehicle_final_lateral_position_abs_hold_max }}
+          NOTIFY_PHASE3_VEHICLE_DELTA_HEADING_ABS_WARN_MAX: ${{ github.event.inputs.notify_phase3_vehicle_delta_heading_abs_warn_max }}
+          NOTIFY_PHASE3_VEHICLE_DELTA_HEADING_ABS_HOLD_MAX: ${{ github.event.inputs.notify_phase3_vehicle_delta_heading_abs_hold_max }}
+          NOTIFY_PHASE3_VEHICLE_DELTA_LATERAL_POSITION_ABS_WARN_MAX: ${{ github.event.inputs.notify_phase3_vehicle_delta_lateral_position_abs_warn_max }}
+          NOTIFY_PHASE3_VEHICLE_DELTA_LATERAL_POSITION_ABS_HOLD_MAX: ${{ github.event.inputs.notify_phase3_vehicle_delta_lateral_position_abs_hold_max }}
+          NOTIFY_PHASE3_VEHICLE_YAW_RATE_ABS_WARN_MAX: ${{ github.event.inputs.notify_phase3_vehicle_yaw_rate_abs_warn_max }}
+          NOTIFY_PHASE3_VEHICLE_YAW_RATE_ABS_HOLD_MAX: ${{ github.event.inputs.notify_phase3_vehicle_yaw_rate_abs_hold_max }}
+          NOTIFY_PHASE3_VEHICLE_DELTA_YAW_RATE_ABS_WARN_MAX: ${{ github.event.inputs.notify_phase3_vehicle_delta_yaw_rate_abs_warn_max }}
+          NOTIFY_PHASE3_VEHICLE_DELTA_YAW_RATE_ABS_HOLD_MAX: ${{ github.event.inputs.notify_phase3_vehicle_delta_yaw_rate_abs_hold_max }}
+          NOTIFY_PHASE3_VEHICLE_LATERAL_VELOCITY_ABS_WARN_MAX: ${{ github.event.inputs.notify_phase3_vehicle_lateral_velocity_abs_warn_max }}
+          NOTIFY_PHASE3_VEHICLE_LATERAL_VELOCITY_ABS_HOLD_MAX: ${{ github.event.inputs.notify_phase3_vehicle_lateral_velocity_abs_hold_max }}
+          NOTIFY_PHASE3_VEHICLE_ACCEL_ABS_WARN_MAX: ${{ github.event.inputs.notify_phase3_vehicle_accel_abs_warn_max }}
+          NOTIFY_PHASE3_VEHICLE_ACCEL_ABS_HOLD_MAX: ${{ github.event.inputs.notify_phase3_vehicle_accel_abs_hold_max }}
+          NOTIFY_PHASE3_VEHICLE_LATERAL_ACCEL_ABS_WARN_MAX: ${{ github.event.inputs.notify_phase3_vehicle_lateral_accel_abs_warn_max }}
+          NOTIFY_PHASE3_VEHICLE_LATERAL_ACCEL_ABS_HOLD_MAX: ${{ github.event.inputs.notify_phase3_vehicle_lateral_accel_abs_hold_max }}
+          NOTIFY_PHASE3_VEHICLE_YAW_ACCEL_ABS_WARN_MAX: ${{ github.event.inputs.notify_phase3_vehicle_yaw_accel_abs_warn_max }}
+          NOTIFY_PHASE3_VEHICLE_YAW_ACCEL_ABS_HOLD_MAX: ${{ github.event.inputs.notify_phase3_vehicle_yaw_accel_abs_hold_max }}
+          NOTIFY_PHASE3_VEHICLE_JERK_ABS_WARN_MAX: ${{ github.event.inputs.notify_phase3_vehicle_jerk_abs_warn_max }}
+          NOTIFY_PHASE3_VEHICLE_JERK_ABS_HOLD_MAX: ${{ github.event.inputs.notify_phase3_vehicle_jerk_abs_hold_max }}
+          NOTIFY_PHASE3_VEHICLE_LATERAL_JERK_ABS_WARN_MAX: ${{ github.event.inputs.notify_phase3_vehicle_lateral_jerk_abs_warn_max }}
+          NOTIFY_PHASE3_VEHICLE_LATERAL_JERK_ABS_HOLD_MAX: ${{ github.event.inputs.notify_phase3_vehicle_lateral_jerk_abs_hold_max }}
+          NOTIFY_PHASE3_VEHICLE_YAW_JERK_ABS_WARN_MAX: ${{ github.event.inputs.notify_phase3_vehicle_yaw_jerk_abs_warn_max }}
+          NOTIFY_PHASE3_VEHICLE_YAW_JERK_ABS_HOLD_MAX: ${{ github.event.inputs.notify_phase3_vehicle_yaw_jerk_abs_hold_max }}
+          NOTIFY_PHASE3_VEHICLE_LATERAL_POSITION_ABS_WARN_MAX: ${{ github.event.inputs.notify_phase3_vehicle_lateral_position_abs_warn_max }}
+          NOTIFY_PHASE3_VEHICLE_LATERAL_POSITION_ABS_HOLD_MAX: ${{ github.event.inputs.notify_phase3_vehicle_lateral_position_abs_hold_max }}
+          NOTIFY_PHASE3_VEHICLE_ROAD_GRADE_ABS_WARN_MAX: ${{ github.event.inputs.notify_phase3_vehicle_road_grade_abs_warn_max }}
+          NOTIFY_PHASE3_VEHICLE_ROAD_GRADE_ABS_HOLD_MAX: ${{ github.event.inputs.notify_phase3_vehicle_road_grade_abs_hold_max }}
+          NOTIFY_PHASE3_VEHICLE_GRADE_FORCE_WARN_MAX: ${{ github.event.inputs.notify_phase3_vehicle_grade_force_warn_max }}
+          NOTIFY_PHASE3_VEHICLE_GRADE_FORCE_HOLD_MAX: ${{ github.event.inputs.notify_phase3_vehicle_grade_force_hold_max }}
+          NOTIFY_PHASE3_VEHICLE_CONTROL_OVERLAP_RATIO_WARN_MAX: ${{ github.event.inputs.notify_phase3_vehicle_control_overlap_ratio_warn_max }}
+          NOTIFY_PHASE3_VEHICLE_CONTROL_OVERLAP_RATIO_HOLD_MAX: ${{ github.event.inputs.notify_phase3_vehicle_control_overlap_ratio_hold_max }}
+          NOTIFY_PHASE3_VEHICLE_CONTROL_STEERING_RATE_WARN_MAX: ${{ github.event.inputs.notify_phase3_vehicle_control_steering_rate_warn_max }}
+          NOTIFY_PHASE3_VEHICLE_CONTROL_STEERING_RATE_HOLD_MAX: ${{ github.event.inputs.notify_phase3_vehicle_control_steering_rate_hold_max }}
+          NOTIFY_PHASE3_VEHICLE_CONTROL_THROTTLE_PLUS_BRAKE_WARN_MAX: ${{ github.event.inputs.notify_phase3_vehicle_control_throttle_plus_brake_warn_max }}
+          NOTIFY_PHASE3_VEHICLE_CONTROL_THROTTLE_PLUS_BRAKE_HOLD_MAX: ${{ github.event.inputs.notify_phase3_vehicle_control_throttle_plus_brake_hold_max }}
+          NOTIFY_PHASE3_VEHICLE_SPEED_TRACKING_ERROR_WARN_MAX: ${{ github.event.inputs.notify_phase3_vehicle_speed_tracking_error_warn_max }}
+          NOTIFY_PHASE3_VEHICLE_SPEED_TRACKING_ERROR_HOLD_MAX: ${{ github.event.inputs.notify_phase3_vehicle_speed_tracking_error_hold_max }}
+          NOTIFY_PHASE3_VEHICLE_SPEED_TRACKING_ERROR_ABS_WARN_MAX: ${{ github.event.inputs.notify_phase3_vehicle_speed_tracking_error_abs_warn_max }}
+          NOTIFY_PHASE3_VEHICLE_SPEED_TRACKING_ERROR_ABS_HOLD_MAX: ${{ github.event.inputs.notify_phase3_vehicle_speed_tracking_error_abs_hold_max }}
+          SDS_VERSIONS_CSV: ${{ github.event.inputs.sds_versions }}
+        run: |
+          set -euo pipefail
+          bash 30_Projects/P_E2E_Stack/prototype/run_ci_summary_entry.sh
+
+      - name: Upload quick summary artifact
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-pr-quick-summary-${{ github.run_id }}-${{ github.run_attempt }}
+          if-no-files-found: warn
+          path: |
+            pr_quick_release_diff.txt
+            pr_quick_release_summary.json
+            pr_quick_notification_payload.json
+            pr_quick_release_summary.sqlite
+
+  skipped:
+    needs: precheck
+    if: ${{ needs.precheck.outputs.should_run != 'true' }}
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Publish skip summary
+        shell: bash
+        env:
+          SKIP_SUMMARY_TITLE: "PR Quick Skipped"
+          SKIP_REASON: ${{ needs.precheck.outputs.reason }}
+          SKIP_MATCHED_FILE: ${{ needs.precheck.outputs.matched_file }}
+          SKIP_MATCHED_PATTERN: ${{ needs.precheck.outputs.matched_pattern }}
+        run: |
+          set -euo pipefail
+          bash 30_Projects/P_E2E_Stack/prototype/run_ci_precheck_skip_summary_entry.sh

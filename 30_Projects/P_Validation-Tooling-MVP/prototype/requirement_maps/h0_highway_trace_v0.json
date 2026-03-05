@@ -1,0 +1,34 @@
+{
+  "profile_id": "req_h0_highway_trace_v0",
+  "requirements": [
+    {
+      "requirement_id": "REQ-H0-001",
+      "description": "Minimum sample count for release recommendation",
+      "metric_key": "run_count",
+      "operator": ">=",
+      "threshold": 2
+    },
+    {
+      "requirement_id": "REQ-H0-002",
+      "description": "No timeout runs in the analyzed sample",
+      "metric_key": "timeout_count",
+      "operator": "<=",
+      "threshold": 0
+    },
+    {
+      "requirement_id": "REQ-H0-003",
+      "description": "No collision events for H0 highway sanity",
+      "metric_key": "collision_count",
+      "operator": "<=",
+      "threshold": 0
+    },
+    {
+      "requirement_id": "REQ-H0-004",
+      "description": "Conservative p5 minTTC floor",
+      "metric_key": "min_ttc_p5_sec",
+      "operator": ">=",
+      "threshold": 1.5,
+      "allow_missing": false
+    }
+  ]
+}

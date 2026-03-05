@@ -1,0 +1,14 @@
+{
+  "profiles": [
+    {
+      "profile_id": "sds_v0_1_0",
+      "default_batch_spec": "30_Projects/P_Cloud-Engine/prototype/examples/batch_regression_highway_sds_v0.1.0.json",
+      "default_sds_versions": "sds_v0.1.0"
+    },
+    {
+      "profile_id": "sds_v0_2_0",
+      "default_batch_spec": "30_Projects/P_Cloud-Engine/prototype/examples/batch_regression_highway_sds_v0.2.0.json",
+      "default_sds_versions": "sds_v0.2.0"
+    }
+  ]
+}

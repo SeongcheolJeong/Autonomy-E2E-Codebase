@@ -1,0 +1,35 @@
+{
+  "batch_id": "BATCH_SMOKE_0001",
+  "output_root": "../batch_runs",
+  "sim_runner": {
+    "python_bin": "python3",
+    "script_path": "../../../P_Sim-Engine/prototype/core_sim_runner.py"
+  },
+  "defaults": {
+    "seed": 42,
+    "run_source": "sim_closed_loop",
+    "sds_version": "sds_v0.1.0",
+    "sim_version": "sim_engine_v0_prototype",
+    "fidelity_profile": "dev-fast",
+    "map_id": "map_demo_highway",
+    "map_version": "v0",
+    "odd_tags": "highway,day,clear"
+  },
+  "execution": {
+    "max_concurrency": 2,
+    "timeout_sec_per_run": 30
+  },
+  "runs": [
+    {
+      "run_id": "RUN_1001",
+      "scenario": "../../../P_Sim-Engine/prototype/examples/highway_following_v0.json",
+      "seed": 42
+    },
+    {
+      "run_id": "RUN_1002",
+      "scenario": "../../../P_Sim-Engine/prototype/examples/highway_safe_following_v0.json",
+      "seed": 7,
+      "sds_version": "sds_v0.2.0"
+    }
+  ]
+}

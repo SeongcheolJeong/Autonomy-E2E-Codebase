@@ -1,0 +1,7 @@
+{
+  "profile_schema_version": "vehicle_profile_v0",
+  "wheelbase_m": 2.8,
+  "max_accel_mps2": 3.0,
+  "max_decel_mps2": 5.0,
+  "max_speed_mps": 30.0
+}

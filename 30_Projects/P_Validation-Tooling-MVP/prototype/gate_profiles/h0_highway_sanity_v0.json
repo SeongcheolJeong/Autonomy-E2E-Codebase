@@ -1,0 +1,14 @@
+{
+  "profile_id": "H0_HIGHWAY_SANITY_V0",
+  "capability_level": "H0",
+  "description": "Dev/SIL-only H0 gate for initial highway sanity regression.",
+  "rules": {
+    "min_run_count": 1,
+    "max_fail_count": 0,
+    "max_timeout_count": 0,
+    "max_collision_count": 0,
+    "max_collision_rate": 0.0,
+    "min_ttc_p5_sec": 1.0,
+    "min_ttc_p5_required": false
+  }
+}

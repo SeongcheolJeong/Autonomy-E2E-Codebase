@@ -1,0 +1,14 @@
+{
+  "profile_id": "H1_HIGHWAY_CORE_V0",
+  "capability_level": "H1",
+  "description": "Placeholder H1 gate profile for highway core safety runs.",
+  "rules": {
+    "min_run_count": 10,
+    "max_fail_count": 0,
+    "max_timeout_count": 0,
+    "max_collision_count": 0,
+    "max_collision_rate": 0.0,
+    "min_ttc_p5_sec": 1.5,
+    "min_ttc_p5_required": true
+  }
+}

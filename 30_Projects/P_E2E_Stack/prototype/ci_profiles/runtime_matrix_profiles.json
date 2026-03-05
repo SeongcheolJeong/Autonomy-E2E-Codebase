@@ -1,0 +1,25 @@
+{
+  "profiles": [
+    {
+      "profile_id": "runtime_smoke_v0",
+      "default_batch_spec": "30_Projects/P_Cloud-Engine/prototype/examples/batch_smoke_v0.json",
+      "default_sds_versions": "sds_v0.2.0"
+    },
+    {
+      "profile_id": "runtime_carla_smoke_v0",
+      "default_batch_spec": "30_Projects/P_Cloud-Engine/prototype/examples/batch_smoke_v0.json",
+      "default_sds_versions": "sds_v0.2.0",
+      "sim_runtime": "carla",
+      "sim_runtime_scene": "30_Projects/P_Sim-Engine/prototype/examples/log_scene_runtime_carla_v0.json",
+      "sim_runtime_mode": "headless"
+    },
+    {
+      "profile_id": "runtime_awsim_smoke_v0",
+      "default_batch_spec": "30_Projects/P_Cloud-Engine/prototype/examples/batch_smoke_v0.json",
+      "default_sds_versions": "sds_v0.2.0",
+      "sim_runtime": "awsim",
+      "sim_runtime_scene": "30_Projects/P_Sim-Engine/prototype/examples/log_scene_runtime_awsim_v0.json",
+      "sim_runtime_mode": "headless"
+    }
+  ]
+}

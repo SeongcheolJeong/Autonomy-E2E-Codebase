@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<OpenSCENARIO>
+  <FileHeader revMajor="1" revMinor="1" date="2026-03-02T00:00:00" description="minimal interop case" author="autonomy-e2e" />
+  <RoadNetwork>
+    <LogicFile filepath="opendrive_minimal_v0.xodr" />
+  </RoadNetwork>
+  <Entities>
+    <ScenarioObject name="ego_vehicle" />
+    <ScenarioObject name="lead_vehicle" />
+  </Entities>
+  <Storyboard>
+    <Init />
+    <Story name="story_main" />
+  </Storyboard>
+</OpenSCENARIO>

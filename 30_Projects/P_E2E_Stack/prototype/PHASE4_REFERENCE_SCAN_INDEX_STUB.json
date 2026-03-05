@@ -1,0 +1,74 @@
+{
+  "phase4_reference_index_schema_version": "phase4_reference_index_v0",
+  "generated_at": "2026-02-28T00:00:00+00:00",
+  "repositories": [
+    {
+      "repository": "autowarefoundation/autoware",
+      "observed_patterns": [
+        "ROS2 interface contracts",
+        "test harness launch patterns",
+        "unified workflow surface scenario execution analysis",
+        "use-case traceability structure"
+      ]
+    },
+    {
+      "repository": "tier4/AWSIM",
+      "observed_patterns": [
+        "simulation bridge flow",
+        "ROS2 interface contracts"
+      ]
+    },
+    {
+      "repository": "carla-simulator/carla",
+      "observed_patterns": [
+        "unified workflow surface scenario execution analysis",
+        "replay query assist loop patterns",
+        "use-case traceability structure"
+      ]
+    },
+    {
+      "repository": "commaai/openpilot",
+      "observed_patterns": [
+        "prompt-driven safety guardrails",
+        "replay query assist loop patterns"
+      ]
+    },
+    {
+      "repository": "ApolloAuto/apollo",
+      "observed_patterns": [
+        "unified workflow surface scenario execution analysis",
+        "use-case traceability structure",
+        "moduleized planning control handoff contracts"
+      ]
+    },
+    {
+      "repository": "tier4/scenario_simulator_v2",
+      "observed_patterns": [
+        "simulation bridge flow",
+        "test harness launch patterns",
+        "scenario format conversion adapters"
+      ]
+    },
+    {
+      "repository": "eclipse-sumo/sumo",
+      "observed_patterns": [
+        "scenario generation parameter sweep tooling",
+        "traffic actor behavior configuration"
+      ]
+    },
+    {
+      "repository": "CommonRoad/commonroad-io",
+      "observed_patterns": [
+        "scenario io validation and visualization workflow",
+        "use-case traceability structure"
+      ]
+    },
+    {
+      "repository": "CommonRoad/commonroad-scenario-designer",
+      "observed_patterns": [
+        "map conversion and scenario authoring workflow",
+        "scenario format conversion adapters"
+      ]
+    }
+  ]
+}

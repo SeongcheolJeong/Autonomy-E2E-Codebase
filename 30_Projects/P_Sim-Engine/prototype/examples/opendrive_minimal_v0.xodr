@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<OpenDRIVE>
+  <header revMajor="1" revMinor="6" name="minimal_map" version="v0" date="2026-03-02" />
+  <road name="road_main" length="100.0" id="1" junction="-1" />
+  <junction id="10" name="junction_main" />
+</OpenDRIVE>
