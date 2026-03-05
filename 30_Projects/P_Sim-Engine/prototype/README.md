@@ -105,6 +105,22 @@ python3 sensor_sim_bridge.py \
   --out runs/sensor_frames_v0.json
 ```
 
+Optional world-state environment inputs (for weather/light-aware sensor degradation):
+
+- `environment.precipitation_intensity` (`0.0` to `1.0`)
+- `environment.fog_density` (`0.0` to `1.0`)
+- `environment.ambient_light_lux` (for low-light camera behavior)
+
+Adverse weather example:
+
+```bash
+python3 sensor_sim_bridge.py \
+  --world-state examples/world_state_adverse_weather_v0.json \
+  --sensor-rig examples/sensor_rig_v0.json \
+  --fidelity-tier high \
+  --out runs/sensor_frames_adverse_weather_v0.json
+```
+
 ## Sensor rig sweep scaffold
 
 ```bash

@@ -1432,6 +1432,88 @@ class SensorSimBridgeTests(unittest.TestCase):
             self.assertAlmostEqual(float(frames[0]["payload"]["camera_noise_stddev_px"]), 1.2, places=6)
             self.assertAlmostEqual(float(frames[2]["payload"]["radar_false_positive_rate"]), 0.05, places=6)
 
+    def test_high_fidelity_tier_with_adverse_weather_degrades_sensor_quality(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp_path = Path(tmp)
+            world_state = tmp_path / "world_state.json"
+            sensor_rig = tmp_path / "sensor_rig.json"
+            out_path = tmp_path / "sensor_frames.json"
+
+            world_state.write_text(
+                json.dumps(
+                    {
+                        "world_state_schema_version": "world_state_v0",
+                        "frame_timestamp": "2026-02-27T03:30:00Z",
+                        "environment": {
+                            "precipitation_intensity": 0.5,
+                            "fog_density": 0.6,
+                            "ambient_light_lux": 800.0,
+                        },
+                        "actors": [
+                            {"actor_id": "ego", "speed_mps": 32.0},
+                            {"actor_id": "npc_001", "speed_mps": 18.0},
+                        ],
+                    }
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+            sensor_rig.write_text(
+                json.dumps(
+                    {
+                        "rig_schema_version": "sensor_rig_v0",
+                        "sensors": [
+                            {"sensor_id": "camera_front", "sensor_type": "camera"},
+                            {"sensor_id": "lidar_top", "sensor_type": "lidar", "points_per_actor": 30},
+                            {"sensor_id": "radar_front", "sensor_type": "radar"},
+                        ],
+                    }
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+
+            proc = run_script(
+                PROTOTYPE_DIR / "../../P_Sim-Engine/prototype/sensor_sim_bridge.py",
+                "--world-state",
+                str(world_state),
+                "--sensor-rig",
+                str(sensor_rig),
+                "--fidelity-tier",
+                "high",
+                "--out",
+                str(out_path),
+            )
+            self.assertIn("[ok] sensor_fidelity_tier=high", proc.stdout)
+
+            payload = read_json_file(self, file_path=out_path)
+            world_environment = payload.get("world_environment", {})
+            self.assertAlmostEqual(float(world_environment.get("precipitation_intensity", 0.0) or 0.0), 0.5, places=6)
+            self.assertAlmostEqual(float(world_environment.get("fog_density", 0.0) or 0.0), 0.6, places=6)
+            self.assertAlmostEqual(float(world_environment.get("ambient_light_lux", 0.0) or 0.0), 800.0, places=6)
+            self.assertAlmostEqual(float(world_environment.get("ego_speed_mps", 0.0) or 0.0), 32.0, places=6)
+
+            sensor_quality_summary = payload.get("sensor_quality_summary", {})
+            self.assertGreater(float(sensor_quality_summary.get("camera_noise_stddev_px_avg", 0.0) or 0.0), 1.2)
+            self.assertLess(float(sensor_quality_summary.get("camera_dynamic_range_stops_avg", 0.0) or 0.0), 14.0)
+            self.assertLess(float(sensor_quality_summary.get("camera_visibility_score_avg", 0.0) or 0.0), 1.0)
+            self.assertGreater(float(sensor_quality_summary.get("camera_motion_blur_level_avg", 0.0) or 0.0), 2.0)
+            self.assertLess(float(sensor_quality_summary.get("lidar_point_count_avg", 0.0) or 0.0), 120.0)
+            self.assertLess(float(sensor_quality_summary.get("lidar_detection_ratio_avg", 0.0) or 0.0), 1.0)
+            self.assertGreater(float(sensor_quality_summary.get("radar_false_positive_rate_avg", 0.0) or 0.0), 0.05)
+            self.assertGreater(int(sensor_quality_summary.get("radar_ghost_target_count_total", 0) or 0), 0)
+            self.assertGreater(float(sensor_quality_summary.get("radar_clutter_index_avg", 0.0) or 0.0), 0.0)
+
+            frames = payload.get("frames", [])
+            self.assertEqual(len(frames), 3)
+            frame_by_sensor_id = {str(frame.get("sensor_id", "")): frame for frame in frames}
+            camera_payload = frame_by_sensor_id.get("camera_front", {}).get("payload", {})
+            self.assertIsInstance(camera_payload, dict)
+            self.assertLessEqual(int(camera_payload.get("visible_actor_count", 0) or 0), 1)
+            radar_payload = frame_by_sensor_id.get("radar_front", {}).get("payload", {})
+            self.assertIsInstance(radar_payload, dict)
+            self.assertGreater(int(radar_payload.get("ghost_target_count", 0) or 0), 0)
+
     def test_invalid_sensor_type_is_reported_without_traceback(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             tmp_path = Path(tmp)

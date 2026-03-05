@@ -1,0 +1,26 @@
+{
+  "world_state_schema_version": "world_state_v0",
+  "frame_timestamp": "2026-02-27T00:10:00Z",
+  "environment": {
+    "precipitation_intensity": 0.55,
+    "fog_density": 0.45,
+    "ambient_light_lux": 900.0
+  },
+  "actors": [
+    {
+      "actor_id": "ego",
+      "position_m": [0.0, 0.0],
+      "speed_mps": 28.0
+    },
+    {
+      "actor_id": "npc_001",
+      "position_m": [26.0, 1.4],
+      "speed_mps": 18.0
+    },
+    {
+      "actor_id": "npc_002",
+      "position_m": [42.0, -1.2],
+      "speed_mps": 16.0
+    }
+  ]
+}
