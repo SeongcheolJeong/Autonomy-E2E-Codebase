@@ -1408,15 +1408,31 @@ def discover_pipeline_manifests(scan_roots: list[Path], release_prefix: str) -> 
             phase2_sensor_camera_frame_count = 0
             phase2_sensor_camera_noise_stddev_px_avg = 0.0
             phase2_sensor_camera_dynamic_range_stops_avg = 0.0
+            phase2_sensor_camera_visibility_score_avg = 0.0
+            phase2_sensor_camera_motion_blur_level_avg = 0.0
+            phase2_sensor_camera_snr_db_avg = 0.0
+            phase2_sensor_camera_exposure_time_ms_avg = 0.0
+            phase2_sensor_camera_signal_saturation_ratio_avg = 0.0
+            phase2_sensor_camera_rolling_shutter_total_delay_ms_avg = 0.0
+            phase2_sensor_camera_normalized_total_noise_avg = 0.0
+            phase2_sensor_camera_distortion_edge_shift_px_avg = 0.0
+            phase2_sensor_camera_principal_point_offset_norm_avg = 0.0
+            phase2_sensor_camera_effective_focal_length_px_avg = 0.0
+            phase2_sensor_camera_projection_mode_counts: dict[str, int] = {}
             phase2_sensor_lidar_frame_count = 0
             phase2_sensor_lidar_point_count_total = 0
             phase2_sensor_lidar_point_count_avg = 0.0
             phase2_sensor_lidar_returns_per_laser_avg = 0.0
+            phase2_sensor_lidar_detection_ratio_avg = 0.0
+            phase2_sensor_lidar_effective_max_range_m_avg = 0.0
             phase2_sensor_radar_frame_count = 0
             phase2_sensor_radar_target_count_total = 0
+            phase2_sensor_radar_ghost_target_count_total = 0
             phase2_sensor_radar_false_positive_count_total = 0
             phase2_sensor_radar_false_positive_count_avg = 0.0
             phase2_sensor_radar_false_positive_rate_avg = 0.0
+            phase2_sensor_radar_ghost_target_count_avg = 0.0
+            phase2_sensor_radar_clutter_index_avg = 0.0
             phase2_sensor_sweep_checked = False
             phase2_sensor_sweep_fidelity_tier = "n/a"
             phase2_sensor_sweep_candidate_count = 0
@@ -1518,6 +1534,113 @@ def discover_pipeline_manifests(scan_roots: list[Path], release_prefix: str) -> 
                             or 0.0
                         ),
                     )
+                    phase2_sensor_camera_visibility_score_avg = max(
+                        0.0,
+                        float(
+                            _to_float_or_none(
+                                phase2_sensor_quality_summary_raw.get("camera_visibility_score_avg")
+                            )
+                            or 0.0
+                        ),
+                    )
+                    phase2_sensor_camera_motion_blur_level_avg = max(
+                        0.0,
+                        float(
+                            _to_float_or_none(
+                                phase2_sensor_quality_summary_raw.get("camera_motion_blur_level_avg")
+                            )
+                            or 0.0
+                        ),
+                    )
+                    phase2_sensor_camera_snr_db_avg = max(
+                        0.0,
+                        float(
+                            _to_float_or_none(
+                                phase2_sensor_quality_summary_raw.get("camera_snr_db_avg")
+                            )
+                            or 0.0
+                        ),
+                    )
+                    phase2_sensor_camera_exposure_time_ms_avg = max(
+                        0.0,
+                        float(
+                            _to_float_or_none(
+                                phase2_sensor_quality_summary_raw.get("camera_exposure_time_ms_avg")
+                            )
+                            or 0.0
+                        ),
+                    )
+                    phase2_sensor_camera_signal_saturation_ratio_avg = max(
+                        0.0,
+                        float(
+                            _to_float_or_none(
+                                phase2_sensor_quality_summary_raw.get("camera_signal_saturation_ratio_avg")
+                            )
+                            or 0.0
+                        ),
+                    )
+                    phase2_sensor_camera_rolling_shutter_total_delay_ms_avg = max(
+                        0.0,
+                        float(
+                            _to_float_or_none(
+                                phase2_sensor_quality_summary_raw.get(
+                                    "camera_rolling_shutter_total_delay_ms_avg"
+                                )
+                            )
+                            or 0.0
+                        ),
+                    )
+                    phase2_sensor_camera_normalized_total_noise_avg = max(
+                        0.0,
+                        float(
+                            _to_float_or_none(
+                                phase2_sensor_quality_summary_raw.get("camera_normalized_total_noise_avg")
+                            )
+                            or 0.0
+                        ),
+                    )
+                    phase2_sensor_camera_distortion_edge_shift_px_avg = max(
+                        0.0,
+                        float(
+                            _to_float_or_none(
+                                phase2_sensor_quality_summary_raw.get("camera_distortion_edge_shift_px_avg")
+                            )
+                            or 0.0
+                        ),
+                    )
+                    phase2_sensor_camera_principal_point_offset_norm_avg = max(
+                        0.0,
+                        float(
+                            _to_float_or_none(
+                                phase2_sensor_quality_summary_raw.get(
+                                    "camera_principal_point_offset_norm_avg"
+                                )
+                            )
+                            or 0.0
+                        ),
+                    )
+                    phase2_sensor_camera_effective_focal_length_px_avg = max(
+                        0.0,
+                        float(
+                            _to_float_or_none(
+                                phase2_sensor_quality_summary_raw.get(
+                                    "camera_effective_focal_length_px_avg"
+                                )
+                            )
+                            or 0.0
+                        ),
+                    )
+                    phase2_sensor_camera_projection_mode_counts_raw = phase2_sensor_quality_summary_raw.get(
+                        "camera_projection_mode_counts",
+                        {},
+                    )
+                    if isinstance(phase2_sensor_camera_projection_mode_counts_raw, dict):
+                        for raw_key, raw_value in phase2_sensor_camera_projection_mode_counts_raw.items():
+                            key = str(raw_key).strip().upper()
+                            if not key:
+                                continue
+                            value = max(0, _to_int(raw_value, default=0))
+                            phase2_sensor_camera_projection_mode_counts[key] = value
                     phase2_sensor_lidar_frame_count = max(
                         0,
                         _to_int(phase2_sensor_quality_summary_raw.get("lidar_frame_count"), default=0),
@@ -1539,6 +1662,24 @@ def discover_pipeline_manifests(scan_roots: list[Path], release_prefix: str) -> 
                             or 0.0
                         ),
                     )
+                    phase2_sensor_lidar_detection_ratio_avg = max(
+                        0.0,
+                        float(
+                            _to_float_or_none(
+                                phase2_sensor_quality_summary_raw.get("lidar_detection_ratio_avg")
+                            )
+                            or 0.0
+                        ),
+                    )
+                    phase2_sensor_lidar_effective_max_range_m_avg = max(
+                        0.0,
+                        float(
+                            _to_float_or_none(
+                                phase2_sensor_quality_summary_raw.get("lidar_effective_max_range_m_avg")
+                            )
+                            or 0.0
+                        ),
+                    )
                     phase2_sensor_radar_frame_count = max(
                         0,
                         _to_int(phase2_sensor_quality_summary_raw.get("radar_frame_count"), default=0),
@@ -1546,6 +1687,13 @@ def discover_pipeline_manifests(scan_roots: list[Path], release_prefix: str) -> 
                     phase2_sensor_radar_target_count_total = max(
                         0,
                         _to_int(phase2_sensor_quality_summary_raw.get("radar_target_count_total"), default=0),
+                    )
+                    phase2_sensor_radar_ghost_target_count_total = max(
+                        0,
+                        _to_int(
+                            phase2_sensor_quality_summary_raw.get("radar_ghost_target_count_total"),
+                            default=0,
+                        ),
                     )
                     phase2_sensor_radar_false_positive_count_total = max(
                         0,
@@ -1565,6 +1713,24 @@ def discover_pipeline_manifests(scan_roots: list[Path], release_prefix: str) -> 
                         float(
                             _to_float_or_none(
                                 phase2_sensor_quality_summary_raw.get("radar_false_positive_rate_avg")
+                            )
+                            or 0.0
+                        ),
+                    )
+                    phase2_sensor_radar_ghost_target_count_avg = max(
+                        0.0,
+                        float(
+                            _to_float_or_none(
+                                phase2_sensor_quality_summary_raw.get("radar_ghost_target_count_avg")
+                            )
+                            or 0.0
+                        ),
+                    )
+                    phase2_sensor_radar_clutter_index_avg = max(
+                        0.0,
+                        float(
+                            _to_float_or_none(
+                                phase2_sensor_quality_summary_raw.get("radar_clutter_index_avg")
                             )
                             or 0.0
                         ),
@@ -2309,15 +2475,48 @@ def discover_pipeline_manifests(scan_roots: list[Path], release_prefix: str) -> 
                     "phase2_sensor_camera_frame_count": phase2_sensor_camera_frame_count,
                     "phase2_sensor_camera_noise_stddev_px_avg": phase2_sensor_camera_noise_stddev_px_avg,
                     "phase2_sensor_camera_dynamic_range_stops_avg": phase2_sensor_camera_dynamic_range_stops_avg,
+                    "phase2_sensor_camera_visibility_score_avg": phase2_sensor_camera_visibility_score_avg,
+                    "phase2_sensor_camera_motion_blur_level_avg": phase2_sensor_camera_motion_blur_level_avg,
+                    "phase2_sensor_camera_snr_db_avg": phase2_sensor_camera_snr_db_avg,
+                    "phase2_sensor_camera_exposure_time_ms_avg": phase2_sensor_camera_exposure_time_ms_avg,
+                    "phase2_sensor_camera_signal_saturation_ratio_avg": (
+                        phase2_sensor_camera_signal_saturation_ratio_avg
+                    ),
+                    "phase2_sensor_camera_rolling_shutter_total_delay_ms_avg": (
+                        phase2_sensor_camera_rolling_shutter_total_delay_ms_avg
+                    ),
+                    "phase2_sensor_camera_normalized_total_noise_avg": (
+                        phase2_sensor_camera_normalized_total_noise_avg
+                    ),
+                    "phase2_sensor_camera_distortion_edge_shift_px_avg": (
+                        phase2_sensor_camera_distortion_edge_shift_px_avg
+                    ),
+                    "phase2_sensor_camera_principal_point_offset_norm_avg": (
+                        phase2_sensor_camera_principal_point_offset_norm_avg
+                    ),
+                    "phase2_sensor_camera_effective_focal_length_px_avg": (
+                        phase2_sensor_camera_effective_focal_length_px_avg
+                    ),
+                    "phase2_sensor_camera_projection_mode_counts": {
+                        key: phase2_sensor_camera_projection_mode_counts[key]
+                        for key in sorted(phase2_sensor_camera_projection_mode_counts.keys())
+                    },
                     "phase2_sensor_lidar_frame_count": phase2_sensor_lidar_frame_count,
                     "phase2_sensor_lidar_point_count_total": phase2_sensor_lidar_point_count_total,
                     "phase2_sensor_lidar_point_count_avg": phase2_sensor_lidar_point_count_avg,
                     "phase2_sensor_lidar_returns_per_laser_avg": phase2_sensor_lidar_returns_per_laser_avg,
+                    "phase2_sensor_lidar_detection_ratio_avg": phase2_sensor_lidar_detection_ratio_avg,
+                    "phase2_sensor_lidar_effective_max_range_m_avg": (
+                        phase2_sensor_lidar_effective_max_range_m_avg
+                    ),
                     "phase2_sensor_radar_frame_count": phase2_sensor_radar_frame_count,
                     "phase2_sensor_radar_target_count_total": phase2_sensor_radar_target_count_total,
+                    "phase2_sensor_radar_ghost_target_count_total": phase2_sensor_radar_ghost_target_count_total,
                     "phase2_sensor_radar_false_positive_count_total": phase2_sensor_radar_false_positive_count_total,
                     "phase2_sensor_radar_false_positive_count_avg": phase2_sensor_radar_false_positive_count_avg,
                     "phase2_sensor_radar_false_positive_rate_avg": phase2_sensor_radar_false_positive_rate_avg,
+                    "phase2_sensor_radar_ghost_target_count_avg": phase2_sensor_radar_ghost_target_count_avg,
+                    "phase2_sensor_radar_clutter_index_avg": phase2_sensor_radar_clutter_index_avg,
                     "phase2_sensor_sweep_checked": phase2_sensor_sweep_checked,
                     "phase2_sensor_sweep_fidelity_tier": phase2_sensor_sweep_fidelity_tier,
                     "phase2_sensor_sweep_candidate_count": phase2_sensor_sweep_candidate_count,
@@ -6354,6 +6553,7 @@ def summarize_phase2_sensor_fidelity(pipeline_manifests: list[dict[str, Any]]) -
         if not isinstance(manifest, dict):
             continue
         modality_counts: dict[str, int] = {}
+        camera_projection_mode_counts: dict[str, int] = {}
         modality_counts_raw = manifest.get("phase2_sensor_modality_counts", {})
         if isinstance(modality_counts_raw, dict):
             for raw_key, raw_value in modality_counts_raw.items():
@@ -6361,6 +6561,13 @@ def summarize_phase2_sensor_fidelity(pipeline_manifests: list[dict[str, Any]]) -
                 if not key:
                     continue
                 modality_counts[key] = max(0, _to_int(raw_value, default=0))
+        camera_projection_mode_counts_raw = manifest.get("phase2_sensor_camera_projection_mode_counts", {})
+        if isinstance(camera_projection_mode_counts_raw, dict):
+            for raw_key, raw_value in camera_projection_mode_counts_raw.items():
+                key = str(raw_key).strip().upper()
+                if not key:
+                    continue
+                camera_projection_mode_counts[key] = max(0, _to_int(raw_value, default=0))
         normalized_rows.append(
             {
                 "batch_id": str(manifest.get("batch_id", "")).strip() or "batch_unknown",
@@ -6381,6 +6588,62 @@ def summarize_phase2_sensor_fidelity(pipeline_manifests: list[dict[str, Any]]) -
                     0.0,
                     float(_to_float_or_none(manifest.get("phase2_sensor_camera_dynamic_range_stops_avg")) or 0.0),
                 ),
+                "camera_visibility_score_avg": max(
+                    0.0,
+                    float(_to_float_or_none(manifest.get("phase2_sensor_camera_visibility_score_avg")) or 0.0),
+                ),
+                "camera_motion_blur_level_avg": max(
+                    0.0,
+                    float(_to_float_or_none(manifest.get("phase2_sensor_camera_motion_blur_level_avg")) or 0.0),
+                ),
+                "camera_snr_db_avg": max(
+                    0.0,
+                    float(_to_float_or_none(manifest.get("phase2_sensor_camera_snr_db_avg")) or 0.0),
+                ),
+                "camera_exposure_time_ms_avg": max(
+                    0.0,
+                    float(_to_float_or_none(manifest.get("phase2_sensor_camera_exposure_time_ms_avg")) or 0.0),
+                ),
+                "camera_signal_saturation_ratio_avg": max(
+                    0.0,
+                    float(
+                        _to_float_or_none(manifest.get("phase2_sensor_camera_signal_saturation_ratio_avg")) or 0.0
+                    ),
+                ),
+                "camera_rolling_shutter_total_delay_ms_avg": max(
+                    0.0,
+                    float(
+                        _to_float_or_none(
+                            manifest.get("phase2_sensor_camera_rolling_shutter_total_delay_ms_avg")
+                        )
+                        or 0.0
+                    ),
+                ),
+                "camera_normalized_total_noise_avg": max(
+                    0.0,
+                    float(_to_float_or_none(manifest.get("phase2_sensor_camera_normalized_total_noise_avg")) or 0.0),
+                ),
+                "camera_distortion_edge_shift_px_avg": max(
+                    0.0,
+                    float(_to_float_or_none(manifest.get("phase2_sensor_camera_distortion_edge_shift_px_avg")) or 0.0),
+                ),
+                "camera_principal_point_offset_norm_avg": max(
+                    0.0,
+                    float(
+                        _to_float_or_none(manifest.get("phase2_sensor_camera_principal_point_offset_norm_avg"))
+                        or 0.0
+                    ),
+                ),
+                "camera_effective_focal_length_px_avg": max(
+                    0.0,
+                    float(
+                        _to_float_or_none(manifest.get("phase2_sensor_camera_effective_focal_length_px_avg"))
+                        or 0.0
+                    ),
+                ),
+                "camera_projection_mode_counts": {
+                    key: camera_projection_mode_counts[key] for key in sorted(camera_projection_mode_counts.keys())
+                },
                 "lidar_frame_count": max(0, _to_int(manifest.get("phase2_sensor_lidar_frame_count"), default=0)),
                 "lidar_point_count_total": max(
                     0,
@@ -6394,10 +6657,22 @@ def summarize_phase2_sensor_fidelity(pipeline_manifests: list[dict[str, Any]]) -
                     0.0,
                     float(_to_float_or_none(manifest.get("phase2_sensor_lidar_returns_per_laser_avg")) or 0.0),
                 ),
+                "lidar_detection_ratio_avg": max(
+                    0.0,
+                    float(_to_float_or_none(manifest.get("phase2_sensor_lidar_detection_ratio_avg")) or 0.0),
+                ),
+                "lidar_effective_max_range_m_avg": max(
+                    0.0,
+                    float(_to_float_or_none(manifest.get("phase2_sensor_lidar_effective_max_range_m_avg")) or 0.0),
+                ),
                 "radar_frame_count": max(0, _to_int(manifest.get("phase2_sensor_radar_frame_count"), default=0)),
                 "radar_target_count_total": max(
                     0,
                     _to_int(manifest.get("phase2_sensor_radar_target_count_total"), default=0),
+                ),
+                "radar_ghost_target_count_total": max(
+                    0,
+                    _to_int(manifest.get("phase2_sensor_radar_ghost_target_count_total"), default=0),
                 ),
                 "radar_false_positive_count_total": max(
                     0,
@@ -6410,6 +6685,14 @@ def summarize_phase2_sensor_fidelity(pipeline_manifests: list[dict[str, Any]]) -
                 "radar_false_positive_rate_avg": max(
                     0.0,
                     float(_to_float_or_none(manifest.get("phase2_sensor_radar_false_positive_rate_avg")) or 0.0),
+                ),
+                "radar_ghost_target_count_avg": max(
+                    0.0,
+                    float(_to_float_or_none(manifest.get("phase2_sensor_radar_ghost_target_count_avg")) or 0.0),
+                ),
+                "radar_clutter_index_avg": max(
+                    0.0,
+                    float(_to_float_or_none(manifest.get("phase2_sensor_radar_clutter_index_avg")) or 0.0),
                 ),
                 "rig_sweep_checked": bool(manifest.get("phase2_sensor_sweep_checked", False)),
                 "rig_sweep_fidelity_tier": (
@@ -6444,15 +6727,31 @@ def summarize_phase2_sensor_fidelity(pipeline_manifests: list[dict[str, Any]]) -
             "sensor_camera_frame_count_total": 0,
             "sensor_camera_noise_stddev_px_avg": 0.0,
             "sensor_camera_dynamic_range_stops_avg": 0.0,
+            "sensor_camera_visibility_score_avg": 0.0,
+            "sensor_camera_motion_blur_level_avg": 0.0,
+            "sensor_camera_snr_db_avg": 0.0,
+            "sensor_camera_exposure_time_ms_avg": 0.0,
+            "sensor_camera_signal_saturation_ratio_avg": 0.0,
+            "sensor_camera_rolling_shutter_total_delay_ms_avg": 0.0,
+            "sensor_camera_normalized_total_noise_avg": 0.0,
+            "sensor_camera_distortion_edge_shift_px_avg": 0.0,
+            "sensor_camera_principal_point_offset_norm_avg": 0.0,
+            "sensor_camera_effective_focal_length_px_avg": 0.0,
+            "sensor_camera_projection_mode_counts_total": {},
             "sensor_lidar_frame_count_total": 0,
             "sensor_lidar_point_count_total": 0,
             "sensor_lidar_point_count_avg": 0.0,
             "sensor_lidar_returns_per_laser_avg": 0.0,
+            "sensor_lidar_detection_ratio_avg": 0.0,
+            "sensor_lidar_effective_max_range_m_avg": 0.0,
             "sensor_radar_frame_count_total": 0,
             "sensor_radar_target_count_total": 0,
+            "sensor_radar_ghost_target_count_total": 0,
             "sensor_radar_false_positive_count_total": 0,
             "sensor_radar_false_positive_count_avg": 0.0,
             "sensor_radar_false_positive_rate_avg": 0.0,
+            "sensor_radar_ghost_target_count_avg": 0.0,
+            "sensor_radar_clutter_index_avg": 0.0,
             "rig_sweep_evaluated_manifest_count": 0,
             "rig_sweep_fidelity_tier_counts": {},
             "rig_sweep_candidate_count_total": 0,
@@ -6466,6 +6765,7 @@ def summarize_phase2_sensor_fidelity(pipeline_manifests: list[dict[str, Any]]) -
 
     fidelity_tier_counts: dict[str, int] = {}
     sensor_modality_counts_total: dict[str, int] = {}
+    sensor_camera_projection_mode_counts_total: dict[str, int] = {}
     for row in checked_rows:
         tier = str(row.get("fidelity_tier", "")).strip().lower() or "n/a"
         fidelity_tier_counts[tier] = fidelity_tier_counts.get(tier, 0) + 1
@@ -6477,6 +6777,16 @@ def summarize_phase2_sensor_fidelity(pipeline_manifests: list[dict[str, Any]]) -
                     continue
                 value = max(0, _to_int(raw_value, default=0))
                 sensor_modality_counts_total[key] = sensor_modality_counts_total.get(key, 0) + value
+        camera_projection_mode_counts_row = row.get("camera_projection_mode_counts", {})
+        if isinstance(camera_projection_mode_counts_row, dict):
+            for raw_key, raw_value in camera_projection_mode_counts_row.items():
+                key = str(raw_key).strip().upper()
+                if not key:
+                    continue
+                value = max(0, _to_int(raw_value, default=0))
+                sensor_camera_projection_mode_counts_total[key] = (
+                    sensor_camera_projection_mode_counts_total.get(key, 0) + value
+                )
 
     fidelity_tier_score_total = sum(float(row.get("fidelity_tier_score", 0.0)) for row in checked_rows)
     sensor_frame_count_total = sum(int(row.get("frame_count", 0)) for row in checked_rows)
@@ -6491,15 +6801,76 @@ def summarize_phase2_sensor_fidelity(pipeline_manifests: list[dict[str, Any]]) -
         float(row.get("camera_dynamic_range_stops_avg", 0.0)) * float(int(row.get("camera_frame_count", 0)))
         for row in checked_rows
     )
+    camera_visibility_score_weighted_total = sum(
+        float(row.get("camera_visibility_score_avg", 0.0)) * float(int(row.get("camera_frame_count", 0)))
+        for row in checked_rows
+    )
+    camera_motion_blur_level_weighted_total = sum(
+        float(row.get("camera_motion_blur_level_avg", 0.0)) * float(int(row.get("camera_frame_count", 0)))
+        for row in checked_rows
+    )
+    camera_snr_db_weighted_total = sum(
+        float(row.get("camera_snr_db_avg", 0.0)) * float(int(row.get("camera_frame_count", 0)))
+        for row in checked_rows
+    )
+    camera_exposure_time_ms_weighted_total = sum(
+        float(row.get("camera_exposure_time_ms_avg", 0.0)) * float(int(row.get("camera_frame_count", 0)))
+        for row in checked_rows
+    )
+    camera_signal_saturation_ratio_weighted_total = sum(
+        float(row.get("camera_signal_saturation_ratio_avg", 0.0))
+        * float(int(row.get("camera_frame_count", 0)))
+        for row in checked_rows
+    )
+    camera_rolling_shutter_total_delay_ms_weighted_total = sum(
+        float(row.get("camera_rolling_shutter_total_delay_ms_avg", 0.0))
+        * float(int(row.get("camera_frame_count", 0)))
+        for row in checked_rows
+    )
+    camera_normalized_total_noise_weighted_total = sum(
+        float(row.get("camera_normalized_total_noise_avg", 0.0)) * float(int(row.get("camera_frame_count", 0)))
+        for row in checked_rows
+    )
+    camera_distortion_edge_shift_px_weighted_total = sum(
+        float(row.get("camera_distortion_edge_shift_px_avg", 0.0)) * float(int(row.get("camera_frame_count", 0)))
+        for row in checked_rows
+    )
+    camera_principal_point_offset_norm_weighted_total = sum(
+        float(row.get("camera_principal_point_offset_norm_avg", 0.0))
+        * float(int(row.get("camera_frame_count", 0)))
+        for row in checked_rows
+    )
+    camera_effective_focal_length_px_weighted_total = sum(
+        float(row.get("camera_effective_focal_length_px_avg", 0.0))
+        * float(int(row.get("camera_frame_count", 0)))
+        for row in checked_rows
+    )
     lidar_point_count_total = sum(int(row.get("lidar_point_count_total", 0)) for row in checked_rows)
     lidar_returns_per_laser_weighted_total = sum(
         float(row.get("lidar_returns_per_laser_avg", 0.0)) * float(int(row.get("lidar_frame_count", 0)))
         for row in checked_rows
     )
+    lidar_detection_ratio_weighted_total = sum(
+        float(row.get("lidar_detection_ratio_avg", 0.0)) * float(int(row.get("lidar_frame_count", 0)))
+        for row in checked_rows
+    )
+    lidar_effective_max_range_m_weighted_total = sum(
+        float(row.get("lidar_effective_max_range_m_avg", 0.0)) * float(int(row.get("lidar_frame_count", 0)))
+        for row in checked_rows
+    )
     radar_target_count_total = sum(int(row.get("radar_target_count_total", 0)) for row in checked_rows)
+    radar_ghost_target_count_total = sum(int(row.get("radar_ghost_target_count_total", 0)) for row in checked_rows)
     radar_false_positive_count_total = sum(int(row.get("radar_false_positive_count_total", 0)) for row in checked_rows)
     radar_false_positive_rate_weighted_total = sum(
         float(row.get("radar_false_positive_rate_avg", 0.0)) * float(int(row.get("radar_frame_count", 0)))
+        for row in checked_rows
+    )
+    radar_ghost_target_count_weighted_total = sum(
+        float(row.get("radar_ghost_target_count_avg", 0.0)) * float(int(row.get("radar_frame_count", 0)))
+        for row in checked_rows
+    )
+    radar_clutter_index_weighted_total = sum(
+        float(row.get("radar_clutter_index_avg", 0.0)) * float(int(row.get("radar_frame_count", 0)))
         for row in checked_rows
     )
     rig_sweep_checked_rows = [row for row in checked_rows if bool(row.get("rig_sweep_checked", False))]
@@ -6569,6 +6940,60 @@ def summarize_phase2_sensor_fidelity(pipeline_manifests: list[dict[str, Any]]) -
             if camera_frame_count_total > 0
             else 0.0
         ),
+        "sensor_camera_visibility_score_avg": (
+            float(camera_visibility_score_weighted_total / float(camera_frame_count_total))
+            if camera_frame_count_total > 0
+            else 0.0
+        ),
+        "sensor_camera_motion_blur_level_avg": (
+            float(camera_motion_blur_level_weighted_total / float(camera_frame_count_total))
+            if camera_frame_count_total > 0
+            else 0.0
+        ),
+        "sensor_camera_snr_db_avg": (
+            float(camera_snr_db_weighted_total / float(camera_frame_count_total))
+            if camera_frame_count_total > 0
+            else 0.0
+        ),
+        "sensor_camera_exposure_time_ms_avg": (
+            float(camera_exposure_time_ms_weighted_total / float(camera_frame_count_total))
+            if camera_frame_count_total > 0
+            else 0.0
+        ),
+        "sensor_camera_signal_saturation_ratio_avg": (
+            float(camera_signal_saturation_ratio_weighted_total / float(camera_frame_count_total))
+            if camera_frame_count_total > 0
+            else 0.0
+        ),
+        "sensor_camera_rolling_shutter_total_delay_ms_avg": (
+            float(camera_rolling_shutter_total_delay_ms_weighted_total / float(camera_frame_count_total))
+            if camera_frame_count_total > 0
+            else 0.0
+        ),
+        "sensor_camera_normalized_total_noise_avg": (
+            float(camera_normalized_total_noise_weighted_total / float(camera_frame_count_total))
+            if camera_frame_count_total > 0
+            else 0.0
+        ),
+        "sensor_camera_distortion_edge_shift_px_avg": (
+            float(camera_distortion_edge_shift_px_weighted_total / float(camera_frame_count_total))
+            if camera_frame_count_total > 0
+            else 0.0
+        ),
+        "sensor_camera_principal_point_offset_norm_avg": (
+            float(camera_principal_point_offset_norm_weighted_total / float(camera_frame_count_total))
+            if camera_frame_count_total > 0
+            else 0.0
+        ),
+        "sensor_camera_effective_focal_length_px_avg": (
+            float(camera_effective_focal_length_px_weighted_total / float(camera_frame_count_total))
+            if camera_frame_count_total > 0
+            else 0.0
+        ),
+        "sensor_camera_projection_mode_counts_total": {
+            key: sensor_camera_projection_mode_counts_total[key]
+            for key in sorted(sensor_camera_projection_mode_counts_total.keys())
+        },
         "sensor_lidar_frame_count_total": int(lidar_frame_count_total),
         "sensor_lidar_point_count_total": int(lidar_point_count_total),
         "sensor_lidar_point_count_avg": (
@@ -6581,8 +7006,19 @@ def summarize_phase2_sensor_fidelity(pipeline_manifests: list[dict[str, Any]]) -
             if lidar_frame_count_total > 0
             else 0.0
         ),
+        "sensor_lidar_detection_ratio_avg": (
+            float(lidar_detection_ratio_weighted_total / float(lidar_frame_count_total))
+            if lidar_frame_count_total > 0
+            else 0.0
+        ),
+        "sensor_lidar_effective_max_range_m_avg": (
+            float(lidar_effective_max_range_m_weighted_total / float(lidar_frame_count_total))
+            if lidar_frame_count_total > 0
+            else 0.0
+        ),
         "sensor_radar_frame_count_total": int(radar_frame_count_total),
         "sensor_radar_target_count_total": int(radar_target_count_total),
+        "sensor_radar_ghost_target_count_total": int(radar_ghost_target_count_total),
         "sensor_radar_false_positive_count_total": int(radar_false_positive_count_total),
         "sensor_radar_false_positive_count_avg": (
             float(radar_false_positive_count_total / float(radar_frame_count_total))
@@ -6591,6 +7027,16 @@ def summarize_phase2_sensor_fidelity(pipeline_manifests: list[dict[str, Any]]) -
         ),
         "sensor_radar_false_positive_rate_avg": (
             float(radar_false_positive_rate_weighted_total / float(radar_frame_count_total))
+            if radar_frame_count_total > 0
+            else 0.0
+        ),
+        "sensor_radar_ghost_target_count_avg": (
+            float(radar_ghost_target_count_weighted_total / float(radar_frame_count_total))
+            if radar_frame_count_total > 0
+            else 0.0
+        ),
+        "sensor_radar_clutter_index_avg": (
+            float(radar_clutter_index_weighted_total / float(radar_frame_count_total))
             if radar_frame_count_total > 0
             else 0.0
         ),
@@ -10564,11 +11010,32 @@ def main() -> int:
         phase2_sensor_camera_noise_avg = float(
             phase2_sensor_fidelity_summary.get("sensor_camera_noise_stddev_px_avg", 0.0) or 0.0
         )
+        phase2_sensor_camera_distortion_shift_avg = float(
+            phase2_sensor_fidelity_summary.get("sensor_camera_distortion_edge_shift_px_avg", 0.0) or 0.0
+        )
+        phase2_sensor_camera_projection_mode_counts_total = phase2_sensor_fidelity_summary.get(
+            "sensor_camera_projection_mode_counts_total",
+            {},
+        )
+        phase2_sensor_camera_projection_mode_counts_total_text = (
+            ",".join(
+                f"{key}:{phase2_sensor_camera_projection_mode_counts_total[key]}"
+                for key in sorted(phase2_sensor_camera_projection_mode_counts_total)
+            )
+            if (
+                isinstance(phase2_sensor_camera_projection_mode_counts_total, dict)
+                and phase2_sensor_camera_projection_mode_counts_total
+            )
+            else "n/a"
+        )
         phase2_sensor_lidar_point_total = int(
             phase2_sensor_fidelity_summary.get("sensor_lidar_point_count_total", 0) or 0
         )
         phase2_sensor_lidar_point_avg = float(
             phase2_sensor_fidelity_summary.get("sensor_lidar_point_count_avg", 0.0) or 0.0
+        )
+        phase2_sensor_lidar_detection_ratio_avg = float(
+            phase2_sensor_fidelity_summary.get("sensor_lidar_detection_ratio_avg", 0.0) or 0.0
         )
         phase2_sensor_radar_false_positive_total = int(
             phase2_sensor_fidelity_summary.get("sensor_radar_false_positive_count_total", 0) or 0
@@ -10578,6 +11045,9 @@ def main() -> int:
         )
         phase2_sensor_radar_false_positive_rate_avg = float(
             phase2_sensor_fidelity_summary.get("sensor_radar_false_positive_rate_avg", 0.0) or 0.0
+        )
+        phase2_sensor_radar_ghost_target_total = int(
+            phase2_sensor_fidelity_summary.get("sensor_radar_ghost_target_count_total", 0) or 0
         )
         lines.append(
             "phase2_sensor_fidelity="
@@ -10594,7 +11064,11 @@ def main() -> int:
             f"lidar_point_avg:{phase2_sensor_lidar_point_avg:.3f},"
             f"radar_fp_total:{phase2_sensor_radar_false_positive_total},"
             f"radar_fp_avg:{phase2_sensor_radar_false_positive_avg:.3f},"
-            f"radar_fp_rate_avg:{phase2_sensor_radar_false_positive_rate_avg:.6f}"
+            f"radar_fp_rate_avg:{phase2_sensor_radar_false_positive_rate_avg:.6f},"
+            f"camera_distortion_shift_avg_px:{phase2_sensor_camera_distortion_shift_avg:.3f},"
+            f"camera_projection_modes:{phase2_sensor_camera_projection_mode_counts_total_text},"
+            f"lidar_detection_ratio_avg:{phase2_sensor_lidar_detection_ratio_avg:.3f},"
+            f"radar_ghost_total:{phase2_sensor_radar_ghost_target_total}"
         )
         phase2_sensor_rig_sweep_evaluated_count = int(
             phase2_sensor_fidelity_summary.get("rig_sweep_evaluated_manifest_count", 0) or 0

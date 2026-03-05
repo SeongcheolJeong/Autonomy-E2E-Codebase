@@ -36558,6 +36558,16 @@ class RunE2EPipelineTests(unittest.TestCase):
                 phase2_hooks.get("sensor_stream_modality_counts"),
                 {"camera": 1, "lidar": 1, "radar": 1},
             )
+            phase2_sensor_quality_summary = phase2_hooks.get("sensor_quality_summary", {})
+            self.assertIsInstance(phase2_sensor_quality_summary, dict)
+            self.assertEqual(
+                phase2_sensor_quality_summary.get("camera_projection_mode_counts"),
+                {"RECTILINEAR": 1},
+            )
+            self.assertIn("camera_distortion_edge_shift_px_avg", phase2_sensor_quality_summary)
+            self.assertIn("camera_snr_db_avg", phase2_sensor_quality_summary)
+            self.assertIn("lidar_detection_ratio_avg", phase2_sensor_quality_summary)
+            self.assertIn("radar_ghost_target_count_total", phase2_sensor_quality_summary)
             self.assertTrue(sensor_out.exists())
             self.assertTrue(sensor_sweep_out.exists())
             self.assertTrue(map_canonical.exists())
@@ -47832,15 +47842,31 @@ class BuildReleaseSummaryArtifactTests(unittest.TestCase):
                             "camera_frame_count": 2,
                             "camera_noise_stddev_px_avg": 1.2,
                             "camera_dynamic_range_stops_avg": 14.0,
+                            "camera_visibility_score_avg": 0.88,
+                            "camera_motion_blur_level_avg": 1.5,
+                            "camera_snr_db_avg": 35.0,
+                            "camera_exposure_time_ms_avg": 16.6,
+                            "camera_signal_saturation_ratio_avg": 0.21,
+                            "camera_rolling_shutter_total_delay_ms_avg": 30.0,
+                            "camera_normalized_total_noise_avg": 0.03,
+                            "camera_distortion_edge_shift_px_avg": 12.5,
+                            "camera_principal_point_offset_norm_avg": 0.04,
+                            "camera_effective_focal_length_px_avg": 950.0,
+                            "camera_projection_mode_counts": {"EQUIDISTANT": 2},
                             "lidar_frame_count": 3,
                             "lidar_point_count_total": 360,
                             "lidar_point_count_avg": 120.0,
                             "lidar_returns_per_laser_avg": 3.0,
+                            "lidar_detection_ratio_avg": 0.85,
+                            "lidar_effective_max_range_m_avg": 82.0,
                             "radar_frame_count": 1,
                             "radar_target_count_total": 4,
+                            "radar_ghost_target_count_total": 2,
                             "radar_false_positive_count_total": 1,
                             "radar_false_positive_count_avg": 1.0,
                             "radar_false_positive_rate_avg": 0.25,
+                            "radar_ghost_target_count_avg": 2.0,
+                            "radar_clutter_index_avg": 0.12,
                         },
                     }
                 )
@@ -47979,6 +48005,24 @@ class BuildReleaseSummaryArtifactTests(unittest.TestCase):
                 0.25,
                 places=6,
             )
+            self.assertAlmostEqual(
+                float(phase2_sensor_fidelity_summary.get("sensor_camera_distortion_edge_shift_px_avg", 0.0) or 0.0),
+                12.5,
+                places=6,
+            )
+            self.assertEqual(
+                phase2_sensor_fidelity_summary.get("sensor_camera_projection_mode_counts_total"),
+                {"EQUIDISTANT": 2},
+            )
+            self.assertAlmostEqual(
+                float(phase2_sensor_fidelity_summary.get("sensor_lidar_detection_ratio_avg", 0.0) or 0.0),
+                0.85,
+                places=6,
+            )
+            self.assertEqual(
+                int(phase2_sensor_fidelity_summary.get("sensor_radar_ghost_target_count_total", 0) or 0),
+                2,
+            )
             self.assertEqual(int(phase2_sensor_fidelity_summary.get("rig_sweep_evaluated_manifest_count", 0) or 0), 1)
             self.assertEqual(phase2_sensor_fidelity_summary.get("rig_sweep_fidelity_tier_counts"), {"high": 1})
             self.assertEqual(int(phase2_sensor_fidelity_summary.get("rig_sweep_candidate_count_total", 0) or 0), 3)
@@ -48016,6 +48060,7 @@ class BuildReleaseSummaryArtifactTests(unittest.TestCase):
                     "route_segment_total:3,route_segment_avg:3.000,route_with_via:1,route_via_lane_total:2,route_via_lane_avg:2.000",
                     "phase2_sensor_fidelity=evaluated:1,tier_counts:high:1,fidelity_score_avg:3.000,fidelity_score_max:3.000(BATCH_MAP),frame_total:6,frame_avg:6.000,frame_max:6(BATCH_MAP),modality_total:camera:2,lidar:3,radar:1",
                     "camera_noise_avg_px:1.200,lidar_point_total:360,lidar_point_avg:120.000,radar_fp_total:1,radar_fp_avg:1.000,radar_fp_rate_avg:0.250000",
+                    "camera_distortion_shift_avg_px:12.500,camera_projection_modes:EQUIDISTANT:2,lidar_detection_ratio_avg:0.850,radar_ghost_total:2",
                     "phase2_sensor_rig_sweep=evaluated:1,tier_counts:high:1,candidate_total:3,candidate_avg:3.000,candidate_max:3(BATCH_MAP),best_score_max:12.500(BATCH_MAP),best_rig_counts:rig_cam_lidar:1",
                 ],
             )

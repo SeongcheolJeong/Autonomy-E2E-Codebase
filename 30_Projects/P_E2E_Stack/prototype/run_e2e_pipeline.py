@@ -2000,19 +2000,45 @@ def run_phase2_hooks(args: argparse.Namespace) -> dict[str, Any]:
         except (TypeError, ValueError):
             return 0.0
         return parsed if parsed >= 0.0 else 0.0
+    def _normalize_projection_mode_counts(raw_value: Any) -> dict[str, int]:
+        normalized: dict[str, int] = {}
+        if isinstance(raw_value, dict):
+            for raw_key, raw_count in raw_value.items():
+                key = str(raw_key).strip().upper()
+                if not key:
+                    continue
+                normalized[key] = _to_non_negative_int(raw_count)
+        return {key: normalized[key] for key in sorted(normalized.keys())}
+
     sensor_quality_summary_defaults = {
         "camera_frame_count": 0,
         "camera_noise_stddev_px_avg": 0.0,
         "camera_dynamic_range_stops_avg": 0.0,
+        "camera_visibility_score_avg": 0.0,
+        "camera_motion_blur_level_avg": 0.0,
+        "camera_snr_db_avg": 0.0,
+        "camera_exposure_time_ms_avg": 0.0,
+        "camera_signal_saturation_ratio_avg": 0.0,
+        "camera_rolling_shutter_total_delay_ms_avg": 0.0,
+        "camera_normalized_total_noise_avg": 0.0,
+        "camera_distortion_edge_shift_px_avg": 0.0,
+        "camera_principal_point_offset_norm_avg": 0.0,
+        "camera_effective_focal_length_px_avg": 0.0,
+        "camera_projection_mode_counts": {},
         "lidar_frame_count": 0,
         "lidar_point_count_total": 0,
         "lidar_point_count_avg": 0.0,
         "lidar_returns_per_laser_avg": 0.0,
+        "lidar_detection_ratio_avg": 0.0,
+        "lidar_effective_max_range_m_avg": 0.0,
         "radar_frame_count": 0,
         "radar_target_count_total": 0,
+        "radar_ghost_target_count_total": 0,
         "radar_false_positive_count_total": 0,
         "radar_false_positive_count_avg": 0.0,
         "radar_false_positive_rate_avg": 0.0,
+        "radar_ghost_target_count_avg": 0.0,
+        "radar_clutter_index_avg": 0.0,
     }
     sensor_quality_summary_raw = sensor_payload.get("sensor_quality_summary", {})
     sensor_quality_summary: dict[str, Any] = {}
@@ -2025,6 +2051,39 @@ def run_phase2_hooks(args: argparse.Namespace) -> dict[str, Any]:
             "camera_dynamic_range_stops_avg": _to_non_negative_float(
                 sensor_quality_summary_raw.get("camera_dynamic_range_stops_avg", 0.0)
             ),
+            "camera_visibility_score_avg": _to_non_negative_float(
+                sensor_quality_summary_raw.get("camera_visibility_score_avg", 0.0)
+            ),
+            "camera_motion_blur_level_avg": _to_non_negative_float(
+                sensor_quality_summary_raw.get("camera_motion_blur_level_avg", 0.0)
+            ),
+            "camera_snr_db_avg": _to_non_negative_float(
+                sensor_quality_summary_raw.get("camera_snr_db_avg", 0.0)
+            ),
+            "camera_exposure_time_ms_avg": _to_non_negative_float(
+                sensor_quality_summary_raw.get("camera_exposure_time_ms_avg", 0.0)
+            ),
+            "camera_signal_saturation_ratio_avg": _to_non_negative_float(
+                sensor_quality_summary_raw.get("camera_signal_saturation_ratio_avg", 0.0)
+            ),
+            "camera_rolling_shutter_total_delay_ms_avg": _to_non_negative_float(
+                sensor_quality_summary_raw.get("camera_rolling_shutter_total_delay_ms_avg", 0.0)
+            ),
+            "camera_normalized_total_noise_avg": _to_non_negative_float(
+                sensor_quality_summary_raw.get("camera_normalized_total_noise_avg", 0.0)
+            ),
+            "camera_distortion_edge_shift_px_avg": _to_non_negative_float(
+                sensor_quality_summary_raw.get("camera_distortion_edge_shift_px_avg", 0.0)
+            ),
+            "camera_principal_point_offset_norm_avg": _to_non_negative_float(
+                sensor_quality_summary_raw.get("camera_principal_point_offset_norm_avg", 0.0)
+            ),
+            "camera_effective_focal_length_px_avg": _to_non_negative_float(
+                sensor_quality_summary_raw.get("camera_effective_focal_length_px_avg", 0.0)
+            ),
+            "camera_projection_mode_counts": _normalize_projection_mode_counts(
+                sensor_quality_summary_raw.get("camera_projection_mode_counts", {})
+            ),
             "lidar_frame_count": _to_non_negative_int(sensor_quality_summary_raw.get("lidar_frame_count", 0)),
             "lidar_point_count_total": _to_non_negative_int(
                 sensor_quality_summary_raw.get("lidar_point_count_total", 0)
@@ -2033,9 +2092,18 @@ def run_phase2_hooks(args: argparse.Namespace) -> dict[str, Any]:
             "lidar_returns_per_laser_avg": _to_non_negative_float(
                 sensor_quality_summary_raw.get("lidar_returns_per_laser_avg", 0.0)
             ),
+            "lidar_detection_ratio_avg": _to_non_negative_float(
+                sensor_quality_summary_raw.get("lidar_detection_ratio_avg", 0.0)
+            ),
+            "lidar_effective_max_range_m_avg": _to_non_negative_float(
+                sensor_quality_summary_raw.get("lidar_effective_max_range_m_avg", 0.0)
+            ),
             "radar_frame_count": _to_non_negative_int(sensor_quality_summary_raw.get("radar_frame_count", 0)),
             "radar_target_count_total": _to_non_negative_int(
                 sensor_quality_summary_raw.get("radar_target_count_total", 0)
+            ),
+            "radar_ghost_target_count_total": _to_non_negative_int(
+                sensor_quality_summary_raw.get("radar_ghost_target_count_total", 0)
             ),
             "radar_false_positive_count_total": _to_non_negative_int(
                 sensor_quality_summary_raw.get("radar_false_positive_count_total", 0)
@@ -2046,18 +2114,39 @@ def run_phase2_hooks(args: argparse.Namespace) -> dict[str, Any]:
             "radar_false_positive_rate_avg": _to_non_negative_float(
                 sensor_quality_summary_raw.get("radar_false_positive_rate_avg", 0.0)
             ),
+            "radar_ghost_target_count_avg": _to_non_negative_float(
+                sensor_quality_summary_raw.get("radar_ghost_target_count_avg", 0.0)
+            ),
+            "radar_clutter_index_avg": _to_non_negative_float(
+                sensor_quality_summary_raw.get("radar_clutter_index_avg", 0.0)
+            ),
         }
     if not sensor_quality_summary and sensor_frames:
         camera_frame_count = 0
         camera_noise_total = 0.0
         camera_dynamic_range_total = 0.0
+        camera_visibility_score_total = 0.0
+        camera_motion_blur_level_total = 0.0
+        camera_snr_db_total = 0.0
+        camera_exposure_time_ms_total = 0.0
+        camera_signal_saturation_ratio_total = 0.0
+        camera_rolling_shutter_total_delay_ms_total = 0.0
+        camera_normalized_total_noise_total = 0.0
+        camera_distortion_edge_shift_px_total = 0.0
+        camera_principal_point_offset_norm_total = 0.0
+        camera_effective_focal_length_px_total = 0.0
+        camera_projection_mode_counts: dict[str, int] = {}
         lidar_frame_count = 0
         lidar_point_total = 0
         lidar_returns_total = 0
+        lidar_detection_ratio_total = 0.0
+        lidar_effective_max_range_m_total = 0.0
         radar_frame_count = 0
         radar_target_total = 0
+        radar_ghost_target_total = 0
         radar_false_positive_total = 0
         radar_false_positive_rate_total = 0.0
+        radar_clutter_index_total = 0.0
         for frame in sensor_frames:
             if not isinstance(frame, dict):
                 continue
@@ -2069,15 +2158,58 @@ def run_phase2_hooks(args: argparse.Namespace) -> dict[str, Any]:
                 camera_frame_count += 1
                 camera_noise_total += _to_non_negative_float(payload.get("camera_noise_stddev_px", 0.0))
                 camera_dynamic_range_total += _to_non_negative_float(payload.get("dynamic_range_stops", 0.0))
+                camera_visibility_score_total += _to_non_negative_float(payload.get("visibility_score", 0.0))
+                camera_motion_blur_level_total += _to_non_negative_float(payload.get("motion_blur_level", 0.0))
+                camera_physics_payload_raw = payload.get("camera_physics", {})
+                camera_physics_payload = (
+                    camera_physics_payload_raw if isinstance(camera_physics_payload_raw, dict) else {}
+                )
+                camera_snr_db_total += _to_non_negative_float(camera_physics_payload.get("snr_db", 0.0))
+                camera_exposure_time_ms_total += _to_non_negative_float(
+                    camera_physics_payload.get("exposure_time_ms", 0.0)
+                )
+                camera_signal_saturation_ratio_total += _to_non_negative_float(
+                    camera_physics_payload.get("signal_saturation_ratio", 0.0)
+                )
+                camera_rolling_shutter_total_delay_ms_total += _to_non_negative_float(
+                    camera_physics_payload.get("rolling_shutter_total_delay_ms", 0.0)
+                )
+                camera_normalized_total_noise_total += _to_non_negative_float(
+                    camera_physics_payload.get("normalized_total_noise", 0.0)
+                )
+                camera_geometry_payload_raw = payload.get("camera_geometry", {})
+                camera_geometry_payload = (
+                    camera_geometry_payload_raw if isinstance(camera_geometry_payload_raw, dict) else {}
+                )
+                camera_distortion_edge_shift_px_total += _to_non_negative_float(
+                    camera_geometry_payload.get("distortion_edge_shift_px_est", 0.0)
+                )
+                camera_principal_point_offset_norm_total += _to_non_negative_float(
+                    camera_geometry_payload.get("principal_point_offset_norm", 0.0)
+                )
+                camera_effective_focal_length_px_total += _to_non_negative_float(
+                    camera_geometry_payload.get("effective_focal_length_px", 0.0)
+                )
+                projection = str(camera_geometry_payload.get("projection", "")).strip().upper()
+                if projection:
+                    camera_projection_mode_counts[projection] = (
+                        camera_projection_mode_counts.get(projection, 0) + 1
+                    )
             elif sensor_type == "lidar":
                 lidar_frame_count += 1
                 lidar_point_total += _to_non_negative_int(payload.get("point_count", 0))
                 lidar_returns_total += _to_non_negative_int(payload.get("returns_per_laser", 0))
+                lidar_detection_ratio_total += _to_non_negative_float(payload.get("detection_ratio", 0.0))
+                lidar_effective_max_range_m_total += _to_non_negative_float(
+                    payload.get("effective_max_range_m", 0.0)
+                )
             elif sensor_type == "radar":
                 radar_frame_count += 1
                 radar_target_total += _to_non_negative_int(payload.get("target_count", 0))
+                radar_ghost_target_total += _to_non_negative_int(payload.get("ghost_target_count", 0))
                 radar_false_positive_total += _to_non_negative_int(payload.get("false_positive_count", 0))
                 radar_false_positive_rate_total += _to_non_negative_float(payload.get("radar_false_positive_rate", 0.0))
+                radar_clutter_index_total += _to_non_negative_float(payload.get("radar_clutter_index", 0.0))
         sensor_quality_summary = {
             "camera_frame_count": int(camera_frame_count),
             "camera_noise_stddev_px_avg": (
@@ -2090,6 +2222,59 @@ def run_phase2_hooks(args: argparse.Namespace) -> dict[str, Any]:
                 if camera_frame_count > 0
                 else 0.0
             ),
+            "camera_visibility_score_avg": (
+                float(camera_visibility_score_total / float(camera_frame_count))
+                if camera_frame_count > 0
+                else 0.0
+            ),
+            "camera_motion_blur_level_avg": (
+                float(camera_motion_blur_level_total / float(camera_frame_count))
+                if camera_frame_count > 0
+                else 0.0
+            ),
+            "camera_snr_db_avg": (
+                float(camera_snr_db_total / float(camera_frame_count))
+                if camera_frame_count > 0
+                else 0.0
+            ),
+            "camera_exposure_time_ms_avg": (
+                float(camera_exposure_time_ms_total / float(camera_frame_count))
+                if camera_frame_count > 0
+                else 0.0
+            ),
+            "camera_signal_saturation_ratio_avg": (
+                float(camera_signal_saturation_ratio_total / float(camera_frame_count))
+                if camera_frame_count > 0
+                else 0.0
+            ),
+            "camera_rolling_shutter_total_delay_ms_avg": (
+                float(camera_rolling_shutter_total_delay_ms_total / float(camera_frame_count))
+                if camera_frame_count > 0
+                else 0.0
+            ),
+            "camera_normalized_total_noise_avg": (
+                float(camera_normalized_total_noise_total / float(camera_frame_count))
+                if camera_frame_count > 0
+                else 0.0
+            ),
+            "camera_distortion_edge_shift_px_avg": (
+                float(camera_distortion_edge_shift_px_total / float(camera_frame_count))
+                if camera_frame_count > 0
+                else 0.0
+            ),
+            "camera_principal_point_offset_norm_avg": (
+                float(camera_principal_point_offset_norm_total / float(camera_frame_count))
+                if camera_frame_count > 0
+                else 0.0
+            ),
+            "camera_effective_focal_length_px_avg": (
+                float(camera_effective_focal_length_px_total / float(camera_frame_count))
+                if camera_frame_count > 0
+                else 0.0
+            ),
+            "camera_projection_mode_counts": {
+                key: camera_projection_mode_counts[key] for key in sorted(camera_projection_mode_counts.keys())
+            },
             "lidar_frame_count": int(lidar_frame_count),
             "lidar_point_count_total": int(lidar_point_total),
             "lidar_point_count_avg": (
@@ -2102,8 +2287,19 @@ def run_phase2_hooks(args: argparse.Namespace) -> dict[str, Any]:
                 if lidar_frame_count > 0
                 else 0.0
             ),
+            "lidar_detection_ratio_avg": (
+                float(lidar_detection_ratio_total / float(lidar_frame_count))
+                if lidar_frame_count > 0
+                else 0.0
+            ),
+            "lidar_effective_max_range_m_avg": (
+                float(lidar_effective_max_range_m_total / float(lidar_frame_count))
+                if lidar_frame_count > 0
+                else 0.0
+            ),
             "radar_frame_count": int(radar_frame_count),
             "radar_target_count_total": int(radar_target_total),
+            "radar_ghost_target_count_total": int(radar_ghost_target_total),
             "radar_false_positive_count_total": int(radar_false_positive_total),
             "radar_false_positive_count_avg": (
                 float(radar_false_positive_total / float(radar_frame_count))
@@ -2115,9 +2311,22 @@ def run_phase2_hooks(args: argparse.Namespace) -> dict[str, Any]:
                 if radar_frame_count > 0
                 else 0.0
             ),
+            "radar_ghost_target_count_avg": (
+                float(radar_ghost_target_total / float(radar_frame_count))
+                if radar_frame_count > 0
+                else 0.0
+            ),
+            "radar_clutter_index_avg": (
+                float(radar_clutter_index_total / float(radar_frame_count))
+                if radar_frame_count > 0
+                else 0.0
+            ),
         }
     if not sensor_quality_summary:
-        sensor_quality_summary = dict(sensor_quality_summary_defaults)
+        sensor_quality_summary = {
+            **sensor_quality_summary_defaults,
+            "camera_projection_mode_counts": {},
+        }
 
     sensor_sweep_runner = Path(args.sensor_sweep_runner).resolve()
     sensor_sweep_candidates = Path(args.sensor_sweep_candidates).resolve()
