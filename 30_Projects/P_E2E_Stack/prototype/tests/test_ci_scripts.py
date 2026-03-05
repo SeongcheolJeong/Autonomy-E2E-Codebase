@@ -48169,6 +48169,56 @@ class BuildReleaseSummaryArtifactTests(unittest.TestCase):
                 + "\n",
                 encoding="utf-8",
             )
+            batch_root = artifacts_root / "batch_core"
+            batch_root.mkdir(parents=True, exist_ok=True)
+            sensor_sweep_report = batch_root / "sensor_sweep_report.json"
+            sensor_sweep_report.write_text(
+                json.dumps(
+                    {
+                        "rig_sweep_schema_version": "sensor_rig_sweep_report_v0",
+                        "sensor_fidelity_tier": "high",
+                        "candidate_count": 2,
+                        "best_rig_id": "rig_runtime_eval",
+                        "best_heuristic_score": 12.5,
+                        "rankings": [
+                            {
+                                "rig_id": "rig_runtime_eval",
+                                "heuristic_score": 12.5,
+                                "metrics": {
+                                    "radar_target_detection_ratio_avg": 0.75,
+                                    "radar_false_positive_rate_avg": 0.2,
+                                    "radar_clutter_index_avg": 0.1,
+                                    "radar_track_purity_avg": 0.9,
+                                    "radar_false_alarm_burden_avg": 0.05,
+                                    "radar_effective_detection_quality_avg": 0.7,
+                                    "radar_doppler_resolution_quality_avg": 0.8,
+                                    "radar_range_coverage_quality_avg": 0.95,
+                                },
+                            }
+                        ],
+                    }
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+            (batch_root / "pipeline_result.json").write_text(
+                json.dumps(
+                    {
+                        "release_id": "REL_TEST_RUNTIME_LANE_HASHMODE_001_sds_v0_1_0",
+                        "batch_id": "BATCH_RUNTIME_LANE_HASHMODE_001",
+                        "overall_result": "PASS",
+                        "strict_gate": True,
+                        "trend_gate": {"result": "PASS"},
+                        "phase2_hooks": {
+                            "enabled": True,
+                            "sensor_sweep_out": str(sensor_sweep_report),
+                        },
+                        "reports": [{"sds_version": "sds_v0.1.0"}],
+                    }
+                )
+                + "\n",
+                encoding="utf-8",
+            )
 
             out_text = tmp_path / "summary.txt"
             out_json = tmp_path / "summary.json"
@@ -48219,12 +48269,34 @@ class BuildReleaseSummaryArtifactTests(unittest.TestCase):
             self.assertEqual(summary.get("phase2_sensor_fidelity_score_avg_hold_min_counts"), {"0.5": 1})
             self.assertEqual(summary.get("phase2_sensor_frame_count_avg_warn_min_counts"), {"6": 1})
             self.assertEqual(summary.get("phase2_sensor_frame_count_avg_hold_min_counts"), {"3": 1})
+            runtime_radar_alignment = payload.get("runtime_lane_phase2_rig_sweep_radar_alignment_summary", {})
+            self.assertIsInstance(runtime_radar_alignment, dict)
+            self.assertEqual(int(runtime_radar_alignment.get("runtime_row_count", 0) or 0), 2)
+            self.assertEqual(int(runtime_radar_alignment.get("matched_manifest_count", 0) or 0), 2)
+            self.assertEqual(int(runtime_radar_alignment.get("metrics_sample_count", 0) or 0), 2)
+            self.assertEqual(runtime_radar_alignment.get("mapping_mode_counts"), {"release_prefix": 2})
+            runtime_metric_summary = runtime_radar_alignment.get("runtime_metric_summary", {})
+            self.assertIsInstance(runtime_metric_summary, dict)
+            self.assertIn("awsim", runtime_metric_summary)
+            self.assertIn("carla", runtime_metric_summary)
+            self.assertAlmostEqual(
+                float(runtime_metric_summary.get("awsim", {}).get("radar_track_purity_avg", 0.0) or 0.0),
+                0.9,
+                places=6,
+            )
+            self.assertAlmostEqual(
+                float(runtime_metric_summary.get("carla", {}).get("radar_false_alarm_burden_avg", 0.0) or 0.0),
+                0.05,
+                places=6,
+            )
             assert_text_file_contains(
                 self,
                 file_path=out_text,
                 expected_substrings=[
                     "runtime_lane_execution_artifact_count=1",
                     "runtime_lane_execution=rows:2,results:fail:1,pass:1,failure_reasons:runtime_evidence_missing:1,runtimes:awsim:1,carla:1,lanes:exec:1,asset_profiles:full:1,archive_sha256_modes:verify_only:1,evidence_paths:present=2,exists=1,missing=1,unknown=0",
+                    "runtime_lane_phase2_rig_sweep_radar_alignment=rows:2,matched:2,metric_samples:2,runtimes:awsim:1,carla:1,results:fail:1,pass:1,mapping_modes:release_prefix:2,unmatched:0",
+                    "runtime_lane_phase2_rig_sweep_radar_alignment_metrics=awsim:rows=1/metrics=1,score_avg=12.500,radar_track_purity_avg=0.900,radar_false_alarm_burden_avg=0.050,radar_effective_quality_avg=0.700,radar_doppler_quality_avg=0.800,radar_range_quality_avg=0.950",
                     "evidence_missing_runtimes=carla:1",
                     "lane_rows:exec:2",
                     "runner_platforms:Linux/x86_64:1",

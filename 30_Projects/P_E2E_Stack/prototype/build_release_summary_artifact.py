@@ -2633,6 +2633,7 @@ def discover_pipeline_manifests(scan_roots: list[Path], release_prefix: str) -> 
 
             manifests.append(
                 {
+                    "release_id": release_id,
                     "batch_id": str(payload.get("batch_id", "")).strip(),
                     "overall_result": str(payload.get("overall_result", "")).strip(),
                     "trend_result": trend_result,
@@ -4832,6 +4833,407 @@ def summarize_runtime_lane_execution(runtime_lane_artifacts: list[dict[str, Any]
         "runtime_evidence_exists_true_count": runtime_evidence_exists_true_count,
         "runtime_evidence_exists_false_count": runtime_evidence_exists_false_count,
         "runtime_evidence_exists_unknown_count": runtime_evidence_exists_unknown_count,
+    }
+
+
+def summarize_runtime_lane_phase2_rig_sweep_radar_alignment(
+    runtime_lane_artifacts: list[dict[str, Any]],
+    pipeline_manifests: list[dict[str, Any]],
+) -> dict[str, Any]:
+    metric_keys = (
+        "best_heuristic_score_avg",
+        "radar_target_detection_ratio_avg",
+        "radar_false_positive_rate_avg",
+        "radar_clutter_index_avg",
+        "radar_track_purity_avg",
+        "radar_false_alarm_burden_avg",
+        "radar_effective_detection_quality_avg",
+        "radar_doppler_resolution_quality_avg",
+        "radar_range_coverage_quality_avg",
+    )
+
+    def _init_metric_accumulator() -> dict[str, Any]:
+        return {
+            "row_count": 0,
+            "pass_count": 0,
+            "fail_count": 0,
+            "matched_manifest_count": 0,
+            "metrics_sample_count": 0,
+            "best_heuristic_score_total": 0.0,
+            "radar_target_detection_ratio_total": 0.0,
+            "radar_false_positive_rate_total": 0.0,
+            "radar_clutter_index_total": 0.0,
+            "radar_track_purity_total": 0.0,
+            "radar_false_alarm_burden_total": 0.0,
+            "radar_effective_detection_quality_total": 0.0,
+            "radar_doppler_resolution_quality_total": 0.0,
+            "radar_range_coverage_quality_total": 0.0,
+        }
+
+    def _finalize_metric_accumulator(accumulator: dict[str, Any]) -> dict[str, Any]:
+        sample_count = int(accumulator.get("metrics_sample_count", 0) or 0)
+        if sample_count <= 0:
+            return {
+                "row_count": int(accumulator.get("row_count", 0) or 0),
+                "pass_count": int(accumulator.get("pass_count", 0) or 0),
+                "fail_count": int(accumulator.get("fail_count", 0) or 0),
+                "matched_manifest_count": int(accumulator.get("matched_manifest_count", 0) or 0),
+                "metrics_sample_count": 0,
+                "best_heuristic_score_avg": 0.0,
+                "radar_target_detection_ratio_avg": 0.0,
+                "radar_false_positive_rate_avg": 0.0,
+                "radar_clutter_index_avg": 0.0,
+                "radar_track_purity_avg": 0.0,
+                "radar_false_alarm_burden_avg": 0.0,
+                "radar_effective_detection_quality_avg": 0.0,
+                "radar_doppler_resolution_quality_avg": 0.0,
+                "radar_range_coverage_quality_avg": 0.0,
+            }
+        sample_count_f = float(sample_count)
+        return {
+            "row_count": int(accumulator.get("row_count", 0) or 0),
+            "pass_count": int(accumulator.get("pass_count", 0) or 0),
+            "fail_count": int(accumulator.get("fail_count", 0) or 0),
+            "matched_manifest_count": int(accumulator.get("matched_manifest_count", 0) or 0),
+            "metrics_sample_count": sample_count,
+            "best_heuristic_score_avg": float(
+                float(accumulator.get("best_heuristic_score_total", 0.0)) / sample_count_f
+            ),
+            "radar_target_detection_ratio_avg": float(
+                float(accumulator.get("radar_target_detection_ratio_total", 0.0)) / sample_count_f
+            ),
+            "radar_false_positive_rate_avg": float(
+                float(accumulator.get("radar_false_positive_rate_total", 0.0)) / sample_count_f
+            ),
+            "radar_clutter_index_avg": float(
+                float(accumulator.get("radar_clutter_index_total", 0.0)) / sample_count_f
+            ),
+            "radar_track_purity_avg": float(
+                float(accumulator.get("radar_track_purity_total", 0.0)) / sample_count_f
+            ),
+            "radar_false_alarm_burden_avg": float(
+                float(accumulator.get("radar_false_alarm_burden_total", 0.0)) / sample_count_f
+            ),
+            "radar_effective_detection_quality_avg": float(
+                float(accumulator.get("radar_effective_detection_quality_total", 0.0)) / sample_count_f
+            ),
+            "radar_doppler_resolution_quality_avg": float(
+                float(accumulator.get("radar_doppler_resolution_quality_total", 0.0)) / sample_count_f
+            ),
+            "radar_range_coverage_quality_avg": float(
+                float(accumulator.get("radar_range_coverage_quality_total", 0.0)) / sample_count_f
+            ),
+        }
+
+    manifest_rows: list[dict[str, Any]] = []
+    manifest_rows_by_release_id: dict[str, list[dict[str, Any]]] = {}
+    for raw_manifest in pipeline_manifests:
+        if not isinstance(raw_manifest, dict):
+            continue
+        release_id = str(raw_manifest.get("release_id", "")).strip()
+        if not release_id:
+            continue
+        manifest_row = {
+            "release_id": release_id,
+            "batch_id": str(raw_manifest.get("batch_id", "")).strip(),
+            "phase2_sensor_sweep_checked": bool(raw_manifest.get("phase2_sensor_sweep_checked", False)),
+            "phase2_sensor_sweep_best_metrics_available": bool(
+                raw_manifest.get("phase2_sensor_sweep_best_metrics_available", False)
+            ),
+            "best_heuristic_score_avg": max(
+                0.0,
+                float(_to_float_or_none(raw_manifest.get("phase2_sensor_sweep_best_heuristic_score")) or 0.0),
+            ),
+            "radar_target_detection_ratio_avg": max(
+                0.0,
+                float(
+                    _to_float_or_none(raw_manifest.get("phase2_sensor_sweep_best_radar_target_detection_ratio_avg"))
+                    or 0.0
+                ),
+            ),
+            "radar_false_positive_rate_avg": max(
+                0.0,
+                float(
+                    _to_float_or_none(raw_manifest.get("phase2_sensor_sweep_best_radar_false_positive_rate_avg"))
+                    or 0.0
+                ),
+            ),
+            "radar_clutter_index_avg": max(
+                0.0,
+                float(
+                    _to_float_or_none(raw_manifest.get("phase2_sensor_sweep_best_radar_clutter_index_avg"))
+                    or 0.0
+                ),
+            ),
+            "radar_track_purity_avg": max(
+                0.0,
+                float(
+                    _to_float_or_none(raw_manifest.get("phase2_sensor_sweep_best_radar_track_purity_avg"))
+                    or 0.0
+                ),
+            ),
+            "radar_false_alarm_burden_avg": max(
+                0.0,
+                float(
+                    _to_float_or_none(raw_manifest.get("phase2_sensor_sweep_best_radar_false_alarm_burden_avg"))
+                    or 0.0
+                ),
+            ),
+            "radar_effective_detection_quality_avg": max(
+                0.0,
+                float(
+                    _to_float_or_none(
+                        raw_manifest.get("phase2_sensor_sweep_best_radar_effective_detection_quality_avg")
+                    )
+                    or 0.0
+                ),
+            ),
+            "radar_doppler_resolution_quality_avg": max(
+                0.0,
+                float(
+                    _to_float_or_none(
+                        raw_manifest.get("phase2_sensor_sweep_best_radar_doppler_resolution_quality_avg")
+                    )
+                    or 0.0
+                ),
+            ),
+            "radar_range_coverage_quality_avg": max(
+                0.0,
+                float(
+                    _to_float_or_none(
+                        raw_manifest.get("phase2_sensor_sweep_best_radar_range_coverage_quality_avg")
+                    )
+                    or 0.0
+                ),
+            ),
+        }
+        manifest_rows.append(manifest_row)
+        manifest_rows_by_release_id.setdefault(release_id, []).append(manifest_row)
+
+    def _select_manifest(candidates: list[dict[str, Any]]) -> dict[str, Any] | None:
+        if not candidates:
+            return None
+        ordered = sorted(
+            candidates,
+            key=lambda row: (
+                0 if bool(row.get("phase2_sensor_sweep_checked", False)) else 1,
+                0 if bool(row.get("phase2_sensor_sweep_best_metrics_available", False)) else 1,
+                str(row.get("release_id", "")),
+                str(row.get("batch_id", "")),
+            ),
+        )
+        return ordered[0]
+
+    runtime_counts: dict[str, int] = {}
+    result_counts: dict[str, int] = {}
+    mapping_mode_counts: dict[str, int] = {}
+    runtime_metric_accumulators: dict[str, dict[str, Any]] = {}
+    pass_metric_accumulator = _init_metric_accumulator()
+    fail_metric_accumulator = _init_metric_accumulator()
+    unmatched_rows: list[dict[str, str]] = []
+    runtime_row_count = 0
+    matched_manifest_count = 0
+    metrics_sample_count = 0
+
+    for raw_artifact in runtime_lane_artifacts:
+        if not isinstance(raw_artifact, dict):
+            continue
+        release_prefix = str(raw_artifact.get("release_prefix", "")).strip()
+        rows_raw = raw_artifact.get("runtime_rows", [])
+        if not isinstance(rows_raw, list):
+            continue
+        for raw_row in rows_raw:
+            if not isinstance(raw_row, dict):
+                continue
+            runtime_row_count += 1
+            runtime_name = str(raw_row.get("runtime", "")).strip().lower() or "unknown"
+            result = str(raw_row.get("result", "")).strip().lower() or "unknown"
+            release_id = str(raw_row.get("release_id", "")).strip()
+            runtime_counts[runtime_name] = runtime_counts.get(runtime_name, 0) + 1
+            result_counts[result] = result_counts.get(result, 0) + 1
+            runtime_accumulator = runtime_metric_accumulators.get(runtime_name)
+            if runtime_accumulator is None:
+                runtime_accumulator = _init_metric_accumulator()
+                runtime_metric_accumulators[runtime_name] = runtime_accumulator
+            runtime_accumulator["row_count"] += 1
+            if result == "pass":
+                runtime_accumulator["pass_count"] += 1
+            elif result == "fail":
+                runtime_accumulator["fail_count"] += 1
+
+            matched_manifest: dict[str, Any] | None = None
+            mapping_mode = "none"
+            if release_id and release_id in manifest_rows_by_release_id:
+                matched_manifest = _select_manifest(manifest_rows_by_release_id[release_id])
+                mapping_mode = "exact_release_id"
+            if matched_manifest is None and release_prefix:
+                prefix_candidates = [
+                    row for row in manifest_rows if str(row.get("release_id", "")).startswith(release_prefix)
+                ]
+                matched_manifest = _select_manifest(prefix_candidates)
+                if matched_manifest is not None:
+                    mapping_mode = "release_prefix"
+            if matched_manifest is None and release_id:
+                release_prefix_candidates = [
+                    row
+                    for row in manifest_rows
+                    if release_id.startswith(str(row.get("release_id", "")))
+                    or str(row.get("release_id", "")).startswith(release_id)
+                ]
+                matched_manifest = _select_manifest(release_prefix_candidates)
+                if matched_manifest is not None:
+                    mapping_mode = "release_id_prefix"
+
+            mapping_mode_counts[mapping_mode] = mapping_mode_counts.get(mapping_mode, 0) + 1
+            if matched_manifest is None:
+                if len(unmatched_rows) < 10:
+                    unmatched_rows.append(
+                        {
+                            "runtime": runtime_name,
+                            "result": result,
+                            "release_id": release_id,
+                            "release_prefix": release_prefix,
+                        }
+                    )
+                continue
+
+            matched_manifest_count += 1
+            runtime_accumulator["matched_manifest_count"] += 1
+            if result == "pass":
+                pass_metric_accumulator["matched_manifest_count"] += 1
+            elif result == "fail":
+                fail_metric_accumulator["matched_manifest_count"] += 1
+            if not bool(matched_manifest.get("phase2_sensor_sweep_best_metrics_available", False)):
+                continue
+
+            metrics_sample_count += 1
+            runtime_accumulator["metrics_sample_count"] += 1
+            if result == "pass":
+                pass_metric_accumulator["row_count"] += 1
+                pass_metric_accumulator["pass_count"] += 1
+                pass_metric_accumulator["metrics_sample_count"] += 1
+            elif result == "fail":
+                fail_metric_accumulator["row_count"] += 1
+                fail_metric_accumulator["fail_count"] += 1
+                fail_metric_accumulator["metrics_sample_count"] += 1
+
+            runtime_accumulator["best_heuristic_score_total"] += float(
+                matched_manifest.get("best_heuristic_score_avg", 0.0)
+            )
+            runtime_accumulator["radar_target_detection_ratio_total"] += float(
+                matched_manifest.get("radar_target_detection_ratio_avg", 0.0)
+            )
+            runtime_accumulator["radar_false_positive_rate_total"] += float(
+                matched_manifest.get("radar_false_positive_rate_avg", 0.0)
+            )
+            runtime_accumulator["radar_clutter_index_total"] += float(
+                matched_manifest.get("radar_clutter_index_avg", 0.0)
+            )
+            runtime_accumulator["radar_track_purity_total"] += float(
+                matched_manifest.get("radar_track_purity_avg", 0.0)
+            )
+            runtime_accumulator["radar_false_alarm_burden_total"] += float(
+                matched_manifest.get("radar_false_alarm_burden_avg", 0.0)
+            )
+            runtime_accumulator["radar_effective_detection_quality_total"] += float(
+                matched_manifest.get("radar_effective_detection_quality_avg", 0.0)
+            )
+            runtime_accumulator["radar_doppler_resolution_quality_total"] += float(
+                matched_manifest.get("radar_doppler_resolution_quality_avg", 0.0)
+            )
+            runtime_accumulator["radar_range_coverage_quality_total"] += float(
+                matched_manifest.get("radar_range_coverage_quality_avg", 0.0)
+            )
+
+            if result == "pass":
+                pass_metric_accumulator["best_heuristic_score_total"] += float(
+                    matched_manifest.get("best_heuristic_score_avg", 0.0)
+                )
+                pass_metric_accumulator["radar_target_detection_ratio_total"] += float(
+                    matched_manifest.get("radar_target_detection_ratio_avg", 0.0)
+                )
+                pass_metric_accumulator["radar_false_positive_rate_total"] += float(
+                    matched_manifest.get("radar_false_positive_rate_avg", 0.0)
+                )
+                pass_metric_accumulator["radar_clutter_index_total"] += float(
+                    matched_manifest.get("radar_clutter_index_avg", 0.0)
+                )
+                pass_metric_accumulator["radar_track_purity_total"] += float(
+                    matched_manifest.get("radar_track_purity_avg", 0.0)
+                )
+                pass_metric_accumulator["radar_false_alarm_burden_total"] += float(
+                    matched_manifest.get("radar_false_alarm_burden_avg", 0.0)
+                )
+                pass_metric_accumulator["radar_effective_detection_quality_total"] += float(
+                    matched_manifest.get("radar_effective_detection_quality_avg", 0.0)
+                )
+                pass_metric_accumulator["radar_doppler_resolution_quality_total"] += float(
+                    matched_manifest.get("radar_doppler_resolution_quality_avg", 0.0)
+                )
+                pass_metric_accumulator["radar_range_coverage_quality_total"] += float(
+                    matched_manifest.get("radar_range_coverage_quality_avg", 0.0)
+                )
+            elif result == "fail":
+                fail_metric_accumulator["best_heuristic_score_total"] += float(
+                    matched_manifest.get("best_heuristic_score_avg", 0.0)
+                )
+                fail_metric_accumulator["radar_target_detection_ratio_total"] += float(
+                    matched_manifest.get("radar_target_detection_ratio_avg", 0.0)
+                )
+                fail_metric_accumulator["radar_false_positive_rate_total"] += float(
+                    matched_manifest.get("radar_false_positive_rate_avg", 0.0)
+                )
+                fail_metric_accumulator["radar_clutter_index_total"] += float(
+                    matched_manifest.get("radar_clutter_index_avg", 0.0)
+                )
+                fail_metric_accumulator["radar_track_purity_total"] += float(
+                    matched_manifest.get("radar_track_purity_avg", 0.0)
+                )
+                fail_metric_accumulator["radar_false_alarm_burden_total"] += float(
+                    matched_manifest.get("radar_false_alarm_burden_avg", 0.0)
+                )
+                fail_metric_accumulator["radar_effective_detection_quality_total"] += float(
+                    matched_manifest.get("radar_effective_detection_quality_avg", 0.0)
+                )
+                fail_metric_accumulator["radar_doppler_resolution_quality_total"] += float(
+                    matched_manifest.get("radar_doppler_resolution_quality_avg", 0.0)
+                )
+                fail_metric_accumulator["radar_range_coverage_quality_total"] += float(
+                    matched_manifest.get("radar_range_coverage_quality_avg", 0.0)
+                )
+
+    runtime_metric_summary: dict[str, dict[str, Any]] = {}
+    for runtime_name in sorted(runtime_metric_accumulators.keys()):
+        runtime_metric_summary[runtime_name] = _finalize_metric_accumulator(
+            runtime_metric_accumulators[runtime_name]
+        )
+
+    pass_metric_summary = _finalize_metric_accumulator(pass_metric_accumulator)
+    fail_metric_summary = _finalize_metric_accumulator(fail_metric_accumulator)
+    pass_minus_fail_metric_delta: dict[str, float] = {}
+    if (
+        int(pass_metric_summary.get("metrics_sample_count", 0) or 0) > 0
+        and int(fail_metric_summary.get("metrics_sample_count", 0) or 0) > 0
+    ):
+        for metric_key in metric_keys:
+            pass_minus_fail_metric_delta[metric_key] = float(
+                float(pass_metric_summary.get(metric_key, 0.0))
+                - float(fail_metric_summary.get(metric_key, 0.0))
+            )
+
+    return {
+        "runtime_row_count": int(runtime_row_count),
+        "runtime_counts": {key: runtime_counts[key] for key in sorted(runtime_counts.keys())},
+        "result_counts": {key: result_counts[key] for key in sorted(result_counts.keys())},
+        "mapping_mode_counts": {key: mapping_mode_counts[key] for key in sorted(mapping_mode_counts.keys())},
+        "matched_manifest_count": int(matched_manifest_count),
+        "metrics_sample_count": int(metrics_sample_count),
+        "unmatched_row_count": int(max(0, runtime_row_count - matched_manifest_count)),
+        "unmatched_rows": unmatched_rows,
+        "runtime_metric_summary": runtime_metric_summary,
+        "pass_metric_summary": pass_metric_summary,
+        "fail_metric_summary": fail_metric_summary,
+        "pass_minus_fail_metric_delta": pass_minus_fail_metric_delta,
     }
 
 
@@ -10427,6 +10829,12 @@ def main() -> int:
     timing_ms["scan_runtime_evidence"] = _elapsed_ms(scan_runtime_evidence_started_at)
     runtime_evidence_summary = summarize_runtime_evidence(runtime_evidence_artifacts)
     runtime_lane_execution_summary = summarize_runtime_lane_execution(runtime_lane_execution_artifacts)
+    runtime_lane_phase2_rig_sweep_radar_alignment_summary = (
+        summarize_runtime_lane_phase2_rig_sweep_radar_alignment(
+            runtime_lane_execution_artifacts,
+            pipeline_manifests,
+        )
+    )
     runtime_evidence_compare_summary = summarize_runtime_evidence_compare(runtime_evidence_compare_artifacts)
     runtime_native_evidence_compare_summary = summarize_runtime_evidence_compare(
         runtime_native_evidence_compare_artifacts
@@ -11380,6 +11788,120 @@ def main() -> int:
         )
     else:
         lines.append("runtime_lane_execution=n/a")
+    runtime_lane_phase2_rig_sweep_radar_alignment_row_count = int(
+        runtime_lane_phase2_rig_sweep_radar_alignment_summary.get("runtime_row_count", 0) or 0
+    )
+    if runtime_lane_phase2_rig_sweep_radar_alignment_row_count > 0:
+        runtime_lane_phase2_rig_sweep_radar_alignment_runtime_counts = (
+            runtime_lane_phase2_rig_sweep_radar_alignment_summary.get("runtime_counts", {})
+        )
+        runtime_lane_phase2_rig_sweep_radar_alignment_result_counts = (
+            runtime_lane_phase2_rig_sweep_radar_alignment_summary.get("result_counts", {})
+        )
+        runtime_lane_phase2_rig_sweep_radar_alignment_mapping_mode_counts = (
+            runtime_lane_phase2_rig_sweep_radar_alignment_summary.get("mapping_mode_counts", {})
+        )
+        runtime_lane_phase2_rig_sweep_radar_alignment_runtime_counts_text = (
+            ",".join(
+                f"{key}:{runtime_lane_phase2_rig_sweep_radar_alignment_runtime_counts[key]}"
+                for key in sorted(runtime_lane_phase2_rig_sweep_radar_alignment_runtime_counts)
+            )
+            if (
+                isinstance(runtime_lane_phase2_rig_sweep_radar_alignment_runtime_counts, dict)
+                and runtime_lane_phase2_rig_sweep_radar_alignment_runtime_counts
+            )
+            else "n/a"
+        )
+        runtime_lane_phase2_rig_sweep_radar_alignment_result_counts_text = (
+            ",".join(
+                f"{key}:{runtime_lane_phase2_rig_sweep_radar_alignment_result_counts[key]}"
+                for key in sorted(runtime_lane_phase2_rig_sweep_radar_alignment_result_counts)
+            )
+            if (
+                isinstance(runtime_lane_phase2_rig_sweep_radar_alignment_result_counts, dict)
+                and runtime_lane_phase2_rig_sweep_radar_alignment_result_counts
+            )
+            else "n/a"
+        )
+        runtime_lane_phase2_rig_sweep_radar_alignment_mapping_mode_counts_text = (
+            ",".join(
+                f"{key}:{runtime_lane_phase2_rig_sweep_radar_alignment_mapping_mode_counts[key]}"
+                for key in sorted(runtime_lane_phase2_rig_sweep_radar_alignment_mapping_mode_counts)
+            )
+            if (
+                isinstance(runtime_lane_phase2_rig_sweep_radar_alignment_mapping_mode_counts, dict)
+                and runtime_lane_phase2_rig_sweep_radar_alignment_mapping_mode_counts
+            )
+            else "n/a"
+        )
+        lines.append(
+            "runtime_lane_phase2_rig_sweep_radar_alignment="
+            f"rows:{runtime_lane_phase2_rig_sweep_radar_alignment_row_count},"
+            f"matched:{int(runtime_lane_phase2_rig_sweep_radar_alignment_summary.get('matched_manifest_count', 0) or 0)},"
+            f"metric_samples:{int(runtime_lane_phase2_rig_sweep_radar_alignment_summary.get('metrics_sample_count', 0) or 0)},"
+            f"runtimes:{runtime_lane_phase2_rig_sweep_radar_alignment_runtime_counts_text},"
+            f"results:{runtime_lane_phase2_rig_sweep_radar_alignment_result_counts_text},"
+            f"mapping_modes:{runtime_lane_phase2_rig_sweep_radar_alignment_mapping_mode_counts_text},"
+            f"unmatched:{int(runtime_lane_phase2_rig_sweep_radar_alignment_summary.get('unmatched_row_count', 0) or 0)}"
+        )
+        runtime_lane_phase2_rig_sweep_radar_alignment_runtime_metric_summary = (
+            runtime_lane_phase2_rig_sweep_radar_alignment_summary.get("runtime_metric_summary", {})
+        )
+        if (
+            isinstance(runtime_lane_phase2_rig_sweep_radar_alignment_runtime_metric_summary, dict)
+            and runtime_lane_phase2_rig_sweep_radar_alignment_runtime_metric_summary
+        ):
+            runtime_metric_parts: list[str] = []
+            for runtime_name in sorted(runtime_lane_phase2_rig_sweep_radar_alignment_runtime_metric_summary):
+                runtime_payload = runtime_lane_phase2_rig_sweep_radar_alignment_runtime_metric_summary.get(
+                    runtime_name,
+                    {},
+                )
+                if not isinstance(runtime_payload, dict):
+                    continue
+                runtime_metric_parts.append(
+                    f"{runtime_name}:rows={int(runtime_payload.get('row_count', 0) or 0)}"
+                    f"/metrics={int(runtime_payload.get('metrics_sample_count', 0) or 0)},"
+                    f"score_avg={float(runtime_payload.get('best_heuristic_score_avg', 0.0) or 0.0):.3f},"
+                    "radar_track_purity_avg="
+                    f"{float(runtime_payload.get('radar_track_purity_avg', 0.0) or 0.0):.3f},"
+                    "radar_false_alarm_burden_avg="
+                    f"{float(runtime_payload.get('radar_false_alarm_burden_avg', 0.0) or 0.0):.3f},"
+                    "radar_effective_quality_avg="
+                    f"{float(runtime_payload.get('radar_effective_detection_quality_avg', 0.0) or 0.0):.3f},"
+                    "radar_doppler_quality_avg="
+                    f"{float(runtime_payload.get('radar_doppler_resolution_quality_avg', 0.0) or 0.0):.3f},"
+                    "radar_range_quality_avg="
+                    f"{float(runtime_payload.get('radar_range_coverage_quality_avg', 0.0) or 0.0):.3f}"
+                )
+            if runtime_metric_parts:
+                lines.append(
+                    "runtime_lane_phase2_rig_sweep_radar_alignment_metrics=" + ";".join(runtime_metric_parts)
+                )
+        runtime_lane_phase2_rig_sweep_radar_alignment_pass_minus_fail_metric_delta = (
+            runtime_lane_phase2_rig_sweep_radar_alignment_summary.get("pass_minus_fail_metric_delta", {})
+        )
+        if (
+            isinstance(runtime_lane_phase2_rig_sweep_radar_alignment_pass_minus_fail_metric_delta, dict)
+            and runtime_lane_phase2_rig_sweep_radar_alignment_pass_minus_fail_metric_delta
+        ):
+            lines.append(
+                "runtime_lane_phase2_rig_sweep_radar_alignment_pass_minus_fail="
+                "score_avg="
+                f"{float(runtime_lane_phase2_rig_sweep_radar_alignment_pass_minus_fail_metric_delta.get('best_heuristic_score_avg', 0.0) or 0.0):.3f},"
+                "radar_track_purity_avg="
+                f"{float(runtime_lane_phase2_rig_sweep_radar_alignment_pass_minus_fail_metric_delta.get('radar_track_purity_avg', 0.0) or 0.0):.3f},"
+                "radar_false_alarm_burden_avg="
+                f"{float(runtime_lane_phase2_rig_sweep_radar_alignment_pass_minus_fail_metric_delta.get('radar_false_alarm_burden_avg', 0.0) or 0.0):.3f},"
+                "radar_effective_quality_avg="
+                f"{float(runtime_lane_phase2_rig_sweep_radar_alignment_pass_minus_fail_metric_delta.get('radar_effective_detection_quality_avg', 0.0) or 0.0):.3f},"
+                "radar_doppler_quality_avg="
+                f"{float(runtime_lane_phase2_rig_sweep_radar_alignment_pass_minus_fail_metric_delta.get('radar_doppler_resolution_quality_avg', 0.0) or 0.0):.3f},"
+                "radar_range_quality_avg="
+                f"{float(runtime_lane_phase2_rig_sweep_radar_alignment_pass_minus_fail_metric_delta.get('radar_range_coverage_quality_avg', 0.0) or 0.0):.3f}"
+            )
+    else:
+        lines.append("runtime_lane_phase2_rig_sweep_radar_alignment=n/a")
     runtime_evidence_compare_artifact_count = int(runtime_evidence_compare_summary.get("artifact_count", 0) or 0)
     lines.append(f"runtime_evidence_compare_artifact_count={runtime_evidence_compare_artifact_count}")
     if runtime_evidence_compare_artifact_count > 0:
@@ -14199,6 +14721,9 @@ def main() -> int:
         "runtime_lane_execution_artifact_count": runtime_lane_execution_artifact_count,
         "runtime_lane_execution_artifacts": runtime_lane_execution_artifacts,
         "runtime_lane_execution_summary": runtime_lane_execution_summary,
+        "runtime_lane_phase2_rig_sweep_radar_alignment_summary": (
+            runtime_lane_phase2_rig_sweep_radar_alignment_summary
+        ),
         "runtime_evidence_compare_artifact_count": runtime_evidence_compare_artifact_count,
         "runtime_evidence_compare_artifacts": runtime_evidence_compare_artifacts,
         "runtime_evidence_compare_summary": runtime_evidence_compare_summary,
