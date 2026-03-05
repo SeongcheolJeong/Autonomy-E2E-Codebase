@@ -103,6 +103,12 @@ def _score_frames(frames: list[dict[str, Any]]) -> tuple[float, dict[str, Any]]:
     radar_false_positive_count_total = 0
     radar_ghost_target_count_total = 0
     radar_clutter_index_total = 0.0
+    radar_track_purity_total = 0.0
+    radar_false_alarm_burden_total = 0.0
+    radar_ghost_to_target_ratio_total = 0.0
+    radar_effective_detection_quality_total = 0.0
+    radar_doppler_resolution_mps_total = 0.0
+    radar_max_range_m_total = 0.0
     radar_frame_count = 0
 
     for frame in frames:
@@ -159,12 +165,27 @@ def _score_frames(frames: list[dict[str, Any]]) -> tuple[float, dict[str, Any]]:
                 lidar_effective_range_ratio_total += min(1.0, effective_max_range_m / max_range_m)
         elif modality == "radar":
             radar_frame_count += 1
-            radar_target_count_total += _to_non_negative_int(payload.get("target_count", 0))
-            radar_target_detection_ratio_total += _to_non_negative_float(payload.get("target_detection_ratio", 0.0))
-            radar_false_positive_rate_total += _to_non_negative_float(payload.get("radar_false_positive_rate", 0.0))
-            radar_false_positive_count_total += _to_non_negative_int(payload.get("false_positive_count", 0))
-            radar_ghost_target_count_total += _to_non_negative_int(payload.get("ghost_target_count", 0))
-            radar_clutter_index_total += _to_non_negative_float(payload.get("radar_clutter_index", 0.0))
+            target_count = _to_non_negative_int(payload.get("target_count", 0))
+            false_positive_count = _to_non_negative_int(payload.get("false_positive_count", 0))
+            ghost_target_count = _to_non_negative_int(payload.get("ghost_target_count", 0))
+            target_detection_ratio = _to_non_negative_float(payload.get("target_detection_ratio", 0.0))
+            radar_false_positive_rate = _to_non_negative_float(payload.get("radar_false_positive_rate", 0.0))
+            radar_clutter_index = _to_non_negative_float(payload.get("radar_clutter_index", 0.0))
+            doppler_resolution_mps = _to_non_negative_float(payload.get("doppler_resolution_mps", 0.0))
+            max_range_m = _to_non_negative_float(payload.get("max_range_m", 0.0))
+            radar_target_count_total += target_count
+            radar_target_detection_ratio_total += target_detection_ratio
+            radar_false_positive_rate_total += radar_false_positive_rate
+            radar_false_positive_count_total += false_positive_count
+            radar_ghost_target_count_total += ghost_target_count
+            radar_clutter_index_total += radar_clutter_index
+            observed_contact_count = max(1.0, float(target_count + false_positive_count + ghost_target_count))
+            radar_track_purity_total += float(target_count) / observed_contact_count
+            radar_false_alarm_burden_total += float(false_positive_count) / observed_contact_count
+            radar_ghost_to_target_ratio_total += float(ghost_target_count) / float(max(1, target_count))
+            radar_effective_detection_quality_total += target_detection_ratio * max(0.0, 1.0 - radar_clutter_index)
+            radar_doppler_resolution_mps_total += doppler_resolution_mps
+            radar_max_range_m_total += max_range_m
 
     camera_visibility_score_avg = (
         camera_visibility_score_total / float(camera_frame_count)
@@ -271,6 +292,46 @@ def _score_frames(frames: list[dict[str, Any]]) -> tuple[float, dict[str, Any]]:
         if radar_frame_count > 0
         else 0.0
     )
+    radar_track_purity_avg = (
+        radar_track_purity_total / float(radar_frame_count)
+        if radar_frame_count > 0
+        else 0.0
+    )
+    radar_false_alarm_burden_avg = (
+        radar_false_alarm_burden_total / float(radar_frame_count)
+        if radar_frame_count > 0
+        else 0.0
+    )
+    radar_ghost_to_target_ratio_avg = (
+        radar_ghost_to_target_ratio_total / float(radar_frame_count)
+        if radar_frame_count > 0
+        else 0.0
+    )
+    radar_effective_detection_quality_avg = (
+        radar_effective_detection_quality_total / float(radar_frame_count)
+        if radar_frame_count > 0
+        else 0.0
+    )
+    radar_doppler_resolution_mps_avg = (
+        radar_doppler_resolution_mps_total / float(radar_frame_count)
+        if radar_frame_count > 0
+        else 0.0
+    )
+    radar_max_range_m_avg = (
+        radar_max_range_m_total / float(radar_frame_count)
+        if radar_frame_count > 0
+        else 0.0
+    )
+    radar_doppler_resolution_quality_avg = (
+        1.0 / (1.0 + (radar_doppler_resolution_mps_avg / 0.12))
+        if radar_frame_count > 0
+        else 0.0
+    )
+    radar_range_coverage_quality_avg = (
+        min(1.0, radar_max_range_m_avg / 180.0)
+        if radar_frame_count > 0
+        else 0.0
+    )
 
     heuristic_score = (
         float(camera_visible_actor_total)
@@ -293,8 +354,14 @@ def _score_frames(frames: list[dict[str, Any]]) -> tuple[float, dict[str, Any]]:
         + (lidar_beam_focus_quality_avg * 1.5)
         + (float(radar_target_count_total) * 2.0)
         + (radar_target_detection_ratio_avg * 6.0)
+        + (radar_effective_detection_quality_avg * 3.5)
+        + (radar_track_purity_avg * 2.0)
         - (radar_false_positive_rate_avg * 10.0)
         - (radar_clutter_index_avg * 4.0)
+        - (radar_false_alarm_burden_avg * 4.0)
+        - (radar_ghost_to_target_ratio_avg * 2.0)
+        + (radar_doppler_resolution_quality_avg * 1.2)
+        + (radar_range_coverage_quality_avg * 0.8)
         - (float(radar_false_positive_count_total) * 0.5)
         - (float(radar_ghost_target_count_total) * 0.25)
     )
@@ -332,6 +399,14 @@ def _score_frames(frames: list[dict[str, Any]]) -> tuple[float, dict[str, Any]]:
         "radar_false_positive_count_total": int(radar_false_positive_count_total),
         "radar_ghost_target_count_total": int(radar_ghost_target_count_total),
         "radar_clutter_index_avg": float(round(radar_clutter_index_avg, 6)),
+        "radar_track_purity_avg": float(round(radar_track_purity_avg, 6)),
+        "radar_false_alarm_burden_avg": float(round(radar_false_alarm_burden_avg, 6)),
+        "radar_ghost_to_target_ratio_avg": float(round(radar_ghost_to_target_ratio_avg, 6)),
+        "radar_effective_detection_quality_avg": float(round(radar_effective_detection_quality_avg, 6)),
+        "radar_doppler_resolution_mps_avg": float(round(radar_doppler_resolution_mps_avg, 6)),
+        "radar_doppler_resolution_quality_avg": float(round(radar_doppler_resolution_quality_avg, 6)),
+        "radar_max_range_m_avg": float(round(radar_max_range_m_avg, 6)),
+        "radar_range_coverage_quality_avg": float(round(radar_range_coverage_quality_avg, 6)),
     }
     return heuristic_score, metrics
 

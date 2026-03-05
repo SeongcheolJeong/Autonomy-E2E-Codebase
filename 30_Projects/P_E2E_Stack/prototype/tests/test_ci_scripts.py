@@ -3848,6 +3848,8 @@ class SensorRigSweepTests(unittest.TestCase):
                                     {
                                         "sensor_id": "radar_front",
                                         "sensor_type": "radar",
+                                        "max_range_m": 120.0,
+                                        "doppler_resolution_mps": 0.35,
                                         "sensor_params": {
                                             "radar_params": {
                                                 "detection_sensitivity": 0.6,
@@ -3884,6 +3886,8 @@ class SensorRigSweepTests(unittest.TestCase):
                                     {
                                         "sensor_id": "radar_front",
                                         "sensor_type": "radar",
+                                        "max_range_m": 260.0,
+                                        "doppler_resolution_mps": 0.05,
                                         "sensor_params": {
                                             "radar_params": {
                                                 "detection_sensitivity": 1.5,
@@ -3979,6 +3983,38 @@ class SensorRigSweepTests(unittest.TestCase):
             self.assertLess(
                 int(tuned_metrics.get("radar_false_positive_count_total", 0) or 0),
                 int(poor_metrics.get("radar_false_positive_count_total", 0) or 0),
+            )
+            self.assertGreater(
+                float(tuned_metrics.get("radar_track_purity_avg", 0.0) or 0.0),
+                float(poor_metrics.get("radar_track_purity_avg", 0.0) or 0.0),
+            )
+            self.assertLess(
+                float(tuned_metrics.get("radar_false_alarm_burden_avg", 1.0)),
+                float(poor_metrics.get("radar_false_alarm_burden_avg", 1.0)),
+            )
+            self.assertLess(
+                float(tuned_metrics.get("radar_ghost_to_target_ratio_avg", 1.0)),
+                float(poor_metrics.get("radar_ghost_to_target_ratio_avg", 1.0)),
+            )
+            self.assertGreater(
+                float(tuned_metrics.get("radar_effective_detection_quality_avg", 0.0) or 0.0),
+                float(poor_metrics.get("radar_effective_detection_quality_avg", 0.0) or 0.0),
+            )
+            self.assertLess(
+                float(tuned_metrics.get("radar_doppler_resolution_mps_avg", 1.0)),
+                float(poor_metrics.get("radar_doppler_resolution_mps_avg", 1.0)),
+            )
+            self.assertGreater(
+                float(tuned_metrics.get("radar_doppler_resolution_quality_avg", 0.0) or 0.0),
+                float(poor_metrics.get("radar_doppler_resolution_quality_avg", 0.0) or 0.0),
+            )
+            self.assertGreater(
+                float(tuned_metrics.get("radar_max_range_m_avg", 0.0) or 0.0),
+                float(poor_metrics.get("radar_max_range_m_avg", 0.0) or 0.0),
+            )
+            self.assertGreater(
+                float(tuned_metrics.get("radar_range_coverage_quality_avg", 0.0) or 0.0),
+                float(poor_metrics.get("radar_range_coverage_quality_avg", 0.0) or 0.0),
             )
 
     def test_camera_physics_and_geometry_tuning_influence_ranking(self) -> None:
