@@ -2047,6 +2047,10 @@ def run_phase2_hooks(args: argparse.Namespace) -> dict[str, Any]:
         "camera_auto_exposure_mode_counts": {},
         "camera_auto_exposure_mode_effective_counts": {},
         "camera_rolling_shutter_total_delay_ms_avg": 0.0,
+        "camera_rolling_shutter_time_step_us_avg": 0.0,
+        "camera_rolling_shutter_temporal_aliasing_risk_avg": 0.0,
+        "camera_rolling_shutter_temporal_sampling_quality_avg": 0.0,
+        "camera_rolling_shutter_pixel_motion_per_step_px_avg": 0.0,
         "camera_normalized_total_noise_avg": 0.0,
         "camera_distortion_edge_shift_px_avg": 0.0,
         "camera_principal_point_offset_norm_avg": 0.0,
@@ -2153,6 +2157,18 @@ def run_phase2_hooks(args: argparse.Namespace) -> dict[str, Any]:
             ),
             "camera_rolling_shutter_total_delay_ms_avg": _to_non_negative_float(
                 sensor_quality_summary_raw.get("camera_rolling_shutter_total_delay_ms_avg", 0.0)
+            ),
+            "camera_rolling_shutter_time_step_us_avg": _to_non_negative_float(
+                sensor_quality_summary_raw.get("camera_rolling_shutter_time_step_us_avg", 0.0)
+            ),
+            "camera_rolling_shutter_temporal_aliasing_risk_avg": _to_non_negative_float(
+                sensor_quality_summary_raw.get("camera_rolling_shutter_temporal_aliasing_risk_avg", 0.0)
+            ),
+            "camera_rolling_shutter_temporal_sampling_quality_avg": _to_non_negative_float(
+                sensor_quality_summary_raw.get("camera_rolling_shutter_temporal_sampling_quality_avg", 0.0)
+            ),
+            "camera_rolling_shutter_pixel_motion_per_step_px_avg": _to_non_negative_float(
+                sensor_quality_summary_raw.get("camera_rolling_shutter_pixel_motion_per_step_px_avg", 0.0)
             ),
             "camera_normalized_total_noise_avg": _to_non_negative_float(
                 sensor_quality_summary_raw.get("camera_normalized_total_noise_avg", 0.0)
@@ -2351,6 +2367,10 @@ def run_phase2_hooks(args: argparse.Namespace) -> dict[str, Any]:
         camera_auto_exposure_mode_counts: dict[str, int] = {}
         camera_auto_exposure_mode_effective_counts: dict[str, int] = {}
         camera_rolling_shutter_total_delay_ms_total = 0.0
+        camera_rolling_shutter_time_step_us_total = 0.0
+        camera_rolling_shutter_temporal_aliasing_risk_total = 0.0
+        camera_rolling_shutter_temporal_sampling_quality_total = 0.0
+        camera_rolling_shutter_pixel_motion_per_step_px_total = 0.0
         camera_normalized_total_noise_total = 0.0
         camera_distortion_edge_shift_px_total = 0.0
         camera_principal_point_offset_norm_total = 0.0
@@ -2457,6 +2477,18 @@ def run_phase2_hooks(args: argparse.Namespace) -> dict[str, Any]:
                     )
                 camera_rolling_shutter_total_delay_ms_total += _to_non_negative_float(
                     camera_physics_payload.get("rolling_shutter_total_delay_ms", 0.0)
+                )
+                camera_rolling_shutter_time_step_us_total += _to_non_negative_float(
+                    camera_physics_payload.get("rolling_shutter_time_step_us", 0.0)
+                )
+                camera_rolling_shutter_temporal_aliasing_risk_total += _to_non_negative_float(
+                    camera_physics_payload.get("rolling_shutter_temporal_aliasing_risk", 0.0)
+                )
+                camera_rolling_shutter_temporal_sampling_quality_total += _to_non_negative_float(
+                    camera_physics_payload.get("rolling_shutter_temporal_sampling_quality", 0.0)
+                )
+                camera_rolling_shutter_pixel_motion_per_step_px_total += _to_non_negative_float(
+                    camera_physics_payload.get("rolling_shutter_pixel_motion_per_step_px", 0.0)
                 )
                 camera_normalized_total_noise_total += _to_non_negative_float(
                     camera_physics_payload.get("normalized_total_noise", 0.0)
@@ -2698,6 +2730,26 @@ def run_phase2_hooks(args: argparse.Namespace) -> dict[str, Any]:
             },
             "camera_rolling_shutter_total_delay_ms_avg": (
                 float(camera_rolling_shutter_total_delay_ms_total / float(camera_frame_count))
+                if camera_frame_count > 0
+                else 0.0
+            ),
+            "camera_rolling_shutter_time_step_us_avg": (
+                float(camera_rolling_shutter_time_step_us_total / float(camera_frame_count))
+                if camera_frame_count > 0
+                else 0.0
+            ),
+            "camera_rolling_shutter_temporal_aliasing_risk_avg": (
+                float(camera_rolling_shutter_temporal_aliasing_risk_total / float(camera_frame_count))
+                if camera_frame_count > 0
+                else 0.0
+            ),
+            "camera_rolling_shutter_temporal_sampling_quality_avg": (
+                float(camera_rolling_shutter_temporal_sampling_quality_total / float(camera_frame_count))
+                if camera_frame_count > 0
+                else 0.0
+            ),
+            "camera_rolling_shutter_pixel_motion_per_step_px_avg": (
+                float(camera_rolling_shutter_pixel_motion_per_step_px_total / float(camera_frame_count))
                 if camera_frame_count > 0
                 else 0.0
             ),

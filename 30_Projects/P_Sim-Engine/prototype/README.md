@@ -141,6 +141,13 @@ python3 sensor_sim_bridge.py \
   --out runs/sensor_frames_camera_physics_v0.json
 ```
 
+Camera physics payload emits rolling-shutter temporal diagnostics:
+
+- `camera_physics.rolling_shutter_time_step_us`
+- `camera_physics.rolling_shutter_temporal_aliasing_risk`
+- `camera_physics.rolling_shutter_temporal_sampling_quality`
+- `camera_physics.rolling_shutter_pixel_motion_per_step_px`
+
 Camera exposure mode/range example:
 
 ```bash

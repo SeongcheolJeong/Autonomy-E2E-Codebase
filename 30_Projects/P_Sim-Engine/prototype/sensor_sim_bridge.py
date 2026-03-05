@@ -566,24 +566,81 @@ def _compute_camera_physics(
         + col_delay_ns * max(0, image_width_px - 1)
     )
     rolling_shutter_total_delay_sec = rolling_shutter_total_delay_ns * 1e-9
+    rolling_shutter_line_delay_ns = row_delay_ns + (col_delay_ns * max(0, image_width_px - 1))
+    rolling_shutter_line_delay_sec = rolling_shutter_line_delay_ns * 1e-9
+    rolling_shutter_scanline_count = max(1, image_height_px - 1)
+    rolling_shutter_time_step_count = (
+        num_time_steps if num_time_steps > 0 else rolling_shutter_scanline_count
+    )
+    rolling_shutter_time_step_sec = 0.0
+    if rolling_shutter_time_step_count > 0:
+        rolling_shutter_time_step_sec = rolling_shutter_total_delay_sec / float(rolling_shutter_time_step_count)
+    rolling_shutter_exposure_sample_dt_sec = (
+        exposure_time_sec / float(max(1, num_exposure_samples_per_pixel))
+    )
     frame_period_sec = 1.0 / frame_rate_hz
     rolling_shutter_fraction = _clamp_float(
         rolling_shutter_total_delay_sec / frame_period_sec,
         minimum=0.0,
         maximum=1.0,
     )
+    effective_temporal_sample_dt_sec = max(
+        1e-6,
+        min(
+            frame_period_sec,
+            rolling_shutter_exposure_sample_dt_sec,
+            rolling_shutter_time_step_sec if rolling_shutter_time_step_sec > 0.0 else frame_period_sec,
+        ),
+    )
+    rolling_shutter_temporal_sampling_hz = _clamp_float(
+        1.0 / effective_temporal_sample_dt_sec,
+        minimum=1.0,
+        maximum=1_000_000.0,
+    )
+    rolling_shutter_pixel_motion_rate_px_per_sec = ego_speed_mps * (focal_length_px / 25.0)
+    rolling_shutter_pixel_motion_per_step_px = rolling_shutter_pixel_motion_rate_px_per_sec * effective_temporal_sample_dt_sec
+    rolling_shutter_temporal_aliasing_risk = _clamp_float(
+        rolling_shutter_pixel_motion_per_step_px / 0.35,
+        minimum=0.0,
+        maximum=4.0,
+    )
+    rolling_shutter_exposure_sampling_quality = _clamp_float(
+        math.log2(float(max(1, num_exposure_samples_per_pixel))) / 4.0,
+        minimum=0.0,
+        maximum=1.0,
+    )
+    rolling_shutter_time_step_sampling_quality = _clamp_float(
+        math.log2(float(max(1, rolling_shutter_time_step_count))) / 10.0,
+        minimum=0.0,
+        maximum=1.0,
+    )
+    rolling_shutter_temporal_sampling_quality = _clamp_float(
+        (0.6 * rolling_shutter_exposure_sampling_quality) + (0.4 * rolling_shutter_time_step_sampling_quality),
+        minimum=0.0,
+        maximum=1.0,
+    )
+    rolling_shutter_motion_sampling_penalty = _clamp_float(
+        1.0
+        + (0.35 * rolling_shutter_temporal_aliasing_risk)
+        - (0.25 * rolling_shutter_temporal_sampling_quality),
+        minimum=0.7,
+        maximum=2.0,
+    )
     motion_blur_px_est = (
         ego_speed_mps
         * exposure_time_sec
         * (focal_length_px / 25.0)
         * (1.0 + (0.6 * rolling_shutter_fraction))
-        * min(2.5, max(1.0, float(num_exposure_samples_per_pixel) / 8.0))
+        * rolling_shutter_motion_sampling_penalty
     )
     normalized_total_noise = total_noise_electrons_std / full_well_capacity
     dynamic_range_db_est = 20.0 * math.log10(
         max(full_well_capacity, 1.0) / max(readout_noise_electrons_std, 1.0)
     )
-    camera_noise_stddev_px_delta = min(2.0, normalized_total_noise * 60.0)
+    camera_noise_stddev_px_delta = min(
+        2.0,
+        (normalized_total_noise * 60.0) + (0.12 * rolling_shutter_temporal_aliasing_risk),
+    )
     motion_blur_level_delta = int(round(min(3.0, motion_blur_px_est / 6.0)))
     dynamic_range_stops_delta = _clamp_float(
         (dynamic_range_db_est - 72.0) / 18.0,
@@ -627,6 +684,18 @@ def _compute_camera_physics(
         "rolling_shutter_col_delay_ns": float(col_delay_ns),
         "rolling_shutter_num_time_steps": int(num_time_steps),
         "rolling_shutter_num_exposure_samples_per_pixel": int(num_exposure_samples_per_pixel),
+        "rolling_shutter_line_delay_us": float(rolling_shutter_line_delay_sec * 1_000_000.0),
+        "rolling_shutter_scanline_count": int(rolling_shutter_scanline_count),
+        "rolling_shutter_time_step_count": int(rolling_shutter_time_step_count),
+        "rolling_shutter_time_step_us": float(rolling_shutter_time_step_sec * 1_000_000.0),
+        "rolling_shutter_exposure_sample_dt_us": float(
+            rolling_shutter_exposure_sample_dt_sec * 1_000_000.0
+        ),
+        "rolling_shutter_temporal_sampling_hz": float(rolling_shutter_temporal_sampling_hz),
+        "rolling_shutter_pixel_motion_per_step_px": float(rolling_shutter_pixel_motion_per_step_px),
+        "rolling_shutter_temporal_aliasing_risk": float(rolling_shutter_temporal_aliasing_risk),
+        "rolling_shutter_temporal_sampling_quality": float(rolling_shutter_temporal_sampling_quality),
+        "rolling_shutter_motion_sampling_penalty": float(rolling_shutter_motion_sampling_penalty),
         "rolling_shutter_total_delay_ms": float(rolling_shutter_total_delay_sec * 1000.0),
         "rolling_shutter_fraction_of_frame": float(rolling_shutter_fraction),
         "frame_rate_hz": float(frame_rate_hz),
@@ -2780,6 +2849,10 @@ def _summarize_sensor_quality(frames: list[dict[str, Any]]) -> dict[str, Any]:
     camera_auto_exposure_mode_counts: dict[str, int] = {}
     camera_auto_exposure_mode_effective_counts: dict[str, int] = {}
     camera_rolling_shutter_total_delay_ms_total = 0.0
+    camera_rolling_shutter_time_step_us_total = 0.0
+    camera_rolling_shutter_temporal_aliasing_risk_total = 0.0
+    camera_rolling_shutter_temporal_sampling_quality_total = 0.0
+    camera_rolling_shutter_pixel_motion_per_step_px_total = 0.0
     camera_normalized_total_noise_total = 0.0
     camera_distortion_edge_shift_px_total = 0.0
     camera_principal_point_offset_norm_total = 0.0
@@ -2882,6 +2955,18 @@ def _summarize_sensor_quality(frames: list[dict[str, Any]]) -> dict[str, Any]:
                 )
             camera_rolling_shutter_total_delay_ms_total += _to_non_negative_float(
                 camera_physics.get("rolling_shutter_total_delay_ms", 0.0)
+            )
+            camera_rolling_shutter_time_step_us_total += _to_non_negative_float(
+                camera_physics.get("rolling_shutter_time_step_us", 0.0)
+            )
+            camera_rolling_shutter_temporal_aliasing_risk_total += _to_non_negative_float(
+                camera_physics.get("rolling_shutter_temporal_aliasing_risk", 0.0)
+            )
+            camera_rolling_shutter_temporal_sampling_quality_total += _to_non_negative_float(
+                camera_physics.get("rolling_shutter_temporal_sampling_quality", 0.0)
+            )
+            camera_rolling_shutter_pixel_motion_per_step_px_total += _to_non_negative_float(
+                camera_physics.get("rolling_shutter_pixel_motion_per_step_px", 0.0)
             )
             camera_normalized_total_noise_total += _to_non_negative_float(
                 camera_physics.get("normalized_total_noise", 0.0)
@@ -3100,6 +3185,26 @@ def _summarize_sensor_quality(frames: list[dict[str, Any]]) -> dict[str, Any]:
     )
     camera_rolling_shutter_total_delay_ms_avg = (
         camera_rolling_shutter_total_delay_ms_total / float(camera_frame_count)
+        if camera_frame_count > 0
+        else 0.0
+    )
+    camera_rolling_shutter_time_step_us_avg = (
+        camera_rolling_shutter_time_step_us_total / float(camera_frame_count)
+        if camera_frame_count > 0
+        else 0.0
+    )
+    camera_rolling_shutter_temporal_aliasing_risk_avg = (
+        camera_rolling_shutter_temporal_aliasing_risk_total / float(camera_frame_count)
+        if camera_frame_count > 0
+        else 0.0
+    )
+    camera_rolling_shutter_temporal_sampling_quality_avg = (
+        camera_rolling_shutter_temporal_sampling_quality_total / float(camera_frame_count)
+        if camera_frame_count > 0
+        else 0.0
+    )
+    camera_rolling_shutter_pixel_motion_per_step_px_avg = (
+        camera_rolling_shutter_pixel_motion_per_step_px_total / float(camera_frame_count)
         if camera_frame_count > 0
         else 0.0
     )
@@ -3323,6 +3428,16 @@ def _summarize_sensor_quality(frames: list[dict[str, Any]]) -> dict[str, Any]:
             for key in sorted(camera_auto_exposure_mode_effective_counts.keys())
         },
         "camera_rolling_shutter_total_delay_ms_avg": float(camera_rolling_shutter_total_delay_ms_avg),
+        "camera_rolling_shutter_time_step_us_avg": float(camera_rolling_shutter_time_step_us_avg),
+        "camera_rolling_shutter_temporal_aliasing_risk_avg": float(
+            camera_rolling_shutter_temporal_aliasing_risk_avg
+        ),
+        "camera_rolling_shutter_temporal_sampling_quality_avg": float(
+            camera_rolling_shutter_temporal_sampling_quality_avg
+        ),
+        "camera_rolling_shutter_pixel_motion_per_step_px_avg": float(
+            camera_rolling_shutter_pixel_motion_per_step_px_avg
+        ),
         "camera_normalized_total_noise_avg": float(camera_normalized_total_noise_avg),
         "camera_distortion_edge_shift_px_avg": float(camera_distortion_edge_shift_px_avg),
         "camera_principal_point_offset_norm_avg": float(camera_principal_point_offset_norm_avg),

@@ -1614,6 +1614,27 @@ class SensorSimBridgeTests(unittest.TestCase):
             self.assertGreater(float(camera_physics.get("exposure_range_multiplier", 0.0) or 0.0), 1.0)
             self.assertGreater(float(camera_physics.get("snr_db", -200.0) or -200.0), -100.0)
             self.assertGreater(float(camera_physics.get("rolling_shutter_total_delay_ms", 0.0) or 0.0), 0.0)
+            self.assertGreater(float(camera_physics.get("rolling_shutter_time_step_us", 0.0) or 0.0), 0.0)
+            self.assertGreater(
+                float(camera_physics.get("rolling_shutter_temporal_sampling_hz", 0.0) or 0.0),
+                0.0,
+            )
+            self.assertGreaterEqual(
+                float(camera_physics.get("rolling_shutter_temporal_aliasing_risk", 0.0) or 0.0),
+                0.0,
+            )
+            self.assertGreater(
+                float(camera_physics.get("rolling_shutter_temporal_sampling_quality", 0.0) or 0.0),
+                0.0,
+            )
+            self.assertGreater(
+                float(camera_physics.get("rolling_shutter_pixel_motion_per_step_px", 0.0) or 0.0),
+                0.0,
+            )
+            self.assertGreater(
+                float(camera_physics.get("rolling_shutter_motion_sampling_penalty", 0.0) or 0.0),
+                0.0,
+            )
 
             self.assertGreater(float(camera_payload.get("camera_noise_stddev_px", 0.0) or 0.0), 1.2)
             self.assertGreater(int(camera_payload.get("motion_blur_level", 0) or 0), 2)
@@ -1636,6 +1657,40 @@ class SensorSimBridgeTests(unittest.TestCase):
             )
             self.assertGreater(
                 float(sensor_quality_summary.get("camera_rolling_shutter_total_delay_ms_avg", 0.0) or 0.0),
+                0.0,
+            )
+            self.assertGreater(
+                float(sensor_quality_summary.get("camera_rolling_shutter_time_step_us_avg", 0.0) or 0.0),
+                0.0,
+            )
+            self.assertGreaterEqual(
+                float(
+                    sensor_quality_summary.get(
+                        "camera_rolling_shutter_temporal_aliasing_risk_avg",
+                        0.0,
+                    )
+                    or 0.0
+                ),
+                0.0,
+            )
+            self.assertGreater(
+                float(
+                    sensor_quality_summary.get(
+                        "camera_rolling_shutter_temporal_sampling_quality_avg",
+                        0.0,
+                    )
+                    or 0.0
+                ),
+                0.0,
+            )
+            self.assertGreater(
+                float(
+                    sensor_quality_summary.get(
+                        "camera_rolling_shutter_pixel_motion_per_step_px_avg",
+                        0.0,
+                    )
+                    or 0.0
+                ),
                 0.0,
             )
 
@@ -37498,6 +37553,10 @@ class RunE2EPipelineTests(unittest.TestCase):
             self.assertIn("camera_exposure_range_multiplier_avg", phase2_sensor_quality_summary)
             self.assertIn("camera_auto_exposure_mode_counts", phase2_sensor_quality_summary)
             self.assertIn("camera_auto_exposure_mode_effective_counts", phase2_sensor_quality_summary)
+            self.assertIn("camera_rolling_shutter_time_step_us_avg", phase2_sensor_quality_summary)
+            self.assertIn("camera_rolling_shutter_temporal_aliasing_risk_avg", phase2_sensor_quality_summary)
+            self.assertIn("camera_rolling_shutter_temporal_sampling_quality_avg", phase2_sensor_quality_summary)
+            self.assertIn("camera_rolling_shutter_pixel_motion_per_step_px_avg", phase2_sensor_quality_summary)
             self.assertIn("camera_bloom_halo_strength_avg", phase2_sensor_quality_summary)
             self.assertIn("camera_black_level_lift_norm_avg", phase2_sensor_quality_summary)
             self.assertIn("camera_saturation_effective_scale_avg", phase2_sensor_quality_summary)
