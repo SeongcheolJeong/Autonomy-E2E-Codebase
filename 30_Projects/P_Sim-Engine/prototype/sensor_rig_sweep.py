@@ -60,10 +60,39 @@ def _validate_rig_candidates(payload: dict[str, Any]) -> None:
         raise ValueError("candidates must be a non-empty list")
 
 
-def _score_frames(frames: list[dict[str, Any]]) -> tuple[float, dict[str, int]]:
+def _to_non_negative_int(value: Any) -> int:
+    try:
+        parsed = int(value)
+    except (TypeError, ValueError):
+        return 0
+    return parsed if parsed >= 0 else 0
+
+
+def _to_non_negative_float(value: Any) -> float:
+    try:
+        parsed = float(value)
+    except (TypeError, ValueError):
+        return 0.0
+    return parsed if parsed >= 0.0 else 0.0
+
+
+def _score_frames(frames: list[dict[str, Any]]) -> tuple[float, dict[str, Any]]:
     camera_visible_actor_total = 0
+    camera_visibility_score_total = 0.0
+    camera_noise_stddev_px_total = 0.0
+    camera_frame_count = 0
     lidar_point_count_total = 0
+    lidar_detection_ratio_total = 0.0
+    lidar_effective_range_ratio_total = 0.0
+    lidar_returns_per_laser_total = 0
+    lidar_frame_count = 0
     radar_target_count_total = 0
+    radar_target_detection_ratio_total = 0.0
+    radar_false_positive_rate_total = 0.0
+    radar_false_positive_count_total = 0
+    radar_ghost_target_count_total = 0
+    radar_clutter_index_total = 0.0
+    radar_frame_count = 0
 
     for frame in frames:
         payload = frame.get("payload", {})
@@ -71,21 +100,101 @@ def _score_frames(frames: list[dict[str, Any]]) -> tuple[float, dict[str, int]]:
             continue
         modality = str(payload.get("modality", ""))
         if modality == "camera":
-            camera_visible_actor_total += int(payload.get("visible_actor_count", 0))
+            camera_frame_count += 1
+            camera_visible_actor_total += _to_non_negative_int(payload.get("visible_actor_count", 0))
+            camera_visibility_score_total += _to_non_negative_float(payload.get("visibility_score", 0.0))
+            camera_noise_stddev_px_total += _to_non_negative_float(payload.get("camera_noise_stddev_px", 0.0))
         elif modality == "lidar":
-            lidar_point_count_total += int(payload.get("point_count", 0))
+            lidar_frame_count += 1
+            lidar_point_count_total += _to_non_negative_int(payload.get("point_count", 0))
+            lidar_detection_ratio_total += _to_non_negative_float(payload.get("detection_ratio", 0.0))
+            lidar_returns_per_laser_total += _to_non_negative_int(payload.get("returns_per_laser", 0))
+            max_range_m = _to_non_negative_float(payload.get("max_range_m", 0.0))
+            effective_max_range_m = _to_non_negative_float(payload.get("effective_max_range_m", 0.0))
+            if max_range_m > 0.0:
+                lidar_effective_range_ratio_total += min(1.0, effective_max_range_m / max_range_m)
         elif modality == "radar":
-            radar_target_count_total += int(payload.get("target_count", 0))
+            radar_frame_count += 1
+            radar_target_count_total += _to_non_negative_int(payload.get("target_count", 0))
+            radar_target_detection_ratio_total += _to_non_negative_float(payload.get("target_detection_ratio", 0.0))
+            radar_false_positive_rate_total += _to_non_negative_float(payload.get("radar_false_positive_rate", 0.0))
+            radar_false_positive_count_total += _to_non_negative_int(payload.get("false_positive_count", 0))
+            radar_ghost_target_count_total += _to_non_negative_int(payload.get("ghost_target_count", 0))
+            radar_clutter_index_total += _to_non_negative_float(payload.get("radar_clutter_index", 0.0))
+
+    camera_visibility_score_avg = (
+        camera_visibility_score_total / float(camera_frame_count)
+        if camera_frame_count > 0
+        else 0.0
+    )
+    camera_noise_stddev_px_avg = (
+        camera_noise_stddev_px_total / float(camera_frame_count)
+        if camera_frame_count > 0
+        else 0.0
+    )
+    lidar_detection_ratio_avg = (
+        lidar_detection_ratio_total / float(lidar_frame_count)
+        if lidar_frame_count > 0
+        else 0.0
+    )
+    lidar_effective_range_ratio_avg = (
+        lidar_effective_range_ratio_total / float(lidar_frame_count)
+        if lidar_frame_count > 0
+        else 0.0
+    )
+    lidar_returns_per_laser_avg = (
+        float(lidar_returns_per_laser_total) / float(lidar_frame_count)
+        if lidar_frame_count > 0
+        else 0.0
+    )
+    radar_target_detection_ratio_avg = (
+        radar_target_detection_ratio_total / float(radar_frame_count)
+        if radar_frame_count > 0
+        else 0.0
+    )
+    radar_false_positive_rate_avg = (
+        radar_false_positive_rate_total / float(radar_frame_count)
+        if radar_frame_count > 0
+        else 0.0
+    )
+    radar_clutter_index_avg = (
+        radar_clutter_index_total / float(radar_frame_count)
+        if radar_frame_count > 0
+        else 0.0
+    )
 
     heuristic_score = (
         float(camera_visible_actor_total)
-        + float(lidar_point_count_total) / 100.0
-        + float(radar_target_count_total) * 2.0
+        + (camera_visibility_score_avg * 5.0)
+        - (camera_noise_stddev_px_avg * 0.5)
+        + (float(lidar_point_count_total) / 100.0)
+        + (lidar_detection_ratio_avg * 8.0)
+        + (lidar_effective_range_ratio_avg * 6.0)
+        + (lidar_returns_per_laser_avg * 0.5)
+        + (float(radar_target_count_total) * 2.0)
+        + (radar_target_detection_ratio_avg * 6.0)
+        - (radar_false_positive_rate_avg * 10.0)
+        - (radar_clutter_index_avg * 4.0)
+        - (float(radar_false_positive_count_total) * 0.5)
+        - (float(radar_ghost_target_count_total) * 0.25)
     )
     metrics = {
-        "camera_visible_actor_total": camera_visible_actor_total,
-        "lidar_point_count_total": lidar_point_count_total,
-        "radar_target_count_total": radar_target_count_total,
+        "camera_frame_count": int(camera_frame_count),
+        "camera_visible_actor_total": int(camera_visible_actor_total),
+        "camera_visibility_score_avg": float(round(camera_visibility_score_avg, 6)),
+        "camera_noise_stddev_px_avg": float(round(camera_noise_stddev_px_avg, 6)),
+        "lidar_frame_count": int(lidar_frame_count),
+        "lidar_point_count_total": int(lidar_point_count_total),
+        "lidar_detection_ratio_avg": float(round(lidar_detection_ratio_avg, 6)),
+        "lidar_effective_range_ratio_avg": float(round(lidar_effective_range_ratio_avg, 6)),
+        "lidar_returns_per_laser_avg": float(round(lidar_returns_per_laser_avg, 6)),
+        "radar_frame_count": int(radar_frame_count),
+        "radar_target_count_total": int(radar_target_count_total),
+        "radar_target_detection_ratio_avg": float(round(radar_target_detection_ratio_avg, 6)),
+        "radar_false_positive_rate_avg": float(round(radar_false_positive_rate_avg, 6)),
+        "radar_false_positive_count_total": int(radar_false_positive_count_total),
+        "radar_ghost_target_count_total": int(radar_ghost_target_count_total),
+        "radar_clutter_index_avg": float(round(radar_clutter_index_avg, 6)),
     }
     return heuristic_score, metrics
 

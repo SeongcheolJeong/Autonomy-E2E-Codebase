@@ -3340,6 +3340,164 @@ class SensorRigSweepTests(unittest.TestCase):
             self.assertEqual(rankings[0]["rig_id"], "rig_b")
             self.assertGreater(rankings[0]["heuristic_score"], rankings[1]["heuristic_score"])
 
+    def test_rig_tuning_parameters_influence_ranking_under_adverse_weather(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp_path = Path(tmp)
+            world_state = tmp_path / "world_state.json"
+            rig_candidates = tmp_path / "rig_candidates.json"
+            out_path = tmp_path / "rig_sweep_report.json"
+
+            world_state.write_text(
+                json.dumps(
+                    {
+                        "world_state_schema_version": "world_state_v0",
+                        "frame_timestamp": "2026-03-05T10:00:00Z",
+                        "environment": {
+                            "precipitation_intensity": 0.6,
+                            "fog_density": 0.7,
+                            "ambient_light_lux": 2500.0,
+                        },
+                        "actors": [
+                            {"actor_id": "ego", "speed_mps": 22.0},
+                            {"actor_id": "npc_001", "speed_mps": 16.0},
+                            {"actor_id": "npc_002", "speed_mps": 14.0},
+                            {"actor_id": "npc_003", "speed_mps": 12.0},
+                        ],
+                    }
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+            rig_candidates.write_text(
+                json.dumps(
+                    {
+                        "rig_sweep_schema_version": "sensor_rig_sweep_v0",
+                        "candidates": [
+                            {
+                                "rig_id": "rig_poor",
+                                "sensors": [
+                                    {"sensor_id": "camera_front", "sensor_type": "camera"},
+                                    {
+                                        "sensor_id": "lidar_top",
+                                        "sensor_type": "lidar",
+                                        "points_per_actor": 40,
+                                        "sensor_params": {
+                                            "lidar_params": {
+                                                "detection_sensitivity": 0.6,
+                                                "attenuation_sensitivity": 1.8,
+                                                "returns_per_laser_bias": -2,
+                                            }
+                                        },
+                                    },
+                                    {
+                                        "sensor_id": "radar_front",
+                                        "sensor_type": "radar",
+                                        "sensor_params": {
+                                            "radar_params": {
+                                                "detection_sensitivity": 0.6,
+                                                "clutter_sensitivity": 1.8,
+                                                "false_positive_rate_bias": 0.2,
+                                            }
+                                        },
+                                    },
+                                ],
+                            },
+                            {
+                                "rig_id": "rig_tuned",
+                                "sensors": [
+                                    {"sensor_id": "camera_front", "sensor_type": "camera"},
+                                    {
+                                        "sensor_id": "lidar_top",
+                                        "sensor_type": "lidar",
+                                        "points_per_actor": 40,
+                                        "sensor_params": {
+                                            "lidar_params": {
+                                                "detection_sensitivity": 1.5,
+                                                "attenuation_sensitivity": 0.5,
+                                                "returns_per_laser_bias": 3,
+                                            }
+                                        },
+                                    },
+                                    {
+                                        "sensor_id": "radar_front",
+                                        "sensor_type": "radar",
+                                        "sensor_params": {
+                                            "radar_params": {
+                                                "detection_sensitivity": 1.5,
+                                                "clutter_sensitivity": 0.5,
+                                                "false_positive_rate_bias": -0.2,
+                                            }
+                                        },
+                                    },
+                                ],
+                            },
+                        ],
+                    }
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+
+            proc = run_script(
+                PROTOTYPE_DIR / "../../P_Sim-Engine/prototype/sensor_rig_sweep.py",
+                "--world-state",
+                str(world_state),
+                "--rig-candidates",
+                str(rig_candidates),
+                "--fidelity-tier",
+                "high",
+                "--out",
+                str(out_path),
+            )
+            self.assertIn("[ok] candidate_count=2", proc.stdout)
+            self.assertIn("[ok] best_rig_id=rig_tuned", proc.stdout)
+
+            payload = read_json_file(self, file_path=out_path)
+            self.assertEqual(str(payload.get("sensor_fidelity_tier", "")), "high")
+            self.assertEqual(payload.get("best_rig_id"), "rig_tuned")
+            rankings = payload.get("rankings", [])
+            self.assertEqual(len(rankings), 2)
+            self.assertEqual(str(rankings[0].get("rig_id", "")), "rig_tuned")
+            self.assertEqual(str(rankings[1].get("rig_id", "")), "rig_poor")
+            self.assertGreater(
+                float(rankings[0].get("heuristic_score", 0.0) or 0.0),
+                float(rankings[1].get("heuristic_score", 0.0) or 0.0),
+            )
+
+            tuned_metrics = rankings[0].get("metrics", {})
+            poor_metrics = rankings[1].get("metrics", {})
+            self.assertIsInstance(tuned_metrics, dict)
+            self.assertIsInstance(poor_metrics, dict)
+
+            self.assertGreater(
+                float(tuned_metrics.get("lidar_detection_ratio_avg", 0.0) or 0.0),
+                float(poor_metrics.get("lidar_detection_ratio_avg", 0.0) or 0.0),
+            )
+            self.assertGreater(
+                float(tuned_metrics.get("lidar_effective_range_ratio_avg", 0.0) or 0.0),
+                float(poor_metrics.get("lidar_effective_range_ratio_avg", 0.0) or 0.0),
+            )
+            self.assertGreater(
+                float(tuned_metrics.get("lidar_returns_per_laser_avg", 0.0) or 0.0),
+                float(poor_metrics.get("lidar_returns_per_laser_avg", 0.0) or 0.0),
+            )
+            self.assertGreater(
+                float(tuned_metrics.get("radar_target_detection_ratio_avg", 0.0) or 0.0),
+                float(poor_metrics.get("radar_target_detection_ratio_avg", 0.0) or 0.0),
+            )
+            self.assertLess(
+                float(tuned_metrics.get("radar_false_positive_rate_avg", 1.0)),
+                float(poor_metrics.get("radar_false_positive_rate_avg", 1.0)),
+            )
+            self.assertLess(
+                float(tuned_metrics.get("radar_clutter_index_avg", 1.0)),
+                float(poor_metrics.get("radar_clutter_index_avg", 1.0)),
+            )
+            self.assertLess(
+                int(tuned_metrics.get("radar_false_positive_count_total", 0) or 0),
+                int(poor_metrics.get("radar_false_positive_count_total", 0) or 0),
+            )
+
     def test_invalid_sweep_schema_is_reported_without_traceback(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             tmp_path = Path(tmp)
