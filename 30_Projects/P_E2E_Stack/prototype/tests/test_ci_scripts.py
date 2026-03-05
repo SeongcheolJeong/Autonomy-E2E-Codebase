@@ -13554,6 +13554,15 @@ class RenderReleaseSummaryMarkdownTests(unittest.TestCase):
                             "sensor_frame_count_max": 6,
                             "highest_sensor_frame_count_batch_id": "BATCH_DEMO_001",
                             "sensor_modality_counts_total": {"camera": 2, "lidar": 3, "radar": 1},
+                            "sensor_camera_depth_enabled_frame_count_total": 2,
+                            "sensor_camera_depth_min_m_avg": 0.5,
+                            "sensor_camera_depth_max_m_avg": 120.0,
+                            "sensor_camera_depth_bit_depth_avg": 16.0,
+                            "sensor_camera_depth_mode_counts_total": {"LOG": 2},
+                            "sensor_camera_optical_flow_enabled_frame_count_total": 2,
+                            "sensor_camera_optical_flow_magnitude_px_avg": 4.2,
+                            "sensor_camera_optical_flow_velocity_direction_counts_total": {"FORWARD": 2},
+                            "sensor_camera_optical_flow_y_axis_direction_counts_total": {"UP": 2},
                         },
                         "runtime_native_smoke_summary": {
                             "pipeline_manifest_count": 1,
@@ -13619,6 +13628,8 @@ class RenderReleaseSummaryMarkdownTests(unittest.TestCase):
             self.assertIn("- phase2_log_replay: `evaluated=1, statuses=pass:1", proc.stdout)
             self.assertIn("- phase2_map_routing: `evaluated=1, statuses=warn:1", proc.stdout)
             self.assertIn("- phase2_sensor_fidelity: `evaluated=1, tier_counts=high:1", proc.stdout)
+            self.assertIn("camera_depth_enabled_total=2", proc.stdout)
+            self.assertIn("camera_flow_velocity_dirs=FORWARD:2", proc.stdout)
             self.assertIn("- runtime_native_smoke: `evaluated=1, all_statuses=pass:1, all_pass=1", proc.stdout)
             self.assertIn("route_evaluated=1, route_statuses=pass:1", proc.stdout)
             self.assertIn(
@@ -51824,6 +51835,15 @@ class BuildNotificationPayloadTests(unittest.TestCase):
                             "sensor_radar_false_positive_count_total": 1,
                             "sensor_radar_false_positive_count_avg": 1.0,
                             "sensor_radar_false_positive_rate_avg": 0.25,
+                            "sensor_camera_depth_enabled_frame_count_total": 2,
+                            "sensor_camera_depth_min_m_avg": 0.5,
+                            "sensor_camera_depth_max_m_avg": 120.0,
+                            "sensor_camera_depth_bit_depth_avg": 16.0,
+                            "sensor_camera_depth_mode_counts_total": {"LOG": 2},
+                            "sensor_camera_optical_flow_enabled_frame_count_total": 2,
+                            "sensor_camera_optical_flow_magnitude_px_avg": 4.2,
+                            "sensor_camera_optical_flow_velocity_direction_counts_total": {"FORWARD": 2},
+                            "sensor_camera_optical_flow_y_axis_direction_counts_total": {"UP": 2},
                         },
                     }
                 )
@@ -51860,6 +51880,8 @@ class BuildNotificationPayloadTests(unittest.TestCase):
             self.assertIn("phase2_sensor_fidelity_summary=evaluated=1,tier_counts=high:1", payload.get("message_text", ""))
             self.assertIn("frame_total=6", str(payload.get("phase2_sensor_fidelity_summary_text", "")))
             self.assertIn("radar_fp_rate_avg=0.250000", str(payload.get("phase2_sensor_fidelity_summary_text", "")))
+            self.assertIn("camera_depth_enabled_total=2", str(payload.get("phase2_sensor_fidelity_summary_text", "")))
+            self.assertIn("camera_flow_velocity_dirs=FORWARD:2", str(payload.get("phase2_sensor_fidelity_summary_text", "")))
             self.assertIn("route_segment_total=3", str(payload.get("phase2_map_routing_summary_text", "")))
             self.assertIn("route_via_lane_total=1", str(payload.get("phase2_map_routing_summary_text", "")))
             self.assertIn("*phase2 map routing*", json.dumps(payload.get("slack", {})))

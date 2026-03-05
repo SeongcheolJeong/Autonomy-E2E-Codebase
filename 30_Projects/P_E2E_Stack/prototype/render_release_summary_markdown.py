@@ -1366,6 +1366,45 @@ def _fmt_phase2_sensor_fidelity_summary(payload: Any) -> str:
         sensor_radar_false_positive_rate_avg = float(payload.get("sensor_radar_false_positive_rate_avg", 0.0))
     except (TypeError, ValueError):
         sensor_radar_false_positive_rate_avg = 0.0
+    try:
+        sensor_camera_depth_enabled_frame_count_total = int(
+            payload.get("sensor_camera_depth_enabled_frame_count_total", 0)
+        )
+    except (TypeError, ValueError):
+        sensor_camera_depth_enabled_frame_count_total = 0
+    try:
+        sensor_camera_depth_min_m_avg = float(payload.get("sensor_camera_depth_min_m_avg", 0.0))
+    except (TypeError, ValueError):
+        sensor_camera_depth_min_m_avg = 0.0
+    try:
+        sensor_camera_depth_max_m_avg = float(payload.get("sensor_camera_depth_max_m_avg", 0.0))
+    except (TypeError, ValueError):
+        sensor_camera_depth_max_m_avg = 0.0
+    try:
+        sensor_camera_depth_bit_depth_avg = float(payload.get("sensor_camera_depth_bit_depth_avg", 0.0))
+    except (TypeError, ValueError):
+        sensor_camera_depth_bit_depth_avg = 0.0
+    sensor_camera_depth_mode_counts_total_text = _fmt_counts(
+        payload.get("sensor_camera_depth_mode_counts_total", {})
+    )
+    try:
+        sensor_camera_optical_flow_enabled_frame_count_total = int(
+            payload.get("sensor_camera_optical_flow_enabled_frame_count_total", 0)
+        )
+    except (TypeError, ValueError):
+        sensor_camera_optical_flow_enabled_frame_count_total = 0
+    try:
+        sensor_camera_optical_flow_magnitude_px_avg = float(
+            payload.get("sensor_camera_optical_flow_magnitude_px_avg", 0.0)
+        )
+    except (TypeError, ValueError):
+        sensor_camera_optical_flow_magnitude_px_avg = 0.0
+    sensor_camera_optical_flow_velocity_direction_counts_total_text = _fmt_counts(
+        payload.get("sensor_camera_optical_flow_velocity_direction_counts_total", {})
+    )
+    sensor_camera_optical_flow_y_axis_direction_counts_total_text = _fmt_counts(
+        payload.get("sensor_camera_optical_flow_y_axis_direction_counts_total", {})
+    )
     return (
         f"evaluated={evaluated_count}, tier_counts={fidelity_tier_counts_text}, "
         f"fidelity_score_avg={fidelity_tier_score_avg:.3f}, "
@@ -1378,7 +1417,18 @@ def _fmt_phase2_sensor_fidelity_summary(payload: Any) -> str:
         f"lidar_point_avg={sensor_lidar_point_count_avg:.3f}, "
         f"radar_fp_total={sensor_radar_false_positive_count_total}, "
         f"radar_fp_avg={sensor_radar_false_positive_count_avg:.3f}, "
-        f"radar_fp_rate_avg={sensor_radar_false_positive_rate_avg:.6f}"
+        f"radar_fp_rate_avg={sensor_radar_false_positive_rate_avg:.6f}, "
+        f"camera_depth_enabled_total={sensor_camera_depth_enabled_frame_count_total}, "
+        f"camera_depth_min_avg_m={sensor_camera_depth_min_m_avg:.3f}, "
+        f"camera_depth_max_avg_m={sensor_camera_depth_max_m_avg:.3f}, "
+        f"camera_depth_bit_depth_avg={sensor_camera_depth_bit_depth_avg:.3f}, "
+        f"camera_depth_modes={sensor_camera_depth_mode_counts_total_text}, "
+        f"camera_flow_enabled_total={sensor_camera_optical_flow_enabled_frame_count_total}, "
+        f"camera_flow_mag_avg_px={sensor_camera_optical_flow_magnitude_px_avg:.3f}, "
+        "camera_flow_velocity_dirs="
+        f"{sensor_camera_optical_flow_velocity_direction_counts_total_text}, "
+        "camera_flow_y_axis_dirs="
+        f"{sensor_camera_optical_flow_y_axis_direction_counts_total_text}"
     )
 
 
