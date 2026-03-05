@@ -1,0 +1,26 @@
+{
+  "rig_schema_version": "sensor_rig_v0",
+  "sensors": [
+    {
+      "sensor_id": "lidar_top",
+      "sensor_type": "lidar",
+      "channel_count": 64,
+      "points_per_actor": 35,
+      "max_range_m": 140.0,
+      "sensor_params": {
+        "lidar_params": {
+          "detection_sensitivity": 1.4,
+          "attenuation_sensitivity": 0.7,
+          "returns_per_laser_bias": 2,
+          "wavelength_nm": 1064.0,
+          "beam_divergence_mrad": 0.2,
+          "min_reflectivity": 0.05,
+          "atmospheric_extinction_per_km": 2.0,
+          "rain_backscatter_sensitivity": 0.6,
+          "scan_pattern": "UNIFORM",
+          "multi_echo_gain": 1.5
+        }
+      }
+    }
+  ]
+}

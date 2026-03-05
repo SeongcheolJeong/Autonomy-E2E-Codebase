@@ -1750,6 +1750,13 @@ class SensorSimBridgeTests(unittest.TestCase):
                                         "detection_sensitivity": 1.4,
                                         "attenuation_sensitivity": 0.7,
                                         "returns_per_laser_bias": 2,
+                                        "wavelength_nm": 1064.0,
+                                        "beam_divergence_mrad": 0.2,
+                                        "min_reflectivity": 0.05,
+                                        "atmospheric_extinction_per_km": 2.0,
+                                        "rain_backscatter_sensitivity": 0.6,
+                                        "scan_pattern": "UNIFORM",
+                                        "multi_echo_gain": 1.5,
                                     }
                                 },
                             },
@@ -1820,6 +1827,21 @@ class SensorSimBridgeTests(unittest.TestCase):
             self.assertAlmostEqual(float(tuned_lidar.get("detection_sensitivity", 0.0) or 0.0), 1.4, places=6)
             self.assertAlmostEqual(float(tuned_lidar.get("attenuation_sensitivity", 0.0) or 0.0), 0.7, places=6)
             self.assertEqual(int(tuned_lidar.get("returns_per_laser_bias", 0) or 0), 2)
+            self.assertAlmostEqual(float(tuned_lidar.get("wavelength_nm", 0.0) or 0.0), 1064.0, places=6)
+            self.assertAlmostEqual(float(tuned_lidar.get("beam_divergence_mrad", 0.0) or 0.0), 0.2, places=6)
+            self.assertAlmostEqual(float(tuned_lidar.get("min_reflectivity", 0.0) or 0.0), 0.05, places=6)
+            self.assertAlmostEqual(
+                float(tuned_lidar.get("atmospheric_extinction_per_km", 0.0) or 0.0),
+                2.0,
+                places=6,
+            )
+            self.assertAlmostEqual(
+                float(tuned_lidar.get("rain_backscatter_sensitivity", 0.0) or 0.0),
+                0.6,
+                places=6,
+            )
+            self.assertEqual(str(tuned_lidar.get("scan_pattern", "")), "UNIFORM")
+            self.assertAlmostEqual(float(tuned_lidar.get("multi_echo_gain", 0.0) or 0.0), 1.5, places=6)
             self.assertGreater(
                 float(tuned_lidar.get("detection_ratio", 0.0) or 0.0),
                 float(baseline_lidar.get("detection_ratio", 0.0) or 0.0),
@@ -1831,6 +1853,22 @@ class SensorSimBridgeTests(unittest.TestCase):
             self.assertGreater(
                 int(tuned_lidar.get("returns_per_laser", 0) or 0),
                 int(baseline_lidar.get("returns_per_laser", 0) or 0),
+            )
+            self.assertGreater(
+                float(tuned_lidar.get("atmospheric_transmittance", 0.0) or 0.0),
+                float(baseline_lidar.get("atmospheric_transmittance", 0.0) or 0.0),
+            )
+            self.assertLess(
+                float(tuned_lidar.get("backscatter_noise_ratio", 0.0) or 0.0),
+                float(baseline_lidar.get("backscatter_noise_ratio", 0.0) or 0.0),
+            )
+            self.assertGreater(
+                float(tuned_lidar.get("reflectivity_detection_scale", 0.0) or 0.0),
+                float(baseline_lidar.get("reflectivity_detection_scale", 0.0) or 0.0),
+            )
+            self.assertLess(
+                float(tuned_lidar.get("beam_spot_size_cm_at_max_range", 0.0) or 0.0),
+                float(baseline_lidar.get("beam_spot_size_cm_at_max_range", 0.0) or 0.0),
             )
 
             baseline_radar = baseline_by_sensor.get("radar_front", {})
@@ -1862,6 +1900,22 @@ class SensorSimBridgeTests(unittest.TestCase):
             self.assertGreater(
                 float(tuned_quality.get("lidar_effective_max_range_m_avg", 0.0) or 0.0),
                 float(baseline_quality.get("lidar_effective_max_range_m_avg", 0.0) or 0.0),
+            )
+            self.assertGreater(
+                float(tuned_quality.get("lidar_atmospheric_transmittance_avg", 0.0) or 0.0),
+                float(baseline_quality.get("lidar_atmospheric_transmittance_avg", 0.0) or 0.0),
+            )
+            self.assertLess(
+                float(tuned_quality.get("lidar_backscatter_noise_ratio_avg", 0.0) or 0.0),
+                float(baseline_quality.get("lidar_backscatter_noise_ratio_avg", 0.0) or 0.0),
+            )
+            self.assertGreater(
+                float(tuned_quality.get("lidar_reflectivity_detection_scale_avg", 0.0) or 0.0),
+                float(baseline_quality.get("lidar_reflectivity_detection_scale_avg", 0.0) or 0.0),
+            )
+            self.assertLess(
+                float(tuned_quality.get("lidar_beam_spot_size_cm_at_max_range_avg", 0.0) or 0.0),
+                float(baseline_quality.get("lidar_beam_spot_size_cm_at_max_range_avg", 0.0) or 0.0),
             )
             self.assertGreater(
                 float(tuned_quality.get("radar_false_positive_rate_avg", 0.0) or 0.0),
@@ -37593,6 +37647,10 @@ class RunE2EPipelineTests(unittest.TestCase):
             self.assertIn("camera_optical_flow_enabled_frame_count", phase2_sensor_quality_summary)
             self.assertIn("camera_optical_flow_velocity_direction_counts", phase2_sensor_quality_summary)
             self.assertIn("lidar_detection_ratio_avg", phase2_sensor_quality_summary)
+            self.assertIn("lidar_atmospheric_transmittance_avg", phase2_sensor_quality_summary)
+            self.assertIn("lidar_backscatter_noise_ratio_avg", phase2_sensor_quality_summary)
+            self.assertIn("lidar_reflectivity_detection_scale_avg", phase2_sensor_quality_summary)
+            self.assertIn("lidar_beam_spot_size_cm_at_max_range_avg", phase2_sensor_quality_summary)
             self.assertIn("radar_ghost_target_count_total", phase2_sensor_quality_summary)
             self.assertTrue(sensor_out.exists())
             self.assertTrue(sensor_sweep_out.exists())

@@ -2107,6 +2107,10 @@ def run_phase2_hooks(args: argparse.Namespace) -> dict[str, Any]:
         "lidar_returns_per_laser_avg": 0.0,
         "lidar_detection_ratio_avg": 0.0,
         "lidar_effective_max_range_m_avg": 0.0,
+        "lidar_atmospheric_transmittance_avg": 0.0,
+        "lidar_backscatter_noise_ratio_avg": 0.0,
+        "lidar_reflectivity_detection_scale_avg": 0.0,
+        "lidar_beam_spot_size_cm_at_max_range_avg": 0.0,
         "radar_frame_count": 0,
         "radar_target_count_total": 0,
         "radar_ghost_target_count_total": 0,
@@ -2330,6 +2334,18 @@ def run_phase2_hooks(args: argparse.Namespace) -> dict[str, Any]:
             "lidar_effective_max_range_m_avg": _to_non_negative_float(
                 sensor_quality_summary_raw.get("lidar_effective_max_range_m_avg", 0.0)
             ),
+            "lidar_atmospheric_transmittance_avg": _to_non_negative_float(
+                sensor_quality_summary_raw.get("lidar_atmospheric_transmittance_avg", 0.0)
+            ),
+            "lidar_backscatter_noise_ratio_avg": _to_non_negative_float(
+                sensor_quality_summary_raw.get("lidar_backscatter_noise_ratio_avg", 0.0)
+            ),
+            "lidar_reflectivity_detection_scale_avg": _to_non_negative_float(
+                sensor_quality_summary_raw.get("lidar_reflectivity_detection_scale_avg", 0.0)
+            ),
+            "lidar_beam_spot_size_cm_at_max_range_avg": _to_non_negative_float(
+                sensor_quality_summary_raw.get("lidar_beam_spot_size_cm_at_max_range_avg", 0.0)
+            ),
             "radar_frame_count": _to_non_negative_int(sensor_quality_summary_raw.get("radar_frame_count", 0)),
             "radar_target_count_total": _to_non_negative_int(
                 sensor_quality_summary_raw.get("radar_target_count_total", 0)
@@ -2426,6 +2442,10 @@ def run_phase2_hooks(args: argparse.Namespace) -> dict[str, Any]:
         lidar_returns_total = 0
         lidar_detection_ratio_total = 0.0
         lidar_effective_max_range_m_total = 0.0
+        lidar_atmospheric_transmittance_total = 0.0
+        lidar_backscatter_noise_ratio_total = 0.0
+        lidar_reflectivity_detection_scale_total = 0.0
+        lidar_beam_spot_size_cm_at_max_range_total = 0.0
         radar_frame_count = 0
         radar_target_total = 0
         radar_ghost_target_total = 0
@@ -2665,6 +2685,18 @@ def run_phase2_hooks(args: argparse.Namespace) -> dict[str, Any]:
                 lidar_detection_ratio_total += _to_non_negative_float(payload.get("detection_ratio", 0.0))
                 lidar_effective_max_range_m_total += _to_non_negative_float(
                     payload.get("effective_max_range_m", 0.0)
+                )
+                lidar_atmospheric_transmittance_total += _to_non_negative_float(
+                    payload.get("atmospheric_transmittance", 0.0)
+                )
+                lidar_backscatter_noise_ratio_total += _to_non_negative_float(
+                    payload.get("backscatter_noise_ratio", 0.0)
+                )
+                lidar_reflectivity_detection_scale_total += _to_non_negative_float(
+                    payload.get("reflectivity_detection_scale", 0.0)
+                )
+                lidar_beam_spot_size_cm_at_max_range_total += _to_non_negative_float(
+                    payload.get("beam_spot_size_cm_at_max_range", 0.0)
                 )
             elif sensor_type == "radar":
                 radar_frame_count += 1
@@ -2982,6 +3014,26 @@ def run_phase2_hooks(args: argparse.Namespace) -> dict[str, Any]:
             ),
             "lidar_effective_max_range_m_avg": (
                 float(lidar_effective_max_range_m_total / float(lidar_frame_count))
+                if lidar_frame_count > 0
+                else 0.0
+            ),
+            "lidar_atmospheric_transmittance_avg": (
+                float(lidar_atmospheric_transmittance_total / float(lidar_frame_count))
+                if lidar_frame_count > 0
+                else 0.0
+            ),
+            "lidar_backscatter_noise_ratio_avg": (
+                float(lidar_backscatter_noise_ratio_total / float(lidar_frame_count))
+                if lidar_frame_count > 0
+                else 0.0
+            ),
+            "lidar_reflectivity_detection_scale_avg": (
+                float(lidar_reflectivity_detection_scale_total / float(lidar_frame_count))
+                if lidar_frame_count > 0
+                else 0.0
+            ),
+            "lidar_beam_spot_size_cm_at_max_range_avg": (
+                float(lidar_beam_spot_size_cm_at_max_range_total / float(lidar_frame_count))
                 if lidar_frame_count > 0
                 else 0.0
             ),

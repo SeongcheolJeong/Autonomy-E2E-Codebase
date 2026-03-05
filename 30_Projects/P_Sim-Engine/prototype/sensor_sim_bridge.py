@@ -2609,6 +2609,80 @@ class LidarStubPlugin(SensorPlugin):
             minimum=0.5,
             maximum=2.0,
         )
+        wavelength_nm = _clamp_float(
+            _to_float(
+                sensor_config.get(
+                    "wavelength_nm",
+                    lidar_params.get("wavelength_nm", 905.0),
+                ),
+                default=905.0,
+            ),
+            minimum=850.0,
+            maximum=1650.0,
+        )
+        beam_divergence_mrad = _clamp_float(
+            _to_float(
+                sensor_config.get(
+                    "beam_divergence_mrad",
+                    lidar_params.get("beam_divergence_mrad", 0.35),
+                ),
+                default=0.35,
+            ),
+            minimum=0.05,
+            maximum=5.0,
+        )
+        min_reflectivity = _clamp_float(
+            _to_float(
+                sensor_config.get(
+                    "min_reflectivity",
+                    lidar_params.get("min_reflectivity", 0.12),
+                ),
+                default=0.12,
+            ),
+            minimum=0.0,
+            maximum=1.0,
+        )
+        atmospheric_extinction_per_km = _clamp_float(
+            _to_float(
+                sensor_config.get(
+                    "atmospheric_extinction_per_km",
+                    lidar_params.get("atmospheric_extinction_per_km", 4.0),
+                ),
+                default=4.0,
+            ),
+            minimum=0.05,
+            maximum=30.0,
+        )
+        rain_backscatter_sensitivity = _clamp_float(
+            _to_float(
+                sensor_config.get(
+                    "rain_backscatter_sensitivity",
+                    lidar_params.get("rain_backscatter_sensitivity", 1.0),
+                ),
+                default=1.0,
+            ),
+            minimum=0.1,
+            maximum=3.0,
+        )
+        multi_echo_gain = _clamp_float(
+            _to_float(
+                sensor_config.get(
+                    "multi_echo_gain",
+                    lidar_params.get("multi_echo_gain", 1.0),
+                ),
+                default=1.0,
+            ),
+            minimum=0.5,
+            maximum=2.5,
+        )
+        scan_pattern = str(
+            sensor_config.get(
+                "scan_pattern",
+                lidar_params.get("scan_pattern", "UNIFORM"),
+            )
+        ).strip().upper()
+        if scan_pattern not in {"UNIFORM", "NONUNIFORM"}:
+            scan_pattern = "UNIFORM"
         returns_per_laser_bias = int(
             round(
                 _to_float(
@@ -2625,25 +2699,109 @@ class LidarStubPlugin(SensorPlugin):
         score = int(profile["score"])
         lidar_point_scale = float(profile["lidar_point_scale"])
         base_point_count = int(round(len(actors) * points_per_actor * lidar_point_scale))
+        pattern_coverage_scale = 0.92 if scan_pattern == "NONUNIFORM" else 1.0
+        reflectivity_detection_scale = _clamp_float(
+            1.0 - (0.8 * min_reflectivity),
+            minimum=0.2,
+            maximum=1.0,
+        )
+        base_reflectivity_detection_scale = 1.0 - (0.8 * 0.12)
+        normalized_reflectivity_detection_scale = _clamp_float(
+            reflectivity_detection_scale / max(0.01, base_reflectivity_detection_scale),
+            minimum=0.2,
+            maximum=1.2,
+        )
+        effective_extinction_per_km = atmospheric_extinction_per_km * (
+            0.05 + (0.8 * fog_density) + (0.55 * precipitation_intensity)
+        )
+        max_range_m = float(sensor_config.get("max_range_m", 120.0))
+        max_range_km = max(0.001, max_range_m / 1000.0)
+        atmospheric_transmittance = _clamp_float(
+            math.exp(-effective_extinction_per_km * max_range_km),
+            minimum=0.02,
+            maximum=1.0,
+        )
+        baseline_clear_transmittance = _clamp_float(
+            math.exp(-(atmospheric_extinction_per_km * 0.05 * max_range_km)),
+            minimum=0.02,
+            maximum=1.0,
+        )
+        normalized_atmospheric_transmittance = _clamp_float(
+            atmospheric_transmittance / max(0.01, baseline_clear_transmittance),
+            minimum=0.2,
+            maximum=1.2,
+        )
+        wavelength_weather_scale = _clamp_float(
+            1.0
+            + (((wavelength_nm - 905.0) / 745.0) * ((0.35 * fog_density) + (0.15 * precipitation_intensity))),
+            minimum=0.9,
+            maximum=1.1,
+        )
+        beam_divergence_rad = beam_divergence_mrad * 1e-3
+        beam_spot_size_cm_at_max_range = (
+            2.0 * max_range_m * math.tan(beam_divergence_rad / 2.0) * 100.0
+        )
         weather_detection_penalty = (
             (0.5 * fog_density) + (0.3 * precipitation_intensity)
         ) / max(0.1, detection_sensitivity)
-        weather_detection_ratio = _clamp_float(
+        weather_detection_penalty = _clamp_float(weather_detection_penalty, minimum=0.0, maximum=0.95)
+        base_detection_ratio = _clamp_float(
             1.0 - weather_detection_penalty,
-            minimum=0.15,
+            minimum=0.05,
             maximum=1.0,
         )
-        point_count = int(round(float(base_point_count) * weather_detection_ratio))
-        max_range_m = float(sensor_config.get("max_range_m", 120.0))
+        physics_detection_scale = _clamp_float(
+            (0.55 * normalized_atmospheric_transmittance)
+            + (0.25 * normalized_reflectivity_detection_scale)
+            + (0.10 * pattern_coverage_scale)
+            + (0.10 * wavelength_weather_scale),
+            minimum=0.05,
+            maximum=1.2,
+        )
+        weather_detection_ratio = _clamp_float(
+            base_detection_ratio * physics_detection_scale,
+            minimum=0.05,
+            maximum=1.0,
+        )
+        backscatter_noise_ratio = _clamp_float(
+            (0.14 * precipitation_intensity * rain_backscatter_sensitivity)
+            + (0.09 * fog_density),
+            minimum=0.0,
+            maximum=2.0,
+        )
+        point_count = int(
+            round(
+                float(base_point_count)
+                * weather_detection_ratio
+                * _clamp_float(1.0 - (0.12 * backscatter_noise_ratio), minimum=0.5, maximum=1.0)
+            )
+        )
         range_weather_penalty = (
             (0.35 * fog_density) + (0.2 * precipitation_intensity)
         ) * attenuation_sensitivity
+        effective_range_scale = _clamp_float(
+            (1.0 - range_weather_penalty)
+            * math.sqrt(max(0.01, normalized_atmospheric_transmittance))
+            * _clamp_float(1.0 - (0.1 * backscatter_noise_ratio), minimum=0.7, maximum=1.0)
+            * math.sqrt(max(0.01, wavelength_weather_scale)),
+            minimum=0.08,
+            maximum=1.0,
+        )
         effective_max_range_m = max(
-            10.0,
-            max_range_m * (1.0 - range_weather_penalty),
+            8.0,
+            max_range_m * effective_range_scale,
         )
         returns_weather_penalty_steps = int(round((fog_density + precipitation_intensity) * 1.5))
-        returns_per_laser = max(1, score - returns_weather_penalty_steps + returns_per_laser_bias)
+        returns_backscatter_penalty_steps = int(round(backscatter_noise_ratio * 0.8))
+        multi_echo_gain_steps = int(round((multi_echo_gain - 1.0) * 2.0))
+        returns_per_laser = max(
+            1,
+            score
+            - returns_weather_penalty_steps
+            - returns_backscatter_penalty_steps
+            + returns_per_laser_bias
+            + multi_echo_gain_steps,
+        )
         return {
             "modality": "lidar",
             "channel_count": int(sensor_config.get("channel_count", 64)),
@@ -2658,6 +2816,22 @@ class LidarStubPlugin(SensorPlugin):
             "returns_per_laser_bias": int(returns_per_laser_bias),
             "weather_detection_penalty": float(weather_detection_penalty),
             "range_weather_penalty": float(range_weather_penalty),
+            "scan_pattern": scan_pattern,
+            "pattern_coverage_scale": float(pattern_coverage_scale),
+            "wavelength_nm": float(wavelength_nm),
+            "beam_divergence_mrad": float(beam_divergence_mrad),
+            "beam_spot_size_cm_at_max_range": float(beam_spot_size_cm_at_max_range),
+            "min_reflectivity": float(min_reflectivity),
+            "reflectivity_detection_scale": float(reflectivity_detection_scale),
+            "normalized_reflectivity_detection_scale": float(normalized_reflectivity_detection_scale),
+            "atmospheric_extinction_per_km": float(atmospheric_extinction_per_km),
+            "effective_extinction_per_km": float(effective_extinction_per_km),
+            "atmospheric_transmittance": float(atmospheric_transmittance),
+            "normalized_atmospheric_transmittance": float(normalized_atmospheric_transmittance),
+            "wavelength_weather_scale": float(wavelength_weather_scale),
+            "rain_backscatter_sensitivity": float(rain_backscatter_sensitivity),
+            "backscatter_noise_ratio": float(backscatter_noise_ratio),
+            "multi_echo_gain": float(multi_echo_gain),
             "weather_precipitation_intensity": precipitation_intensity,
             "weather_fog_density": fog_density,
         }
@@ -2908,6 +3082,10 @@ def _summarize_sensor_quality(frames: list[dict[str, Any]]) -> dict[str, Any]:
     lidar_returns_per_laser_total = 0
     lidar_detection_ratio_total = 0.0
     lidar_effective_max_range_m_total = 0.0
+    lidar_atmospheric_transmittance_total = 0.0
+    lidar_backscatter_noise_ratio_total = 0.0
+    lidar_reflectivity_detection_scale_total = 0.0
+    lidar_beam_spot_size_cm_at_max_range_total = 0.0
     radar_frame_count = 0
     radar_target_count_total = 0
     radar_ghost_target_count_total = 0
@@ -3130,6 +3308,18 @@ def _summarize_sensor_quality(frames: list[dict[str, Any]]) -> dict[str, Any]:
             lidar_returns_per_laser_total += _to_non_negative_int(payload.get("returns_per_laser", 0))
             lidar_detection_ratio_total += _to_non_negative_float(payload.get("detection_ratio", 0.0))
             lidar_effective_max_range_m_total += _to_non_negative_float(payload.get("effective_max_range_m", 0.0))
+            lidar_atmospheric_transmittance_total += _to_non_negative_float(
+                payload.get("atmospheric_transmittance", 0.0)
+            )
+            lidar_backscatter_noise_ratio_total += _to_non_negative_float(
+                payload.get("backscatter_noise_ratio", 0.0)
+            )
+            lidar_reflectivity_detection_scale_total += _to_non_negative_float(
+                payload.get("reflectivity_detection_scale", 0.0)
+            )
+            lidar_beam_spot_size_cm_at_max_range_total += _to_non_negative_float(
+                payload.get("beam_spot_size_cm_at_max_range", 0.0)
+            )
         elif sensor_type == "radar":
             radar_frame_count += 1
             radar_target_count_total += _to_non_negative_int(payload.get("target_count", 0))
@@ -3388,6 +3578,26 @@ def _summarize_sensor_quality(frames: list[dict[str, Any]]) -> dict[str, Any]:
         if lidar_frame_count > 0
         else 0.0
     )
+    lidar_atmospheric_transmittance_avg = (
+        lidar_atmospheric_transmittance_total / float(lidar_frame_count)
+        if lidar_frame_count > 0
+        else 0.0
+    )
+    lidar_backscatter_noise_ratio_avg = (
+        lidar_backscatter_noise_ratio_total / float(lidar_frame_count)
+        if lidar_frame_count > 0
+        else 0.0
+    )
+    lidar_reflectivity_detection_scale_avg = (
+        lidar_reflectivity_detection_scale_total / float(lidar_frame_count)
+        if lidar_frame_count > 0
+        else 0.0
+    )
+    lidar_beam_spot_size_cm_at_max_range_avg = (
+        lidar_beam_spot_size_cm_at_max_range_total / float(lidar_frame_count)
+        if lidar_frame_count > 0
+        else 0.0
+    )
     radar_false_positive_count_avg = (
         float(radar_false_positive_count_total) / float(radar_frame_count)
         if radar_frame_count > 0
@@ -3540,6 +3750,10 @@ def _summarize_sensor_quality(frames: list[dict[str, Any]]) -> dict[str, Any]:
         "lidar_returns_per_laser_avg": float(lidar_returns_per_laser_avg),
         "lidar_detection_ratio_avg": float(lidar_detection_ratio_avg),
         "lidar_effective_max_range_m_avg": float(lidar_effective_max_range_m_avg),
+        "lidar_atmospheric_transmittance_avg": float(lidar_atmospheric_transmittance_avg),
+        "lidar_backscatter_noise_ratio_avg": float(lidar_backscatter_noise_ratio_avg),
+        "lidar_reflectivity_detection_scale_avg": float(lidar_reflectivity_detection_scale_avg),
+        "lidar_beam_spot_size_cm_at_max_range_avg": float(lidar_beam_spot_size_cm_at_max_range_avg),
         "radar_frame_count": int(radar_frame_count),
         "radar_target_count_total": int(radar_target_count_total),
         "radar_ghost_target_count_total": int(radar_ghost_target_count_total),

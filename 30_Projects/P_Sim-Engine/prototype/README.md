@@ -280,6 +280,22 @@ python3 sensor_sim_bridge.py \
   --out runs/sensor_frames_camera_depth_optical_flow_v0.json
 ```
 
+LiDAR physics tuning inputs (Applied docs aligned subset):
+
+- `sensor_params.lidar_params.wavelength_nm|beam_divergence_mrad|min_reflectivity`
+- `sensor_params.lidar_params.atmospheric_extinction_per_km|rain_backscatter_sensitivity`
+- `sensor_params.lidar_params.scan_pattern|multi_echo_gain`
+
+LiDAR physics tuning example:
+
+```bash
+python3 sensor_sim_bridge.py \
+  --world-state examples/world_state_adverse_weather_v0.json \
+  --sensor-rig examples/sensor_rig_lidar_physics_tuning_v0.json \
+  --fidelity-tier high \
+  --out runs/sensor_frames_lidar_physics_tuning_v0.json
+```
+
 ## Sensor rig sweep scaffold
 
 ```bash
