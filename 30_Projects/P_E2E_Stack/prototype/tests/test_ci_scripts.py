@@ -3981,6 +3981,217 @@ class SensorRigSweepTests(unittest.TestCase):
                 int(poor_metrics.get("radar_false_positive_count_total", 0) or 0),
             )
 
+    def test_camera_physics_and_geometry_tuning_influence_ranking(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp_path = Path(tmp)
+            world_state = tmp_path / "world_state.json"
+            rig_candidates = tmp_path / "rig_candidates.json"
+            out_path = tmp_path / "rig_sweep_report.json"
+
+            world_state.write_text(
+                json.dumps(
+                    {
+                        "world_state_schema_version": "world_state_v0",
+                        "frame_timestamp": "2026-03-05T14:00:00Z",
+                        "environment": {
+                            "precipitation_intensity": 0.45,
+                            "fog_density": 0.4,
+                            "ambient_light_lux": 25.0,
+                        },
+                        "actors": [
+                            {"actor_id": "ego", "speed_mps": 28.0},
+                            {"actor_id": "npc_001", "speed_mps": 18.0},
+                            {"actor_id": "npc_002", "speed_mps": 15.0},
+                            {"actor_id": "npc_003", "speed_mps": 12.0},
+                        ],
+                    }
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+            rig_candidates.write_text(
+                json.dumps(
+                    {
+                        "rig_sweep_schema_version": "sensor_rig_sweep_v0",
+                        "candidates": [
+                            {
+                                "rig_id": "rig_camera_poor",
+                                "sensors": [
+                                    {
+                                        "sensor_id": "camera_front",
+                                        "sensor_type": "camera",
+                                        "field_of_view_deg": 90.0,
+                                        "lens_params": {
+                                            "f_number": 5.6,
+                                            "camera_intrinsic_params": {
+                                                "fx": 820.0,
+                                                "fy": 810.0,
+                                                "cx": 1440.0,
+                                                "cy": 220.0,
+                                            },
+                                            "opencv_distortion_params": {
+                                                "k1": 0.35,
+                                                "k2": 0.2,
+                                                "p1": 0.02,
+                                                "p2": 0.02,
+                                                "k3": 0.08,
+                                            },
+                                            "cropping": 2.0,
+                                        },
+                                        "sensor_params": {
+                                            "iso": 6400.0,
+                                            "shutter_speed": 1200.0,
+                                            "readout_noise": 0.01,
+                                            "full_well_capacity": 20000.0,
+                                            "fixed_pattern_noise": {
+                                                "dsnu": 0.03,
+                                                "prnu": 0.05,
+                                            },
+                                            "rolling_shutter": {
+                                                "row_delay": 40000.0,
+                                                "col_delay": 300.0,
+                                                "num_time_steps": 1,
+                                                "num_exposure_samples_per_pixel": 1,
+                                            },
+                                        },
+                                        "system_params": {
+                                            "exposure": {
+                                                "auto_exposure": False,
+                                                "dynamic_range": {
+                                                    "min": 2.5,
+                                                    "max": 9.0,
+                                                },
+                                                "range": -0.8,
+                                            }
+                                        },
+                                    }
+                                ],
+                            },
+                            {
+                                "rig_id": "rig_camera_tuned",
+                                "sensors": [
+                                    {
+                                        "sensor_id": "camera_front",
+                                        "sensor_type": "camera",
+                                        "field_of_view_deg": 90.0,
+                                        "lens_params": {
+                                            "f_number": 1.8,
+                                            "camera_intrinsic_params": {
+                                                "fx": 980.0,
+                                                "fy": 975.0,
+                                                "cx": 960.0,
+                                                "cy": 540.0,
+                                            },
+                                            "opencv_distortion_params": {
+                                                "k1": 0.01,
+                                                "k2": 0.0,
+                                                "p1": 0.0,
+                                                "p2": 0.0,
+                                                "k3": 0.0,
+                                            },
+                                            "cropping": 1.0,
+                                        },
+                                        "sensor_params": {
+                                            "iso": 600.0,
+                                            "shutter_speed": 180.0,
+                                            "readout_noise": 0.0002,
+                                            "full_well_capacity": 65000.0,
+                                            "fixed_pattern_noise": {
+                                                "dsnu": 0.001,
+                                                "prnu": 0.002,
+                                            },
+                                            "rolling_shutter": {
+                                                "row_delay": 2500.0,
+                                                "col_delay": 30.0,
+                                                "num_time_steps": 160,
+                                                "num_exposure_samples_per_pixel": 12,
+                                            },
+                                        },
+                                        "system_params": {
+                                            "exposure": {
+                                                "auto_exposure": True,
+                                                "auto_exposure_mode": "REALISTIC",
+                                                "speed": 6.0,
+                                                "dynamic_range": {
+                                                    "min": 4.0,
+                                                    "max": 16.0,
+                                                },
+                                                "range": 0.3,
+                                            }
+                                        },
+                                    }
+                                ],
+                            },
+                        ],
+                    }
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+
+            proc = run_script(
+                PROTOTYPE_DIR / "../../P_Sim-Engine/prototype/sensor_rig_sweep.py",
+                "--world-state",
+                str(world_state),
+                "--rig-candidates",
+                str(rig_candidates),
+                "--fidelity-tier",
+                "high",
+                "--out",
+                str(out_path),
+            )
+            self.assertIn("[ok] candidate_count=2", proc.stdout)
+            self.assertIn("[ok] best_rig_id=rig_camera_tuned", proc.stdout)
+
+            payload = read_json_file(self, file_path=out_path)
+            self.assertEqual(payload.get("best_rig_id"), "rig_camera_tuned")
+            rankings = payload.get("rankings", [])
+            self.assertEqual(len(rankings), 2)
+            self.assertEqual(str(rankings[0].get("rig_id", "")), "rig_camera_tuned")
+            self.assertEqual(str(rankings[1].get("rig_id", "")), "rig_camera_poor")
+            self.assertGreater(
+                float(rankings[0].get("heuristic_score", 0.0) or 0.0),
+                float(rankings[1].get("heuristic_score", 0.0) or 0.0),
+            )
+
+            tuned_metrics = rankings[0].get("metrics", {})
+            poor_metrics = rankings[1].get("metrics", {})
+            self.assertIsInstance(tuned_metrics, dict)
+            self.assertIsInstance(poor_metrics, dict)
+
+            self.assertGreater(
+                float(tuned_metrics.get("camera_snr_db_avg", 0.0) or 0.0),
+                float(poor_metrics.get("camera_snr_db_avg", 0.0) or 0.0),
+            )
+            self.assertGreater(
+                float(tuned_metrics.get("camera_dynamic_range_stops_avg", 0.0) or 0.0),
+                float(poor_metrics.get("camera_dynamic_range_stops_avg", 0.0) or 0.0),
+            )
+            self.assertLess(
+                float(tuned_metrics.get("camera_rolling_shutter_temporal_aliasing_risk_avg", 1.0)),
+                float(poor_metrics.get("camera_rolling_shutter_temporal_aliasing_risk_avg", 1.0)),
+            )
+            self.assertGreater(
+                float(tuned_metrics.get("camera_rolling_shutter_temporal_sampling_quality_avg", 0.0) or 0.0),
+                float(poor_metrics.get("camera_rolling_shutter_temporal_sampling_quality_avg", 0.0) or 0.0),
+            )
+            self.assertLess(
+                float(tuned_metrics.get("camera_distortion_edge_shift_px_avg", 1e9)),
+                float(poor_metrics.get("camera_distortion_edge_shift_px_avg", 1e9)),
+            )
+            self.assertGreater(
+                float(tuned_metrics.get("camera_distortion_quality_avg", 0.0) or 0.0),
+                float(poor_metrics.get("camera_distortion_quality_avg", 0.0) or 0.0),
+            )
+            self.assertLess(
+                float(tuned_metrics.get("camera_principal_point_offset_norm_avg", 1.0)),
+                float(poor_metrics.get("camera_principal_point_offset_norm_avg", 1.0)),
+            )
+            self.assertLess(
+                float(tuned_metrics.get("camera_noise_stddev_px_avg", 1e9)),
+                float(poor_metrics.get("camera_noise_stddev_px_avg", 1e9)),
+            )
+
     def test_invalid_sweep_schema_is_reported_without_traceback(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             tmp_path = Path(tmp)

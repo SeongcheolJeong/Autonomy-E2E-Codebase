@@ -80,6 +80,13 @@ def _score_frames(frames: list[dict[str, Any]]) -> tuple[float, dict[str, Any]]:
     camera_visible_actor_total = 0
     camera_visibility_score_total = 0.0
     camera_noise_stddev_px_total = 0.0
+    camera_dynamic_range_stops_total = 0.0
+    camera_motion_blur_level_total = 0
+    camera_snr_db_total = 0.0
+    camera_rolling_shutter_temporal_aliasing_risk_total = 0.0
+    camera_rolling_shutter_temporal_sampling_quality_total = 0.0
+    camera_distortion_edge_shift_px_total = 0.0
+    camera_principal_point_offset_norm_total = 0.0
     camera_frame_count = 0
     lidar_point_count_total = 0
     lidar_detection_ratio_total = 0.0
@@ -108,6 +115,27 @@ def _score_frames(frames: list[dict[str, Any]]) -> tuple[float, dict[str, Any]]:
             camera_visible_actor_total += _to_non_negative_int(payload.get("visible_actor_count", 0))
             camera_visibility_score_total += _to_non_negative_float(payload.get("visibility_score", 0.0))
             camera_noise_stddev_px_total += _to_non_negative_float(payload.get("camera_noise_stddev_px", 0.0))
+            camera_dynamic_range_stops_total += _to_non_negative_float(payload.get("dynamic_range_stops", 0.0))
+            camera_motion_blur_level_total += _to_non_negative_int(payload.get("motion_blur_level", 0))
+            camera_physics = payload.get("camera_physics", {})
+            if not isinstance(camera_physics, dict):
+                camera_physics = {}
+            camera_geometry = payload.get("camera_geometry", {})
+            if not isinstance(camera_geometry, dict):
+                camera_geometry = {}
+            camera_snr_db_total += _to_non_negative_float(camera_physics.get("snr_db", 0.0))
+            camera_rolling_shutter_temporal_aliasing_risk_total += _to_non_negative_float(
+                camera_physics.get("rolling_shutter_temporal_aliasing_risk", 0.0)
+            )
+            camera_rolling_shutter_temporal_sampling_quality_total += _to_non_negative_float(
+                camera_physics.get("rolling_shutter_temporal_sampling_quality", 0.0)
+            )
+            camera_distortion_edge_shift_px_total += _to_non_negative_float(
+                camera_geometry.get("distortion_edge_shift_px_est", 0.0)
+            )
+            camera_principal_point_offset_norm_total += _to_non_negative_float(
+                camera_geometry.get("principal_point_offset_norm", 0.0)
+            )
         elif modality == "lidar":
             lidar_frame_count += 1
             lidar_point_count_total += _to_non_negative_int(payload.get("point_count", 0))
@@ -145,6 +173,46 @@ def _score_frames(frames: list[dict[str, Any]]) -> tuple[float, dict[str, Any]]:
     )
     camera_noise_stddev_px_avg = (
         camera_noise_stddev_px_total / float(camera_frame_count)
+        if camera_frame_count > 0
+        else 0.0
+    )
+    camera_dynamic_range_stops_avg = (
+        camera_dynamic_range_stops_total / float(camera_frame_count)
+        if camera_frame_count > 0
+        else 0.0
+    )
+    camera_motion_blur_level_avg = (
+        float(camera_motion_blur_level_total) / float(camera_frame_count)
+        if camera_frame_count > 0
+        else 0.0
+    )
+    camera_snr_db_avg = (
+        camera_snr_db_total / float(camera_frame_count)
+        if camera_frame_count > 0
+        else 0.0
+    )
+    camera_rolling_shutter_temporal_aliasing_risk_avg = (
+        camera_rolling_shutter_temporal_aliasing_risk_total / float(camera_frame_count)
+        if camera_frame_count > 0
+        else 0.0
+    )
+    camera_rolling_shutter_temporal_sampling_quality_avg = (
+        camera_rolling_shutter_temporal_sampling_quality_total / float(camera_frame_count)
+        if camera_frame_count > 0
+        else 0.0
+    )
+    camera_distortion_edge_shift_px_avg = (
+        camera_distortion_edge_shift_px_total / float(camera_frame_count)
+        if camera_frame_count > 0
+        else 0.0
+    )
+    camera_principal_point_offset_norm_avg = (
+        camera_principal_point_offset_norm_total / float(camera_frame_count)
+        if camera_frame_count > 0
+        else 0.0
+    )
+    camera_distortion_quality_avg = (
+        1.0 / (1.0 + (camera_distortion_edge_shift_px_avg / 35.0))
         if camera_frame_count > 0
         else 0.0
     )
@@ -208,6 +276,13 @@ def _score_frames(frames: list[dict[str, Any]]) -> tuple[float, dict[str, Any]]:
         float(camera_visible_actor_total)
         + (camera_visibility_score_avg * 5.0)
         - (camera_noise_stddev_px_avg * 0.5)
+        + (camera_dynamic_range_stops_avg * 0.35)
+        + (camera_snr_db_avg * 0.08)
+        - (camera_motion_blur_level_avg * 0.35)
+        - (camera_rolling_shutter_temporal_aliasing_risk_avg * 2.0)
+        + (camera_rolling_shutter_temporal_sampling_quality_avg * 1.0)
+        + (camera_distortion_quality_avg * 1.5)
+        - (camera_principal_point_offset_norm_avg * 3.0)
         + (float(lidar_point_count_total) / 100.0)
         + (lidar_detection_ratio_avg * 8.0)
         + (lidar_effective_range_ratio_avg * 6.0)
@@ -228,6 +303,18 @@ def _score_frames(frames: list[dict[str, Any]]) -> tuple[float, dict[str, Any]]:
         "camera_visible_actor_total": int(camera_visible_actor_total),
         "camera_visibility_score_avg": float(round(camera_visibility_score_avg, 6)),
         "camera_noise_stddev_px_avg": float(round(camera_noise_stddev_px_avg, 6)),
+        "camera_dynamic_range_stops_avg": float(round(camera_dynamic_range_stops_avg, 6)),
+        "camera_motion_blur_level_avg": float(round(camera_motion_blur_level_avg, 6)),
+        "camera_snr_db_avg": float(round(camera_snr_db_avg, 6)),
+        "camera_rolling_shutter_temporal_aliasing_risk_avg": float(
+            round(camera_rolling_shutter_temporal_aliasing_risk_avg, 6)
+        ),
+        "camera_rolling_shutter_temporal_sampling_quality_avg": float(
+            round(camera_rolling_shutter_temporal_sampling_quality_avg, 6)
+        ),
+        "camera_distortion_edge_shift_px_avg": float(round(camera_distortion_edge_shift_px_avg, 6)),
+        "camera_principal_point_offset_norm_avg": float(round(camera_principal_point_offset_norm_avg, 6)),
+        "camera_distortion_quality_avg": float(round(camera_distortion_quality_avg, 6)),
         "lidar_frame_count": int(lidar_frame_count),
         "lidar_point_count_total": int(lidar_point_count_total),
         "lidar_detection_ratio_avg": float(round(lidar_detection_ratio_avg, 6)),
