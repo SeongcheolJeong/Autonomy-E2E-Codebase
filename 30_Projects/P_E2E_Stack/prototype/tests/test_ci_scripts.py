@@ -26228,6 +26228,10 @@ class CiSharedHelpersTests(unittest.TestCase):
                     "NOTIFY_PHASE4_PRIMARY_MODULE_HOLD_THRESHOLDS": "adp=0.5",
                     "NOTIFY_RUNTIME_LANE_EXECUTION_WARN_MIN_EXEC_ROWS": "2",
                     "NOTIFY_RUNTIME_LANE_EXECUTION_HOLD_MIN_EXEC_ROWS": "1",
+                    "NOTIFY_RUNTIME_LANE_PHASE2_RIG_SWEEP_RADAR_ALIGNMENT_DEGRADED_DROP_MIN": "0.08",
+                    "NOTIFY_RUNTIME_LANE_PHASE2_RIG_SWEEP_RADAR_ALIGNMENT_HOLD_EFFECTIVE_DROP_MIN": "0.15",
+                    "NOTIFY_RUNTIME_LANE_PHASE2_RIG_SWEEP_RADAR_ALIGNMENT_HOLD_DEGRADED_METRIC_MIN_COUNT": "3",
+                    "NOTIFY_RUNTIME_LANE_PHASE2_RIG_SWEEP_RADAR_ALIGNMENT_NON_POSITIVE_WARN_MAX_DELTA": "0.01",
                     "NOTIFY_RUNTIME_EVIDENCE_COMPARE_WARN_MIN_ARTIFACTS_WITH_DIFFS": "3",
                     "NOTIFY_RUNTIME_EVIDENCE_COMPARE_HOLD_MIN_ARTIFACTS_WITH_DIFFS": "4",
                     "NOTIFY_RUNTIME_EVIDENCE_COMPARE_WARN_MIN_INTEROP_IMPORT_MODE_DIFF_COUNT": "5",
@@ -26285,6 +26289,22 @@ class CiSharedHelpersTests(unittest.TestCase):
             self.assertIn("--phase4-primary-module-hold-thresholds adp=0.5", proc.stdout)
             self.assertIn("--runtime-lane-execution-warn-min-exec-rows 2", proc.stdout)
             self.assertIn("--runtime-lane-execution-hold-min-exec-rows 1", proc.stdout)
+            self.assertIn(
+                "--runtime-lane-phase2-rig-sweep-radar-alignment-degraded-drop-min 0.08",
+                proc.stdout,
+            )
+            self.assertIn(
+                "--runtime-lane-phase2-rig-sweep-radar-alignment-hold-effective-drop-min 0.15",
+                proc.stdout,
+            )
+            self.assertIn(
+                "--runtime-lane-phase2-rig-sweep-radar-alignment-hold-degraded-metric-min-count 3",
+                proc.stdout,
+            )
+            self.assertIn(
+                "--runtime-lane-phase2-rig-sweep-radar-alignment-non-positive-warn-max-delta 0.01",
+                proc.stdout,
+            )
             self.assertIn("--runtime-evidence-compare-warn-min-artifacts-with-diffs 3", proc.stdout)
             self.assertIn("--runtime-evidence-compare-hold-min-artifacts-with-diffs 4", proc.stdout)
             self.assertIn(
@@ -29880,6 +29900,41 @@ class CiSharedHelpersTests(unittest.TestCase):
                 phase=PHASE_RESOLVE_INPUTS,
                 message_substring=(
                     "NOTIFY_RUNTIME_LANE_EXECUTION_HOLD_MIN_EXEC_ROWS must be a non-negative integer"
+                ),
+            )
+
+    def test_summary_entry_rejects_invalid_runtime_lane_alignment_degraded_drop_threshold(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp_path = Path(tmp)
+            step_summary = tmp_path / "step_summary.md"
+            proc = subprocess.run(
+                ["bash", str(PROTOTYPE_DIR / "run_ci_summary_entry.sh")],
+                capture_output=True,
+                text=True,
+                check=False,
+                cwd=str(tmp_path),
+                env={
+                    **os.environ,
+                    "CI_SUMMARY_DRY_RUN": "true",
+                    "RELEASE_PREFIX": "REL_SUMMARY_ENTRY_RUNTIME_ALIGNMENT_WARN_INVALID_001",
+                    "NOTIFY_RUNTIME_LANE_PHASE2_RIG_SWEEP_RADAR_ALIGNMENT_DEGRADED_DROP_MIN": "-0.1",
+                    "STEP_SUMMARY_FILE": str(step_summary),
+                },
+            )
+            self.assertEqual(proc.returncode, 1)
+            self.assertIn(
+                "[error] run_ci_summary_entry.sh: "
+                "NOTIFY_RUNTIME_LANE_PHASE2_RIG_SWEEP_RADAR_ALIGNMENT_DEGRADED_DROP_MIN must be >= 0",
+                proc.stderr,
+            )
+            self.assertNotIn("[error] run_ci_summary.py:", proc.stderr)
+            assert_step_summary_ci_error(
+                self,
+                step_summary_path=step_summary,
+                source="run_ci_summary_entry.sh",
+                phase=PHASE_RESOLVE_INPUTS,
+                message_substring=(
+                    "NOTIFY_RUNTIME_LANE_PHASE2_RIG_SWEEP_RADAR_ALIGNMENT_DEGRADED_DROP_MIN must be >= 0"
                 ),
             )
 
@@ -45539,6 +45594,54 @@ class RunCiSummaryTests(unittest.TestCase):
             self.assertIn("--runtime-lane-execution-warn-min-exec-rows 2", proc.stdout)
             self.assertIn("--runtime-lane-execution-hold-min-exec-rows 1", proc.stdout)
 
+    def test_notify_runtime_lane_alignment_thresholds_are_forwarded_in_dry_run(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp_path = Path(tmp)
+            proc = run_script(
+                PROTOTYPE_DIR / "run_ci_summary.py",
+                "--artifacts-root",
+                str(tmp_path / "artifacts"),
+                "--release-prefix",
+                "REL_TEST_SUMMARY_RUNTIME_ALIGNMENT_NOTIFY_001",
+                "--out-text",
+                str(tmp_path / "summary.txt"),
+                "--out-json",
+                str(tmp_path / "summary.json"),
+                "--out-db",
+                str(tmp_path / "summary.sqlite"),
+                "--summary-title",
+                "Test Summary",
+                "--workflow-name",
+                "Test Workflow",
+                "--notification-out-json",
+                str(tmp_path / "notify.json"),
+                "--notify-runtime-lane-phase2-rig-sweep-radar-alignment-degraded-drop-min",
+                "0.08",
+                "--notify-runtime-lane-phase2-rig-sweep-radar-alignment-hold-effective-drop-min",
+                "0.15",
+                "--notify-runtime-lane-phase2-rig-sweep-radar-alignment-hold-degraded-metric-min-count",
+                "3",
+                "--notify-runtime-lane-phase2-rig-sweep-radar-alignment-non-positive-warn-max-delta",
+                "0.01",
+                "--dry-run",
+            )
+            self.assertIn(
+                "--runtime-lane-phase2-rig-sweep-radar-alignment-degraded-drop-min 0.08",
+                proc.stdout,
+            )
+            self.assertIn(
+                "--runtime-lane-phase2-rig-sweep-radar-alignment-hold-effective-drop-min 0.15",
+                proc.stdout,
+            )
+            self.assertIn(
+                "--runtime-lane-phase2-rig-sweep-radar-alignment-hold-degraded-metric-min-count 3",
+                proc.stdout,
+            )
+            self.assertIn(
+                "--runtime-lane-phase2-rig-sweep-radar-alignment-non-positive-warn-max-delta 0.01",
+                proc.stdout,
+            )
+
     def test_notify_runtime_evidence_compare_thresholds_are_forwarded_in_dry_run(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             tmp_path = Path(tmp)
@@ -53534,6 +53637,78 @@ class BuildNotificationPayloadTests(unittest.TestCase):
             self.assertIn(
                 "runtime_lane_phase2_rig_sweep_radar_alignment_pass_minus_fail_degraded",
                 payload.get("runtime_lane_phase2_rig_sweep_radar_alignment_warning_reasons", []),
+            )
+
+    def test_runtime_lane_alignment_threshold_knobs_override_degraded_classification(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp_path = Path(tmp)
+            summary_path = tmp_path / "summary.json"
+            out_path = tmp_path / "notification.json"
+            summary_path.write_text(
+                json.dumps(
+                    {
+                        "release_prefix": "REL_RUNTIME_LANE_ALIGNMENT_KNOB_001",
+                        "summary_count": 1,
+                        "final_result_counts": {"PASS": 1},
+                        "pipeline_overall_counts": {"PASS": 1},
+                        "pipeline_trend_counts": {"PASS": 1},
+                        "runtime_lane_execution_summary": {
+                            "artifact_count": 1,
+                            "runtime_row_count": 2,
+                            "pass_count": 1,
+                            "fail_count": 1,
+                            "unknown_count": 0,
+                            "lane_row_counts": {"exec": 2},
+                            "runtime_evidence_exists_false_count": 0,
+                        },
+                        "runtime_lane_phase2_rig_sweep_radar_alignment_summary": {
+                            "runtime_row_count": 2,
+                            "matched_manifest_count": 2,
+                            "metrics_sample_count": 2,
+                            "unmatched_row_count": 0,
+                            "runtime_counts": {"awsim": 1, "carla": 1},
+                            "result_counts": {"fail": 1, "pass": 1},
+                            "mapping_mode_counts": {"release_prefix": 2},
+                            "pass_metric_summary": {"metrics_sample_count": 1},
+                            "fail_metric_summary": {"metrics_sample_count": 1},
+                            "pass_minus_fail_metric_delta": {
+                                "radar_effective_detection_quality_avg": -0.06,
+                                "radar_track_purity_avg": 0.01,
+                                "radar_doppler_resolution_quality_avg": 0.02,
+                                "radar_range_coverage_quality_avg": 0.03,
+                            },
+                        },
+                    }
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+
+            run_script(
+                PROTOTYPE_DIR / "build_release_notification_payload.py",
+                "--summary-json",
+                str(summary_path),
+                "--out-json",
+                str(out_path),
+                "--runtime-lane-phase2-rig-sweep-radar-alignment-degraded-drop-min",
+                "0.08",
+                "--runtime-lane-phase2-rig-sweep-radar-alignment-hold-effective-drop-min",
+                "0.20",
+                "--runtime-lane-phase2-rig-sweep-radar-alignment-hold-degraded-metric-min-count",
+                "3",
+            )
+            payload = read_json_file(
+                self,
+                file_path=out_path,
+            )
+            self.assertEqual(payload["status"], "WARN")
+            self.assertIn(
+                "runtime_lane_phase2_rig_sweep_radar_alignment_pass_minus_fail_non_positive",
+                payload.get("runtime_lane_phase2_rig_sweep_radar_alignment_warning", ""),
+            )
+            self.assertNotIn(
+                "runtime_lane_phase2_rig_sweep_radar_alignment_pass_minus_fail_degraded",
+                payload.get("runtime_lane_phase2_rig_sweep_radar_alignment_warning", ""),
             )
 
     def test_runtime_lane_execution_missing_exec_lane_without_threshold_keeps_pass(self) -> None:

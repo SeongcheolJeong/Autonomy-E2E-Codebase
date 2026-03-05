@@ -765,6 +765,38 @@ def parse_args() -> argparse.Namespace:
         ),
     )
     parser.add_argument(
+        "--runtime-lane-phase2-rig-sweep-radar-alignment-degraded-drop-min",
+        default="0.05",
+        help=(
+            "Mark runtime-lane vs phase2 rig-sweep radar metric delta degraded when "
+            "pass-minus-fail metric delta <= -value"
+        ),
+    )
+    parser.add_argument(
+        "--runtime-lane-phase2-rig-sweep-radar-alignment-hold-effective-drop-min",
+        default="0.10",
+        help=(
+            "Promote to HOLD when runtime-lane vs phase2 rig-sweep radar effective-quality "
+            "pass-minus-fail metric delta <= -value"
+        ),
+    )
+    parser.add_argument(
+        "--runtime-lane-phase2-rig-sweep-radar-alignment-hold-degraded-metric-min-count",
+        default="2",
+        help=(
+            "Promote to HOLD when degraded runtime-lane vs phase2 rig-sweep radar metric count "
+            "is >= this value (0 disables this hold path)"
+        ),
+    )
+    parser.add_argument(
+        "--runtime-lane-phase2-rig-sweep-radar-alignment-non-positive-warn-max-delta",
+        default="0",
+        help=(
+            "Warn when runtime-lane vs phase2 rig-sweep radar metric delta <= this value "
+            "when degraded-drop condition did not trigger"
+        ),
+    )
+    parser.add_argument(
         "--runtime-evidence-compare-warn-min-artifacts-with-diffs",
         default="0",
         help=(
@@ -5600,6 +5632,26 @@ def main() -> int:
         default=0,
         field="runtime-lane-execution-hold-min-exec-rows",
     )
+    runtime_lane_phase2_rig_sweep_radar_alignment_degraded_drop_min = parse_non_negative_float(
+        str(args.runtime_lane_phase2_rig_sweep_radar_alignment_degraded_drop_min),
+        default=0.05,
+        field="runtime-lane-phase2-rig-sweep-radar-alignment-degraded-drop-min",
+    )
+    runtime_lane_phase2_rig_sweep_radar_alignment_hold_effective_drop_min = parse_non_negative_float(
+        str(args.runtime_lane_phase2_rig_sweep_radar_alignment_hold_effective_drop_min),
+        default=0.10,
+        field="runtime-lane-phase2-rig-sweep-radar-alignment-hold-effective-drop-min",
+    )
+    runtime_lane_phase2_rig_sweep_radar_alignment_hold_degraded_metric_min_count = parse_non_negative_int(
+        str(args.runtime_lane_phase2_rig_sweep_radar_alignment_hold_degraded_metric_min_count),
+        default=2,
+        field="runtime-lane-phase2-rig-sweep-radar-alignment-hold-degraded-metric-min-count",
+    )
+    runtime_lane_phase2_rig_sweep_radar_alignment_non_positive_warn_max_delta = parse_non_negative_float(
+        str(args.runtime_lane_phase2_rig_sweep_radar_alignment_non_positive_warn_max_delta),
+        default=0.0,
+        field="runtime-lane-phase2-rig-sweep-radar-alignment-non-positive-warn-max-delta",
+    )
     runtime_evidence_compare_warn_min_artifacts_with_diffs = parse_non_negative_int(
         str(args.runtime_evidence_compare_warn_min_artifacts_with_diffs),
         default=0,
@@ -8181,12 +8233,13 @@ def main() -> int:
                 degraded_metrics = [
                     f"{metric_name}:{metric_delta:.3f}"
                     for metric_name, metric_delta in delta_candidates
-                    if metric_delta <= -0.05
+                    if metric_delta <= -runtime_lane_phase2_rig_sweep_radar_alignment_degraded_drop_min
                 ]
                 non_positive_metrics = [
                     f"{metric_name}:{metric_delta:.3f}"
                     for metric_name, metric_delta in delta_candidates
-                    if metric_delta <= 0.0
+                    if metric_delta
+                    <= runtime_lane_phase2_rig_sweep_radar_alignment_non_positive_warn_max_delta
                 ]
                 if degraded_metrics:
                     runtime_lane_phase2_rig_sweep_radar_alignment_warning_messages.append(
@@ -8196,7 +8249,14 @@ def main() -> int:
                     runtime_lane_phase2_rig_sweep_radar_alignment_warning_reasons.append(
                         "runtime_lane_phase2_rig_sweep_radar_alignment_pass_minus_fail_degraded"
                     )
-                    if radar_effective_delta <= -0.10 or len(degraded_metrics) >= 2:
+                    if (
+                        radar_effective_delta
+                        <= -runtime_lane_phase2_rig_sweep_radar_alignment_hold_effective_drop_min
+                    ) or (
+                        runtime_lane_phase2_rig_sweep_radar_alignment_hold_degraded_metric_min_count > 0
+                        and len(degraded_metrics)
+                        >= runtime_lane_phase2_rig_sweep_radar_alignment_hold_degraded_metric_min_count
+                    ):
                         status = "HOLD"
                     elif status in {"PASS", "INFO"}:
                         status = "WARN"

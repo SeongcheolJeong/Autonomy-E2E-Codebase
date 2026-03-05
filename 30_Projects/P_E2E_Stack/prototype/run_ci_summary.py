@@ -1185,6 +1185,38 @@ def parse_args() -> argparse.Namespace:
         ),
     )
     parser.add_argument(
+        "--notify-runtime-lane-phase2-rig-sweep-radar-alignment-degraded-drop-min",
+        default="0.05",
+        help=(
+            "Warn/Hold when runtime-lane vs phase2 rig-sweep radar pass-minus-fail metric delta drops "
+            "below this absolute amount (metric_delta <= -value)"
+        ),
+    )
+    parser.add_argument(
+        "--notify-runtime-lane-phase2-rig-sweep-radar-alignment-hold-effective-drop-min",
+        default="0.10",
+        help=(
+            "Hold when runtime-lane vs phase2 rig-sweep radar effective-quality pass-minus-fail "
+            "delta drops below this absolute amount (effective_delta <= -value)"
+        ),
+    )
+    parser.add_argument(
+        "--notify-runtime-lane-phase2-rig-sweep-radar-alignment-hold-degraded-metric-min-count",
+        default="2",
+        help=(
+            "Hold when degraded runtime-lane vs phase2 rig-sweep radar pass-minus-fail metric count "
+            "is at or above this minimum (0 disables this hold path)"
+        ),
+    )
+    parser.add_argument(
+        "--notify-runtime-lane-phase2-rig-sweep-radar-alignment-non-positive-warn-max-delta",
+        default="0",
+        help=(
+            "Warn when runtime-lane vs phase2 rig-sweep radar pass-minus-fail metric delta is at or "
+            "below this max value when degraded-drop condition did not trigger"
+        ),
+    )
+    parser.add_argument(
         "--notify-runtime-evidence-compare-warn-min-artifacts-with-diffs",
         default="0",
         help=(
@@ -2756,6 +2788,36 @@ def main() -> int:
             default=0,
             field="notify-runtime-lane-execution-hold-min-exec-rows",
         )
+        notify_runtime_lane_phase2_rig_sweep_radar_alignment_degraded_drop_min = parse_non_negative_float(
+            str(args.notify_runtime_lane_phase2_rig_sweep_radar_alignment_degraded_drop_min),
+            default=0.05,
+            field="notify-runtime-lane-phase2-rig-sweep-radar-alignment-degraded-drop-min",
+        )
+        notify_runtime_lane_phase2_rig_sweep_radar_alignment_hold_effective_drop_min = (
+            parse_non_negative_float(
+                str(args.notify_runtime_lane_phase2_rig_sweep_radar_alignment_hold_effective_drop_min),
+                default=0.10,
+                field="notify-runtime-lane-phase2-rig-sweep-radar-alignment-hold-effective-drop-min",
+            )
+        )
+        notify_runtime_lane_phase2_rig_sweep_radar_alignment_hold_degraded_metric_min_count = (
+            parse_non_negative_int(
+                str(args.notify_runtime_lane_phase2_rig_sweep_radar_alignment_hold_degraded_metric_min_count),
+                default=2,
+                field=(
+                    "notify-runtime-lane-phase2-rig-sweep-radar-alignment-hold-degraded-metric-min-count"
+                ),
+            )
+        )
+        notify_runtime_lane_phase2_rig_sweep_radar_alignment_non_positive_warn_max_delta = (
+            parse_non_negative_float(
+                str(args.notify_runtime_lane_phase2_rig_sweep_radar_alignment_non_positive_warn_max_delta),
+                default=0.0,
+                field=(
+                    "notify-runtime-lane-phase2-rig-sweep-radar-alignment-non-positive-warn-max-delta"
+                ),
+            )
+        )
         notify_runtime_evidence_compare_warn_min_artifacts_with_diffs = parse_non_negative_int(
             str(args.notify_runtime_evidence_compare_warn_min_artifacts_with_diffs),
             default=0,
@@ -3751,6 +3813,18 @@ def main() -> int:
                         str(notify_runtime_lane_execution_hold_min_exec_rows),
                     ]
                 )
+            notification_cmd.extend(
+                [
+                    "--runtime-lane-phase2-rig-sweep-radar-alignment-degraded-drop-min",
+                    str(notify_runtime_lane_phase2_rig_sweep_radar_alignment_degraded_drop_min),
+                    "--runtime-lane-phase2-rig-sweep-radar-alignment-hold-effective-drop-min",
+                    str(notify_runtime_lane_phase2_rig_sweep_radar_alignment_hold_effective_drop_min),
+                    "--runtime-lane-phase2-rig-sweep-radar-alignment-hold-degraded-metric-min-count",
+                    str(notify_runtime_lane_phase2_rig_sweep_radar_alignment_hold_degraded_metric_min_count),
+                    "--runtime-lane-phase2-rig-sweep-radar-alignment-non-positive-warn-max-delta",
+                    str(notify_runtime_lane_phase2_rig_sweep_radar_alignment_non_positive_warn_max_delta),
+                ]
+            )
             if notify_runtime_evidence_compare_warn_min_artifacts_with_diffs > 0:
                 notification_cmd.extend(
                     [
