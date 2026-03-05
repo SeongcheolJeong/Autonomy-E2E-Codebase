@@ -199,6 +199,13 @@ def _resolve_camera_dynamic_range_bounds(raw_value: Any) -> tuple[float, float]:
     return (min_ev, max_ev)
 
 
+def _resolve_camera_auto_exposure_mode(raw_value: Any) -> str:
+    mode = str(raw_value if raw_value is not None else "").strip().upper()
+    if mode in {"DEFAULT", "REALISTIC", "IMMEDIATE"}:
+        return mode
+    return "DEFAULT"
+
+
 def _estimate_scene_ev100(*, ambient_light_lux: float) -> float:
     lux = max(ambient_light_lux, 0.1)
     return math.log2(lux * 0.125)
@@ -419,6 +426,22 @@ def _resolve_camera_physics_config(sensor_config: dict[str, Any]) -> dict[str, A
             },
         )
     )
+    auto_exposure_mode = _resolve_camera_auto_exposure_mode(
+        exposure_params.get("auto_exposure_mode", sensor_config.get("auto_exposure_mode", "DEFAULT"))
+    )
+    exposure_range = _clamp_float(
+        _to_float(
+            exposure_params.get("range", sensor_config.get("exposure_range", 0.0)),
+            default=0.0,
+        ),
+        minimum=-4.0,
+        maximum=4.0,
+    )
+    exposure_range_multiplier = _clamp_float(
+        math.pow(10.0, exposure_range),
+        minimum=1e-4,
+        maximum=1e4,
+    )
 
     return {
         "physics_input_present": bool(explicit_physics_input_present),
@@ -438,7 +461,10 @@ def _resolve_camera_physics_config(sensor_config: dict[str, Any]) -> dict[str, A
         "field_of_view_az_rad": float(field_of_view_az_rad),
         "focal_length_px": float(focal_length_px),
         "auto_exposure": bool(auto_exposure),
+        "auto_exposure_mode": str(auto_exposure_mode),
         "exposure_speed": float(exposure_speed),
+        "exposure_range": float(exposure_range),
+        "exposure_range_multiplier": float(exposure_range_multiplier),
         "dynamic_range_min_ev": float(dynamic_range_min_ev),
         "dynamic_range_max_ev": float(dynamic_range_max_ev),
     }
@@ -468,7 +494,10 @@ def _compute_camera_physics(
     field_of_view_az_rad = float(config["field_of_view_az_rad"])
     focal_length_px = float(config["focal_length_px"])
     auto_exposure = bool(config["auto_exposure"])
+    auto_exposure_mode = str(config["auto_exposure_mode"])
     exposure_speed = float(config["exposure_speed"])
+    exposure_range = float(config["exposure_range"])
+    exposure_range_multiplier = float(config["exposure_range_multiplier"])
     dynamic_range_min_ev = float(config["dynamic_range_min_ev"])
     dynamic_range_max_ev = float(config["dynamic_range_max_ev"])
     if focal_length_px <= 0.0:
@@ -497,11 +526,23 @@ def _compute_camera_physics(
         * quantum_efficiency
         / 120.0
     )
+    exposure_fill_ratio *= exposure_range_multiplier
+    auto_exposure_mode_effective = "MANUAL"
+    auto_speed_gain = 0.0
+    auto_exposure_gain_applied = 1.0
+    ev_delta = 0.0
     if auto_exposure:
+        auto_exposure_mode_effective = (
+            "IMMEDIATE" if auto_exposure_mode == "IMMEDIATE" else "REALISTIC"
+        )
         target_ev = _clamp_float(scene_ev100, minimum=dynamic_range_min_ev, maximum=dynamic_range_max_ev)
-        auto_speed_gain = _clamp_float(exposure_speed / 5.0, minimum=0.05, maximum=1.0)
+        if auto_exposure_mode_effective == "IMMEDIATE":
+            auto_speed_gain = 1.0
+        else:
+            auto_speed_gain = _clamp_float(exposure_speed / 5.0, minimum=0.05, maximum=1.0)
         ev_delta = _clamp_float(setting_ev - target_ev, minimum=-4.0, maximum=4.0)
-        exposure_fill_ratio *= 2.0 ** (ev_delta * auto_speed_gain)
+        auto_exposure_gain_applied = 2.0 ** (ev_delta * auto_speed_gain)
+        exposure_fill_ratio *= auto_exposure_gain_applied
     signal_saturation_ratio = _clamp_float(exposure_fill_ratio, minimum=0.0, maximum=1.0)
     signal_electrons = signal_saturation_ratio * full_well_capacity
 
@@ -553,10 +594,17 @@ def _compute_camera_physics(
     return {
         "physics_input_present": bool(config["physics_input_present"]),
         "auto_exposure_enabled": bool(auto_exposure),
+        "auto_exposure_mode": str(auto_exposure_mode),
+        "auto_exposure_mode_effective": str(auto_exposure_mode_effective),
+        "auto_exposure_speed_gain": float(auto_speed_gain),
+        "auto_exposure_gain_applied": float(auto_exposure_gain_applied),
+        "auto_exposure_ev_delta": float(ev_delta),
         "f_number": float(f_number),
         "iso": float(iso),
         "shutter_speed_hz": float(shutter_speed_hz),
         "exposure_time_ms": float(exposure_time_sec * 1000.0),
+        "exposure_range": float(exposure_range),
+        "exposure_range_multiplier": float(exposure_range_multiplier),
         "quantum_efficiency": float(quantum_efficiency),
         "full_well_capacity": float(full_well_capacity),
         "signal_saturation_ratio": float(signal_saturation_ratio),
@@ -1889,6 +1937,10 @@ def _summarize_sensor_quality(frames: list[dict[str, Any]]) -> dict[str, Any]:
     camera_snr_db_total = 0.0
     camera_exposure_time_ms_total = 0.0
     camera_signal_saturation_ratio_total = 0.0
+    camera_exposure_range_total = 0.0
+    camera_exposure_range_multiplier_total = 0.0
+    camera_auto_exposure_mode_counts: dict[str, int] = {}
+    camera_auto_exposure_mode_effective_counts: dict[str, int] = {}
     camera_rolling_shutter_total_delay_ms_total = 0.0
     camera_normalized_total_noise_total = 0.0
     camera_distortion_edge_shift_px_total = 0.0
@@ -1950,6 +2002,22 @@ def _summarize_sensor_quality(frames: list[dict[str, Any]]) -> dict[str, Any]:
             camera_signal_saturation_ratio_total += _to_non_negative_float(
                 camera_physics.get("signal_saturation_ratio", 0.0)
             )
+            camera_exposure_range_total += _to_float(camera_physics.get("exposure_range", 0.0), default=0.0)
+            camera_exposure_range_multiplier_total += _to_non_negative_float(
+                camera_physics.get("exposure_range_multiplier", 0.0)
+            )
+            auto_exposure_mode = str(camera_physics.get("auto_exposure_mode", "")).strip().upper()
+            if auto_exposure_mode:
+                camera_auto_exposure_mode_counts[auto_exposure_mode] = (
+                    camera_auto_exposure_mode_counts.get(auto_exposure_mode, 0) + 1
+                )
+            auto_exposure_mode_effective = str(
+                camera_physics.get("auto_exposure_mode_effective", "")
+            ).strip().upper()
+            if auto_exposure_mode_effective:
+                camera_auto_exposure_mode_effective_counts[auto_exposure_mode_effective] = (
+                    camera_auto_exposure_mode_effective_counts.get(auto_exposure_mode_effective, 0) + 1
+                )
             camera_rolling_shutter_total_delay_ms_total += _to_non_negative_float(
                 camera_physics.get("rolling_shutter_total_delay_ms", 0.0)
             )
@@ -2085,6 +2153,16 @@ def _summarize_sensor_quality(frames: list[dict[str, Any]]) -> dict[str, Any]:
     )
     camera_signal_saturation_ratio_avg = (
         camera_signal_saturation_ratio_total / float(camera_frame_count)
+        if camera_frame_count > 0
+        else 0.0
+    )
+    camera_exposure_range_avg = (
+        camera_exposure_range_total / float(camera_frame_count)
+        if camera_frame_count > 0
+        else 0.0
+    )
+    camera_exposure_range_multiplier_avg = (
+        camera_exposure_range_multiplier_total / float(camera_frame_count)
         if camera_frame_count > 0
         else 0.0
     )
@@ -2233,6 +2311,15 @@ def _summarize_sensor_quality(frames: list[dict[str, Any]]) -> dict[str, Any]:
         "camera_snr_db_avg": float(camera_snr_db_avg),
         "camera_exposure_time_ms_avg": float(camera_exposure_time_ms_avg),
         "camera_signal_saturation_ratio_avg": float(camera_signal_saturation_ratio_avg),
+        "camera_exposure_range_avg": float(camera_exposure_range_avg),
+        "camera_exposure_range_multiplier_avg": float(camera_exposure_range_multiplier_avg),
+        "camera_auto_exposure_mode_counts": {
+            key: camera_auto_exposure_mode_counts[key] for key in sorted(camera_auto_exposure_mode_counts.keys())
+        },
+        "camera_auto_exposure_mode_effective_counts": {
+            key: camera_auto_exposure_mode_effective_counts[key]
+            for key in sorted(camera_auto_exposure_mode_effective_counts.keys())
+        },
         "camera_rolling_shutter_total_delay_ms_avg": float(camera_rolling_shutter_total_delay_ms_avg),
         "camera_normalized_total_noise_avg": float(camera_normalized_total_noise_avg),
         "camera_distortion_edge_shift_px_avg": float(camera_distortion_edge_shift_px_avg),

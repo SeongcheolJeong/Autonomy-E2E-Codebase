@@ -1563,6 +1563,15 @@ class SensorSimBridgeTests(unittest.TestCase):
                                     "num_time_steps": 1080,
                                     "num_exposure_samples_per_pixel": 24,
                                 },
+                                "system_params": {
+                                    "exposure": {
+                                        "auto_exposure": True,
+                                        "auto_exposure_mode": "IMMEDIATE",
+                                        "speed": 0.2,
+                                        "range": 0.3,
+                                        "dynamic_range": {"min": 3.0, "max": 12.0},
+                                    }
+                                },
                                 "frame_rate_hz": 30.0,
                                 "field_of_view_deg": 90.0,
                             }
@@ -1597,6 +1606,12 @@ class SensorSimBridgeTests(unittest.TestCase):
             self.assertAlmostEqual(float(camera_physics.get("iso", 0.0) or 0.0), 800.0, places=6)
             self.assertAlmostEqual(float(camera_physics.get("shutter_speed_hz", 0.0) or 0.0), 60.0, places=6)
             self.assertAlmostEqual(float(camera_physics.get("exposure_time_ms", 0.0) or 0.0), 16.6666666667, places=3)
+            self.assertTrue(bool(camera_physics.get("auto_exposure_enabled")))
+            self.assertEqual(str(camera_physics.get("auto_exposure_mode", "")), "IMMEDIATE")
+            self.assertEqual(str(camera_physics.get("auto_exposure_mode_effective", "")), "IMMEDIATE")
+            self.assertAlmostEqual(float(camera_physics.get("auto_exposure_speed_gain", 0.0) or 0.0), 1.0, places=6)
+            self.assertAlmostEqual(float(camera_physics.get("exposure_range", 0.0) or 0.0), 0.3, places=6)
+            self.assertGreater(float(camera_physics.get("exposure_range_multiplier", 0.0) or 0.0), 1.0)
             self.assertGreater(float(camera_physics.get("snr_db", -200.0) or -200.0), -100.0)
             self.assertGreater(float(camera_physics.get("rolling_shutter_total_delay_ms", 0.0) or 0.0), 0.0)
 
@@ -1606,6 +1621,19 @@ class SensorSimBridgeTests(unittest.TestCase):
             sensor_quality_summary = payload.get("sensor_quality_summary", {})
             self.assertGreater(float(sensor_quality_summary.get("camera_snr_db_avg", -200.0) or -200.0), -100.0)
             self.assertGreater(float(sensor_quality_summary.get("camera_exposure_time_ms_avg", 0.0) or 0.0), 0.0)
+            self.assertAlmostEqual(float(sensor_quality_summary.get("camera_exposure_range_avg", 0.0) or 0.0), 0.3, places=6)
+            self.assertGreater(
+                float(sensor_quality_summary.get("camera_exposure_range_multiplier_avg", 0.0) or 0.0),
+                1.0,
+            )
+            self.assertEqual(
+                sensor_quality_summary.get("camera_auto_exposure_mode_counts"),
+                {"IMMEDIATE": 1},
+            )
+            self.assertEqual(
+                sensor_quality_summary.get("camera_auto_exposure_mode_effective_counts"),
+                {"IMMEDIATE": 1},
+            )
             self.assertGreater(
                 float(sensor_quality_summary.get("camera_rolling_shutter_total_delay_ms_avg", 0.0) or 0.0),
                 0.0,
@@ -37180,6 +37208,10 @@ class RunE2EPipelineTests(unittest.TestCase):
             self.assertIn("camera_distortion_edge_shift_px_avg", phase2_sensor_quality_summary)
             self.assertIn("camera_snr_db_avg", phase2_sensor_quality_summary)
             self.assertIn("camera_gain_db_avg", phase2_sensor_quality_summary)
+            self.assertIn("camera_exposure_range_avg", phase2_sensor_quality_summary)
+            self.assertIn("camera_exposure_range_multiplier_avg", phase2_sensor_quality_summary)
+            self.assertIn("camera_auto_exposure_mode_counts", phase2_sensor_quality_summary)
+            self.assertIn("camera_auto_exposure_mode_effective_counts", phase2_sensor_quality_summary)
             self.assertIn("camera_bloom_halo_strength_avg", phase2_sensor_quality_summary)
             self.assertIn("camera_black_level_lift_norm_avg", phase2_sensor_quality_summary)
             self.assertIn("camera_saturation_effective_scale_avg", phase2_sensor_quality_summary)

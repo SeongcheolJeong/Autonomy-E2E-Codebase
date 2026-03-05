@@ -2042,6 +2042,10 @@ def run_phase2_hooks(args: argparse.Namespace) -> dict[str, Any]:
         "camera_snr_db_avg": 0.0,
         "camera_exposure_time_ms_avg": 0.0,
         "camera_signal_saturation_ratio_avg": 0.0,
+        "camera_exposure_range_avg": 0.0,
+        "camera_exposure_range_multiplier_avg": 0.0,
+        "camera_auto_exposure_mode_counts": {},
+        "camera_auto_exposure_mode_effective_counts": {},
         "camera_rolling_shutter_total_delay_ms_avg": 0.0,
         "camera_normalized_total_noise_avg": 0.0,
         "camera_distortion_edge_shift_px_avg": 0.0,
@@ -2109,6 +2113,19 @@ def run_phase2_hooks(args: argparse.Namespace) -> dict[str, Any]:
             ),
             "camera_signal_saturation_ratio_avg": _to_non_negative_float(
                 sensor_quality_summary_raw.get("camera_signal_saturation_ratio_avg", 0.0)
+            ),
+            "camera_exposure_range_avg": _to_float(
+                sensor_quality_summary_raw.get("camera_exposure_range_avg", 0.0),
+                default=0.0,
+            ),
+            "camera_exposure_range_multiplier_avg": _to_non_negative_float(
+                sensor_quality_summary_raw.get("camera_exposure_range_multiplier_avg", 0.0)
+            ),
+            "camera_auto_exposure_mode_counts": _normalize_uppercase_mode_counts(
+                sensor_quality_summary_raw.get("camera_auto_exposure_mode_counts", {})
+            ),
+            "camera_auto_exposure_mode_effective_counts": _normalize_uppercase_mode_counts(
+                sensor_quality_summary_raw.get("camera_auto_exposure_mode_effective_counts", {})
             ),
             "camera_rolling_shutter_total_delay_ms_avg": _to_non_negative_float(
                 sensor_quality_summary_raw.get("camera_rolling_shutter_total_delay_ms_avg", 0.0)
@@ -2233,6 +2250,10 @@ def run_phase2_hooks(args: argparse.Namespace) -> dict[str, Any]:
         camera_snr_db_total = 0.0
         camera_exposure_time_ms_total = 0.0
         camera_signal_saturation_ratio_total = 0.0
+        camera_exposure_range_total = 0.0
+        camera_exposure_range_multiplier_total = 0.0
+        camera_auto_exposure_mode_counts: dict[str, int] = {}
+        camera_auto_exposure_mode_effective_counts: dict[str, int] = {}
         camera_rolling_shutter_total_delay_ms_total = 0.0
         camera_normalized_total_noise_total = 0.0
         camera_distortion_edge_shift_px_total = 0.0
@@ -2295,6 +2316,25 @@ def run_phase2_hooks(args: argparse.Namespace) -> dict[str, Any]:
                 camera_signal_saturation_ratio_total += _to_non_negative_float(
                     camera_physics_payload.get("signal_saturation_ratio", 0.0)
                 )
+                camera_exposure_range_total += _to_float(
+                    camera_physics_payload.get("exposure_range", 0.0),
+                    default=0.0,
+                )
+                camera_exposure_range_multiplier_total += _to_non_negative_float(
+                    camera_physics_payload.get("exposure_range_multiplier", 0.0)
+                )
+                auto_exposure_mode = str(camera_physics_payload.get("auto_exposure_mode", "")).strip().upper()
+                if auto_exposure_mode:
+                    camera_auto_exposure_mode_counts[auto_exposure_mode] = (
+                        camera_auto_exposure_mode_counts.get(auto_exposure_mode, 0) + 1
+                    )
+                auto_exposure_mode_effective = str(
+                    camera_physics_payload.get("auto_exposure_mode_effective", "")
+                ).strip().upper()
+                if auto_exposure_mode_effective:
+                    camera_auto_exposure_mode_effective_counts[auto_exposure_mode_effective] = (
+                        camera_auto_exposure_mode_effective_counts.get(auto_exposure_mode_effective, 0) + 1
+                    )
                 camera_rolling_shutter_total_delay_ms_total += _to_non_negative_float(
                     camera_physics_payload.get("rolling_shutter_total_delay_ms", 0.0)
                 )
@@ -2448,6 +2488,24 @@ def run_phase2_hooks(args: argparse.Namespace) -> dict[str, Any]:
                 if camera_frame_count > 0
                 else 0.0
             ),
+            "camera_exposure_range_avg": (
+                float(camera_exposure_range_total / float(camera_frame_count))
+                if camera_frame_count > 0
+                else 0.0
+            ),
+            "camera_exposure_range_multiplier_avg": (
+                float(camera_exposure_range_multiplier_total / float(camera_frame_count))
+                if camera_frame_count > 0
+                else 0.0
+            ),
+            "camera_auto_exposure_mode_counts": {
+                key: camera_auto_exposure_mode_counts[key]
+                for key in sorted(camera_auto_exposure_mode_counts.keys())
+            },
+            "camera_auto_exposure_mode_effective_counts": {
+                key: camera_auto_exposure_mode_effective_counts[key]
+                for key in sorted(camera_auto_exposure_mode_effective_counts.keys())
+            },
             "camera_rolling_shutter_total_delay_ms_avg": (
                 float(camera_rolling_shutter_total_delay_ms_total / float(camera_frame_count))
                 if camera_frame_count > 0
