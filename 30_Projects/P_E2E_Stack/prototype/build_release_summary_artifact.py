@@ -1427,6 +1427,15 @@ def discover_pipeline_manifests(scan_roots: list[Path], release_prefix: str) -> 
             phase2_sensor_camera_chromatic_aberration_shift_px_avg = 0.0
             phase2_sensor_camera_tonemapper_disabled_frame_count = 0
             phase2_sensor_camera_bloom_level_counts: dict[str, int] = {}
+            phase2_sensor_camera_depth_enabled_frame_count = 0
+            phase2_sensor_camera_depth_min_m_avg = 0.0
+            phase2_sensor_camera_depth_max_m_avg = 0.0
+            phase2_sensor_camera_depth_bit_depth_avg = 0.0
+            phase2_sensor_camera_depth_mode_counts: dict[str, int] = {}
+            phase2_sensor_camera_optical_flow_enabled_frame_count = 0
+            phase2_sensor_camera_optical_flow_magnitude_px_avg = 0.0
+            phase2_sensor_camera_optical_flow_velocity_direction_counts: dict[str, int] = {}
+            phase2_sensor_camera_optical_flow_y_axis_direction_counts: dict[str, int] = {}
             phase2_sensor_lidar_frame_count = 0
             phase2_sensor_lidar_point_count_total = 0
             phase2_sensor_lidar_point_count_avg = 0.0
@@ -1724,6 +1733,111 @@ def discover_pipeline_manifests(scan_roots: list[Path], release_prefix: str) -> 
                                 continue
                             value = max(0, _to_int(raw_value, default=0))
                             phase2_sensor_camera_bloom_level_counts[key] = value
+                    phase2_sensor_camera_depth_enabled_frame_count = max(
+                        0,
+                        _to_int(
+                            phase2_sensor_quality_summary_raw.get(
+                                "camera_depth_enabled_frame_count"
+                            ),
+                            default=0,
+                        ),
+                    )
+                    phase2_sensor_camera_depth_min_m_avg = max(
+                        0.0,
+                        float(
+                            _to_float_or_none(
+                                phase2_sensor_quality_summary_raw.get("camera_depth_min_m_avg")
+                            )
+                            or 0.0
+                        ),
+                    )
+                    phase2_sensor_camera_depth_max_m_avg = max(
+                        0.0,
+                        float(
+                            _to_float_or_none(
+                                phase2_sensor_quality_summary_raw.get("camera_depth_max_m_avg")
+                            )
+                            or 0.0
+                        ),
+                    )
+                    phase2_sensor_camera_depth_bit_depth_avg = max(
+                        0.0,
+                        float(
+                            _to_float_or_none(
+                                phase2_sensor_quality_summary_raw.get("camera_depth_bit_depth_avg")
+                            )
+                            or 0.0
+                        ),
+                    )
+                    phase2_sensor_camera_depth_mode_counts_raw = phase2_sensor_quality_summary_raw.get(
+                        "camera_depth_mode_counts",
+                        {},
+                    )
+                    if isinstance(phase2_sensor_camera_depth_mode_counts_raw, dict):
+                        for raw_key, raw_value in phase2_sensor_camera_depth_mode_counts_raw.items():
+                            key = str(raw_key).strip().upper()
+                            if not key:
+                                continue
+                            value = max(0, _to_int(raw_value, default=0))
+                            phase2_sensor_camera_depth_mode_counts[key] = value
+                    phase2_sensor_camera_optical_flow_enabled_frame_count = max(
+                        0,
+                        _to_int(
+                            phase2_sensor_quality_summary_raw.get(
+                                "camera_optical_flow_enabled_frame_count"
+                            ),
+                            default=0,
+                        ),
+                    )
+                    phase2_sensor_camera_optical_flow_magnitude_px_avg = max(
+                        0.0,
+                        float(
+                            _to_float_or_none(
+                                phase2_sensor_quality_summary_raw.get(
+                                    "camera_optical_flow_magnitude_px_avg"
+                                )
+                            )
+                            or 0.0
+                        ),
+                    )
+                    phase2_sensor_camera_optical_flow_velocity_direction_counts_raw = (
+                        phase2_sensor_quality_summary_raw.get(
+                            "camera_optical_flow_velocity_direction_counts",
+                            {},
+                        )
+                    )
+                    if isinstance(
+                        phase2_sensor_camera_optical_flow_velocity_direction_counts_raw,
+                        dict,
+                    ):
+                        for (
+                            raw_key,
+                            raw_value,
+                        ) in phase2_sensor_camera_optical_flow_velocity_direction_counts_raw.items():
+                            key = str(raw_key).strip().upper()
+                            if not key:
+                                continue
+                            value = max(0, _to_int(raw_value, default=0))
+                            phase2_sensor_camera_optical_flow_velocity_direction_counts[key] = value
+                    phase2_sensor_camera_optical_flow_y_axis_direction_counts_raw = (
+                        phase2_sensor_quality_summary_raw.get(
+                            "camera_optical_flow_y_axis_direction_counts",
+                            {},
+                        )
+                    )
+                    if isinstance(
+                        phase2_sensor_camera_optical_flow_y_axis_direction_counts_raw,
+                        dict,
+                    ):
+                        for (
+                            raw_key,
+                            raw_value,
+                        ) in phase2_sensor_camera_optical_flow_y_axis_direction_counts_raw.items():
+                            key = str(raw_key).strip().upper()
+                            if not key:
+                                continue
+                            value = max(0, _to_int(raw_value, default=0))
+                            phase2_sensor_camera_optical_flow_y_axis_direction_counts[key] = value
                     phase2_sensor_lidar_frame_count = max(
                         0,
                         _to_int(phase2_sensor_quality_summary_raw.get("lidar_frame_count"), default=0),
@@ -1825,6 +1939,8 @@ def discover_pipeline_manifests(scan_roots: list[Path], release_prefix: str) -> 
                         or phase2_sensor_fidelity_tier_score > 0.0
                         or phase2_sensor_frame_count > 0
                         or phase2_sensor_modality_counts
+                        or phase2_sensor_camera_depth_enabled_frame_count > 0
+                        or phase2_sensor_camera_optical_flow_enabled_frame_count > 0
                         or phase2_sensor_lidar_point_count_total > 0
                         or phase2_sensor_radar_false_positive_count_total > 0
                     )
@@ -2604,6 +2720,36 @@ def discover_pipeline_manifests(scan_roots: list[Path], release_prefix: str) -> 
                     "phase2_sensor_camera_bloom_level_counts": {
                         key: phase2_sensor_camera_bloom_level_counts[key]
                         for key in sorted(phase2_sensor_camera_bloom_level_counts.keys())
+                    },
+                    "phase2_sensor_camera_depth_enabled_frame_count": (
+                        phase2_sensor_camera_depth_enabled_frame_count
+                    ),
+                    "phase2_sensor_camera_depth_min_m_avg": phase2_sensor_camera_depth_min_m_avg,
+                    "phase2_sensor_camera_depth_max_m_avg": phase2_sensor_camera_depth_max_m_avg,
+                    "phase2_sensor_camera_depth_bit_depth_avg": (
+                        phase2_sensor_camera_depth_bit_depth_avg
+                    ),
+                    "phase2_sensor_camera_depth_mode_counts": {
+                        key: phase2_sensor_camera_depth_mode_counts[key]
+                        for key in sorted(phase2_sensor_camera_depth_mode_counts.keys())
+                    },
+                    "phase2_sensor_camera_optical_flow_enabled_frame_count": (
+                        phase2_sensor_camera_optical_flow_enabled_frame_count
+                    ),
+                    "phase2_sensor_camera_optical_flow_magnitude_px_avg": (
+                        phase2_sensor_camera_optical_flow_magnitude_px_avg
+                    ),
+                    "phase2_sensor_camera_optical_flow_velocity_direction_counts": {
+                        key: phase2_sensor_camera_optical_flow_velocity_direction_counts[key]
+                        for key in sorted(
+                            phase2_sensor_camera_optical_flow_velocity_direction_counts.keys()
+                        )
+                    },
+                    "phase2_sensor_camera_optical_flow_y_axis_direction_counts": {
+                        key: phase2_sensor_camera_optical_flow_y_axis_direction_counts[key]
+                        for key in sorted(
+                            phase2_sensor_camera_optical_flow_y_axis_direction_counts.keys()
+                        )
                     },
                     "phase2_sensor_lidar_frame_count": phase2_sensor_lidar_frame_count,
                     "phase2_sensor_lidar_point_count_total": phase2_sensor_lidar_point_count_total,
@@ -6659,6 +6805,9 @@ def summarize_phase2_sensor_fidelity(pipeline_manifests: list[dict[str, Any]]) -
         modality_counts: dict[str, int] = {}
         camera_projection_mode_counts: dict[str, int] = {}
         camera_bloom_level_counts: dict[str, int] = {}
+        camera_depth_mode_counts: dict[str, int] = {}
+        camera_optical_flow_velocity_direction_counts: dict[str, int] = {}
+        camera_optical_flow_y_axis_direction_counts: dict[str, int] = {}
         modality_counts_raw = manifest.get("phase2_sensor_modality_counts", {})
         if isinstance(modality_counts_raw, dict):
             for raw_key, raw_value in modality_counts_raw.items():
@@ -6680,6 +6829,39 @@ def summarize_phase2_sensor_fidelity(pipeline_manifests: list[dict[str, Any]]) -
                 if not key:
                     continue
                 camera_bloom_level_counts[key] = max(0, _to_int(raw_value, default=0))
+        camera_depth_mode_counts_raw = manifest.get("phase2_sensor_camera_depth_mode_counts", {})
+        if isinstance(camera_depth_mode_counts_raw, dict):
+            for raw_key, raw_value in camera_depth_mode_counts_raw.items():
+                key = str(raw_key).strip().upper()
+                if not key:
+                    continue
+                camera_depth_mode_counts[key] = max(0, _to_int(raw_value, default=0))
+        camera_optical_flow_velocity_direction_counts_raw = manifest.get(
+            "phase2_sensor_camera_optical_flow_velocity_direction_counts",
+            {},
+        )
+        if isinstance(camera_optical_flow_velocity_direction_counts_raw, dict):
+            for raw_key, raw_value in camera_optical_flow_velocity_direction_counts_raw.items():
+                key = str(raw_key).strip().upper()
+                if not key:
+                    continue
+                camera_optical_flow_velocity_direction_counts[key] = max(
+                    0,
+                    _to_int(raw_value, default=0),
+                )
+        camera_optical_flow_y_axis_direction_counts_raw = manifest.get(
+            "phase2_sensor_camera_optical_flow_y_axis_direction_counts",
+            {},
+        )
+        if isinstance(camera_optical_flow_y_axis_direction_counts_raw, dict):
+            for raw_key, raw_value in camera_optical_flow_y_axis_direction_counts_raw.items():
+                key = str(raw_key).strip().upper()
+                if not key:
+                    continue
+                camera_optical_flow_y_axis_direction_counts[key] = max(
+                    0,
+                    _to_int(raw_value, default=0),
+                )
         normalized_rows.append(
             {
                 "batch_id": str(manifest.get("batch_id", "")).strip() or "batch_unknown",
@@ -6798,6 +6980,49 @@ def summarize_phase2_sensor_fidelity(pipeline_manifests: list[dict[str, Any]]) -
                 "camera_bloom_level_counts": {
                     key: camera_bloom_level_counts[key] for key in sorted(camera_bloom_level_counts.keys())
                 },
+                "camera_depth_enabled_frame_count": max(
+                    0,
+                    _to_int(manifest.get("phase2_sensor_camera_depth_enabled_frame_count"), default=0),
+                ),
+                "camera_depth_min_m_avg": max(
+                    0.0,
+                    float(_to_float_or_none(manifest.get("phase2_sensor_camera_depth_min_m_avg")) or 0.0),
+                ),
+                "camera_depth_max_m_avg": max(
+                    0.0,
+                    float(_to_float_or_none(manifest.get("phase2_sensor_camera_depth_max_m_avg")) or 0.0),
+                ),
+                "camera_depth_bit_depth_avg": max(
+                    0.0,
+                    float(_to_float_or_none(manifest.get("phase2_sensor_camera_depth_bit_depth_avg")) or 0.0),
+                ),
+                "camera_depth_mode_counts": {
+                    key: camera_depth_mode_counts[key] for key in sorted(camera_depth_mode_counts.keys())
+                },
+                "camera_optical_flow_enabled_frame_count": max(
+                    0,
+                    _to_int(
+                        manifest.get("phase2_sensor_camera_optical_flow_enabled_frame_count"),
+                        default=0,
+                    ),
+                ),
+                "camera_optical_flow_magnitude_px_avg": max(
+                    0.0,
+                    float(
+                        _to_float_or_none(
+                            manifest.get("phase2_sensor_camera_optical_flow_magnitude_px_avg")
+                        )
+                        or 0.0
+                    ),
+                ),
+                "camera_optical_flow_velocity_direction_counts": {
+                    key: camera_optical_flow_velocity_direction_counts[key]
+                    for key in sorted(camera_optical_flow_velocity_direction_counts.keys())
+                },
+                "camera_optical_flow_y_axis_direction_counts": {
+                    key: camera_optical_flow_y_axis_direction_counts[key]
+                    for key in sorted(camera_optical_flow_y_axis_direction_counts.keys())
+                },
                 "lidar_frame_count": max(0, _to_int(manifest.get("phase2_sensor_lidar_frame_count"), default=0)),
                 "lidar_point_count_total": max(
                     0,
@@ -6900,6 +7125,15 @@ def summarize_phase2_sensor_fidelity(pipeline_manifests: list[dict[str, Any]]) -
             "sensor_camera_chromatic_aberration_shift_px_avg": 0.0,
             "sensor_camera_tonemapper_disabled_frame_count_total": 0,
             "sensor_camera_bloom_level_counts_total": {},
+            "sensor_camera_depth_enabled_frame_count_total": 0,
+            "sensor_camera_depth_min_m_avg": 0.0,
+            "sensor_camera_depth_max_m_avg": 0.0,
+            "sensor_camera_depth_bit_depth_avg": 0.0,
+            "sensor_camera_depth_mode_counts_total": {},
+            "sensor_camera_optical_flow_enabled_frame_count_total": 0,
+            "sensor_camera_optical_flow_magnitude_px_avg": 0.0,
+            "sensor_camera_optical_flow_velocity_direction_counts_total": {},
+            "sensor_camera_optical_flow_y_axis_direction_counts_total": {},
             "sensor_lidar_frame_count_total": 0,
             "sensor_lidar_point_count_total": 0,
             "sensor_lidar_point_count_avg": 0.0,
@@ -6929,6 +7163,9 @@ def summarize_phase2_sensor_fidelity(pipeline_manifests: list[dict[str, Any]]) -
     sensor_modality_counts_total: dict[str, int] = {}
     sensor_camera_projection_mode_counts_total: dict[str, int] = {}
     sensor_camera_bloom_level_counts_total: dict[str, int] = {}
+    sensor_camera_depth_mode_counts_total: dict[str, int] = {}
+    sensor_camera_optical_flow_velocity_direction_counts_total: dict[str, int] = {}
+    sensor_camera_optical_flow_y_axis_direction_counts_total: dict[str, int] = {}
     for row in checked_rows:
         tier = str(row.get("fidelity_tier", "")).strip().lower() or "n/a"
         fidelity_tier_counts[tier] = fidelity_tier_counts.get(tier, 0) + 1
@@ -6959,6 +7196,42 @@ def summarize_phase2_sensor_fidelity(pipeline_manifests: list[dict[str, Any]]) -
                 value = max(0, _to_int(raw_value, default=0))
                 sensor_camera_bloom_level_counts_total[key] = (
                     sensor_camera_bloom_level_counts_total.get(key, 0) + value
+                )
+        camera_depth_mode_counts_row = row.get("camera_depth_mode_counts", {})
+        if isinstance(camera_depth_mode_counts_row, dict):
+            for raw_key, raw_value in camera_depth_mode_counts_row.items():
+                key = str(raw_key).strip().upper()
+                if not key:
+                    continue
+                value = max(0, _to_int(raw_value, default=0))
+                sensor_camera_depth_mode_counts_total[key] = (
+                    sensor_camera_depth_mode_counts_total.get(key, 0) + value
+                )
+        camera_optical_flow_velocity_direction_counts_row = row.get(
+            "camera_optical_flow_velocity_direction_counts",
+            {},
+        )
+        if isinstance(camera_optical_flow_velocity_direction_counts_row, dict):
+            for raw_key, raw_value in camera_optical_flow_velocity_direction_counts_row.items():
+                key = str(raw_key).strip().upper()
+                if not key:
+                    continue
+                value = max(0, _to_int(raw_value, default=0))
+                sensor_camera_optical_flow_velocity_direction_counts_total[key] = (
+                    sensor_camera_optical_flow_velocity_direction_counts_total.get(key, 0) + value
+                )
+        camera_optical_flow_y_axis_direction_counts_row = row.get(
+            "camera_optical_flow_y_axis_direction_counts",
+            {},
+        )
+        if isinstance(camera_optical_flow_y_axis_direction_counts_row, dict):
+            for raw_key, raw_value in camera_optical_flow_y_axis_direction_counts_row.items():
+                key = str(raw_key).strip().upper()
+                if not key:
+                    continue
+                value = max(0, _to_int(raw_value, default=0))
+                sensor_camera_optical_flow_y_axis_direction_counts_total[key] = (
+                    sensor_camera_optical_flow_y_axis_direction_counts_total.get(key, 0) + value
                 )
 
     fidelity_tier_score_total = sum(float(row.get("fidelity_tier_score", 0.0)) for row in checked_rows)
@@ -7047,6 +7320,29 @@ def summarize_phase2_sensor_fidelity(pipeline_manifests: list[dict[str, Any]]) -
     )
     camera_tonemapper_disabled_frame_count_total = sum(
         int(row.get("camera_tonemapper_disabled_frame_count", 0)) for row in checked_rows
+    )
+    camera_depth_enabled_frame_count_total = sum(
+        int(row.get("camera_depth_enabled_frame_count", 0)) for row in checked_rows
+    )
+    camera_depth_min_m_weighted_total = sum(
+        float(row.get("camera_depth_min_m_avg", 0.0)) * float(int(row.get("camera_frame_count", 0)))
+        for row in checked_rows
+    )
+    camera_depth_max_m_weighted_total = sum(
+        float(row.get("camera_depth_max_m_avg", 0.0)) * float(int(row.get("camera_frame_count", 0)))
+        for row in checked_rows
+    )
+    camera_depth_bit_depth_weighted_total = sum(
+        float(row.get("camera_depth_bit_depth_avg", 0.0)) * float(int(row.get("camera_frame_count", 0)))
+        for row in checked_rows
+    )
+    camera_optical_flow_enabled_frame_count_total = sum(
+        int(row.get("camera_optical_flow_enabled_frame_count", 0)) for row in checked_rows
+    )
+    camera_optical_flow_magnitude_px_weighted_total = sum(
+        float(row.get("camera_optical_flow_magnitude_px_avg", 0.0))
+        * float(int(row.get("camera_frame_count", 0)))
+        for row in checked_rows
     )
     lidar_point_count_total = sum(int(row.get("lidar_point_count_total", 0)) for row in checked_rows)
     lidar_returns_per_laser_weighted_total = sum(
@@ -7233,6 +7529,42 @@ def summarize_phase2_sensor_fidelity(pipeline_manifests: list[dict[str, Any]]) -
         "sensor_camera_bloom_level_counts_total": {
             key: sensor_camera_bloom_level_counts_total[key]
             for key in sorted(sensor_camera_bloom_level_counts_total.keys())
+        },
+        "sensor_camera_depth_enabled_frame_count_total": int(camera_depth_enabled_frame_count_total),
+        "sensor_camera_depth_min_m_avg": (
+            float(camera_depth_min_m_weighted_total / float(camera_frame_count_total))
+            if camera_frame_count_total > 0
+            else 0.0
+        ),
+        "sensor_camera_depth_max_m_avg": (
+            float(camera_depth_max_m_weighted_total / float(camera_frame_count_total))
+            if camera_frame_count_total > 0
+            else 0.0
+        ),
+        "sensor_camera_depth_bit_depth_avg": (
+            float(camera_depth_bit_depth_weighted_total / float(camera_frame_count_total))
+            if camera_frame_count_total > 0
+            else 0.0
+        ),
+        "sensor_camera_depth_mode_counts_total": {
+            key: sensor_camera_depth_mode_counts_total[key]
+            for key in sorted(sensor_camera_depth_mode_counts_total.keys())
+        },
+        "sensor_camera_optical_flow_enabled_frame_count_total": int(
+            camera_optical_flow_enabled_frame_count_total
+        ),
+        "sensor_camera_optical_flow_magnitude_px_avg": (
+            float(camera_optical_flow_magnitude_px_weighted_total / float(camera_frame_count_total))
+            if camera_frame_count_total > 0
+            else 0.0
+        ),
+        "sensor_camera_optical_flow_velocity_direction_counts_total": {
+            key: sensor_camera_optical_flow_velocity_direction_counts_total[key]
+            for key in sorted(sensor_camera_optical_flow_velocity_direction_counts_total.keys())
+        },
+        "sensor_camera_optical_flow_y_axis_direction_counts_total": {
+            key: sensor_camera_optical_flow_y_axis_direction_counts_total[key]
+            for key in sorted(sensor_camera_optical_flow_y_axis_direction_counts_total.keys())
         },
         "sensor_lidar_frame_count_total": int(lidar_frame_count_total),
         "sensor_lidar_point_count_total": int(lidar_point_count_total),
@@ -11292,6 +11624,84 @@ def main() -> int:
             )
             else "n/a"
         )
+        phase2_sensor_camera_depth_enabled_frame_total = int(
+            phase2_sensor_fidelity_summary.get("sensor_camera_depth_enabled_frame_count_total", 0) or 0
+        )
+        phase2_sensor_camera_depth_min_m_avg = float(
+            phase2_sensor_fidelity_summary.get("sensor_camera_depth_min_m_avg", 0.0) or 0.0
+        )
+        phase2_sensor_camera_depth_max_m_avg = float(
+            phase2_sensor_fidelity_summary.get("sensor_camera_depth_max_m_avg", 0.0) or 0.0
+        )
+        phase2_sensor_camera_depth_bit_depth_avg = float(
+            phase2_sensor_fidelity_summary.get("sensor_camera_depth_bit_depth_avg", 0.0) or 0.0
+        )
+        phase2_sensor_camera_depth_mode_counts_total = phase2_sensor_fidelity_summary.get(
+            "sensor_camera_depth_mode_counts_total",
+            {},
+        )
+        phase2_sensor_camera_depth_mode_counts_total_text = (
+            ",".join(
+                f"{key}:{phase2_sensor_camera_depth_mode_counts_total[key]}"
+                for key in sorted(phase2_sensor_camera_depth_mode_counts_total)
+            )
+            if (
+                isinstance(phase2_sensor_camera_depth_mode_counts_total, dict)
+                and phase2_sensor_camera_depth_mode_counts_total
+            )
+            else "n/a"
+        )
+        phase2_sensor_camera_optical_flow_enabled_frame_total = int(
+            phase2_sensor_fidelity_summary.get(
+                "sensor_camera_optical_flow_enabled_frame_count_total",
+                0,
+            )
+            or 0
+        )
+        phase2_sensor_camera_optical_flow_magnitude_px_avg = float(
+            phase2_sensor_fidelity_summary.get("sensor_camera_optical_flow_magnitude_px_avg", 0.0)
+            or 0.0
+        )
+        phase2_sensor_camera_optical_flow_velocity_direction_counts_total = (
+            phase2_sensor_fidelity_summary.get(
+                "sensor_camera_optical_flow_velocity_direction_counts_total",
+                {},
+            )
+        )
+        phase2_sensor_camera_optical_flow_velocity_direction_counts_total_text = (
+            ",".join(
+                f"{key}:{phase2_sensor_camera_optical_flow_velocity_direction_counts_total[key]}"
+                for key in sorted(phase2_sensor_camera_optical_flow_velocity_direction_counts_total)
+            )
+            if (
+                isinstance(
+                    phase2_sensor_camera_optical_flow_velocity_direction_counts_total,
+                    dict,
+                )
+                and phase2_sensor_camera_optical_flow_velocity_direction_counts_total
+            )
+            else "n/a"
+        )
+        phase2_sensor_camera_optical_flow_y_axis_direction_counts_total = (
+            phase2_sensor_fidelity_summary.get(
+                "sensor_camera_optical_flow_y_axis_direction_counts_total",
+                {},
+            )
+        )
+        phase2_sensor_camera_optical_flow_y_axis_direction_counts_total_text = (
+            ",".join(
+                f"{key}:{phase2_sensor_camera_optical_flow_y_axis_direction_counts_total[key]}"
+                for key in sorted(phase2_sensor_camera_optical_flow_y_axis_direction_counts_total)
+            )
+            if (
+                isinstance(
+                    phase2_sensor_camera_optical_flow_y_axis_direction_counts_total,
+                    dict,
+                )
+                and phase2_sensor_camera_optical_flow_y_axis_direction_counts_total
+            )
+            else "n/a"
+        )
         phase2_sensor_lidar_point_total = int(
             phase2_sensor_fidelity_summary.get("sensor_lidar_point_count_total", 0) or 0
         )
@@ -11335,6 +11745,17 @@ def main() -> int:
             f"camera_bloom_halo_avg:{phase2_sensor_camera_bloom_halo_strength_avg:.3f},"
             f"camera_tonemapper_disabled_total:{phase2_sensor_camera_tonemapper_disabled_frame_total},"
             f"camera_bloom_levels:{phase2_sensor_camera_bloom_level_counts_total_text},"
+            f"camera_depth_enabled_total:{phase2_sensor_camera_depth_enabled_frame_total},"
+            f"camera_depth_min_avg_m:{phase2_sensor_camera_depth_min_m_avg:.3f},"
+            f"camera_depth_max_avg_m:{phase2_sensor_camera_depth_max_m_avg:.3f},"
+            f"camera_depth_bit_depth_avg:{phase2_sensor_camera_depth_bit_depth_avg:.3f},"
+            f"camera_depth_modes:{phase2_sensor_camera_depth_mode_counts_total_text},"
+            f"camera_flow_enabled_total:{phase2_sensor_camera_optical_flow_enabled_frame_total},"
+            f"camera_flow_mag_avg_px:{phase2_sensor_camera_optical_flow_magnitude_px_avg:.3f},"
+            "camera_flow_velocity_dirs:"
+            f"{phase2_sensor_camera_optical_flow_velocity_direction_counts_total_text},"
+            "camera_flow_y_axis_dirs:"
+            f"{phase2_sensor_camera_optical_flow_y_axis_direction_counts_total_text},"
             f"lidar_detection_ratio_avg:{phase2_sensor_lidar_detection_ratio_avg:.3f},"
             f"radar_ghost_total:{phase2_sensor_radar_ghost_target_total}"
         )

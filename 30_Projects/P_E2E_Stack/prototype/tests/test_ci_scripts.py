@@ -48081,6 +48081,15 @@ class BuildReleaseSummaryArtifactTests(unittest.TestCase):
                             "camera_chromatic_aberration_shift_px_avg": 1.45,
                             "camera_tonemapper_disabled_frame_count": 2,
                             "camera_bloom_level_counts": {"HIGH": 2},
+                            "camera_depth_enabled_frame_count": 2,
+                            "camera_depth_min_m_avg": 0.5,
+                            "camera_depth_max_m_avg": 120.0,
+                            "camera_depth_bit_depth_avg": 16.0,
+                            "camera_depth_mode_counts": {"LOG": 2},
+                            "camera_optical_flow_enabled_frame_count": 2,
+                            "camera_optical_flow_magnitude_px_avg": 4.2,
+                            "camera_optical_flow_velocity_direction_counts": {"FORWARD": 2},
+                            "camera_optical_flow_y_axis_direction_counts": {"UP": 2},
                             "lidar_frame_count": 3,
                             "lidar_point_count_total": 360,
                             "lidar_point_count_avg": 120.0,
@@ -48266,6 +48275,68 @@ class BuildReleaseSummaryArtifactTests(unittest.TestCase):
                 phase2_sensor_fidelity_summary.get("sensor_camera_bloom_level_counts_total"),
                 {"HIGH": 2},
             )
+            self.assertEqual(
+                int(
+                    phase2_sensor_fidelity_summary.get(
+                        "sensor_camera_depth_enabled_frame_count_total",
+                        0,
+                    )
+                    or 0
+                ),
+                2,
+            )
+            self.assertAlmostEqual(
+                float(phase2_sensor_fidelity_summary.get("sensor_camera_depth_min_m_avg", 0.0) or 0.0),
+                0.5,
+                places=6,
+            )
+            self.assertAlmostEqual(
+                float(phase2_sensor_fidelity_summary.get("sensor_camera_depth_max_m_avg", 0.0) or 0.0),
+                120.0,
+                places=6,
+            )
+            self.assertAlmostEqual(
+                float(phase2_sensor_fidelity_summary.get("sensor_camera_depth_bit_depth_avg", 0.0) or 0.0),
+                16.0,
+                places=6,
+            )
+            self.assertEqual(
+                phase2_sensor_fidelity_summary.get("sensor_camera_depth_mode_counts_total"),
+                {"LOG": 2},
+            )
+            self.assertEqual(
+                int(
+                    phase2_sensor_fidelity_summary.get(
+                        "sensor_camera_optical_flow_enabled_frame_count_total",
+                        0,
+                    )
+                    or 0
+                ),
+                2,
+            )
+            self.assertAlmostEqual(
+                float(
+                    phase2_sensor_fidelity_summary.get(
+                        "sensor_camera_optical_flow_magnitude_px_avg",
+                        0.0,
+                    )
+                    or 0.0
+                ),
+                4.2,
+                places=6,
+            )
+            self.assertEqual(
+                phase2_sensor_fidelity_summary.get(
+                    "sensor_camera_optical_flow_velocity_direction_counts_total"
+                ),
+                {"FORWARD": 2},
+            )
+            self.assertEqual(
+                phase2_sensor_fidelity_summary.get(
+                    "sensor_camera_optical_flow_y_axis_direction_counts_total"
+                ),
+                {"UP": 2},
+            )
             self.assertAlmostEqual(
                 float(phase2_sensor_fidelity_summary.get("sensor_lidar_detection_ratio_avg", 0.0) or 0.0),
                 0.85,
@@ -48312,7 +48383,9 @@ class BuildReleaseSummaryArtifactTests(unittest.TestCase):
                     "route_segment_total:3,route_segment_avg:3.000,route_with_via:1,route_via_lane_total:2,route_via_lane_avg:2.000",
                     "phase2_sensor_fidelity=evaluated:1,tier_counts:high:1,fidelity_score_avg:3.000,fidelity_score_max:3.000(BATCH_MAP),frame_total:6,frame_avg:6.000,frame_max:6(BATCH_MAP),modality_total:camera:2,lidar:3,radar:1",
                     "camera_noise_avg_px:1.200,lidar_point_total:360,lidar_point_avg:120.000,radar_fp_total:1,radar_fp_avg:1.000,radar_fp_rate_avg:0.250000",
-                    "camera_distortion_shift_avg_px:12.500,camera_projection_modes:EQUIDISTANT:2,camera_gain_avg_db:8.000,camera_bloom_halo_avg:0.660,camera_tonemapper_disabled_total:2,camera_bloom_levels:HIGH:2,lidar_detection_ratio_avg:0.850,radar_ghost_total:2",
+                    "camera_distortion_shift_avg_px:12.500,camera_projection_modes:EQUIDISTANT:2,camera_gain_avg_db:8.000,camera_bloom_halo_avg:0.660,camera_tonemapper_disabled_total:2,camera_bloom_levels:HIGH:2",
+                    "camera_depth_enabled_total:2,camera_depth_min_avg_m:0.500,camera_depth_max_avg_m:120.000,camera_depth_bit_depth_avg:16.000,camera_depth_modes:LOG:2",
+                    "camera_flow_enabled_total:2,camera_flow_mag_avg_px:4.200,camera_flow_velocity_dirs:FORWARD:2,camera_flow_y_axis_dirs:UP:2,lidar_detection_ratio_avg:0.850,radar_ghost_total:2",
                     "phase2_sensor_rig_sweep=evaluated:1,tier_counts:high:1,candidate_total:3,candidate_avg:3.000,candidate_max:3(BATCH_MAP),best_score_max:12.500(BATCH_MAP),best_rig_counts:rig_cam_lidar:1",
                 ],
             )
