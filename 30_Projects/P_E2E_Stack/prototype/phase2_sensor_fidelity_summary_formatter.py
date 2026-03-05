@@ -73,6 +73,17 @@ def format_phase2_sensor_fidelity_summary(
         f"radar_fp_total={_to_int(payload.get('sensor_radar_false_positive_count_total', 0))}",
         f"radar_fp_avg={_to_float(payload.get('sensor_radar_false_positive_count_avg', 0.0)):.3f}",
         f"radar_fp_rate_avg={_to_float(payload.get('sensor_radar_false_positive_rate_avg', 0.0)):.6f}",
+        "camera_shroud_enabled_total="
+        f"{_to_int(payload.get('sensor_camera_shroud_input_enabled_frame_count_total', 0))}",
+        f"camera_shroud_dirt_avg={_to_float(payload.get('sensor_camera_shroud_dirt_intensity_avg', 0.0)):.3f}",
+        f"camera_shroud_fog_avg={_to_float(payload.get('sensor_camera_shroud_fog_intensity_avg', 0.0)):.3f}",
+        "camera_shroud_occlusion_avg="
+        f"{_to_float(payload.get('sensor_camera_shroud_occlusion_ratio_avg', 0.0)):.3f}",
+        f"camera_shroud_scatter_avg={_to_float(payload.get('sensor_camera_shroud_scatter_strength_avg', 0.0)):.3f}",
+        "camera_shroud_coverage_avg="
+        f"{_to_float(payload.get('sensor_camera_shroud_droplet_coverage_ratio_avg', 0.0)):.3f}",
+        "camera_shroud_states="
+        f"{format_counts(payload.get('sensor_camera_shroud_droplets_state_counts_total', {}))}",
         f"camera_depth_enabled_total={_to_int(payload.get('sensor_camera_depth_enabled_frame_count_total', 0))}",
         f"camera_depth_min_avg_m={_to_float(payload.get('sensor_camera_depth_min_m_avg', 0.0)):.3f}",
         f"camera_depth_max_avg_m={_to_float(payload.get('sensor_camera_depth_max_m_avg', 0.0)):.3f}",

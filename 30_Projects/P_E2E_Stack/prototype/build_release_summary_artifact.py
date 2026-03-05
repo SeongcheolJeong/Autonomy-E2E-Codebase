@@ -1427,6 +1427,13 @@ def discover_pipeline_manifests(scan_roots: list[Path], release_prefix: str) -> 
             phase2_sensor_camera_chromatic_aberration_shift_px_avg = 0.0
             phase2_sensor_camera_tonemapper_disabled_frame_count = 0
             phase2_sensor_camera_bloom_level_counts: dict[str, int] = {}
+            phase2_sensor_camera_shroud_input_enabled_frame_count = 0
+            phase2_sensor_camera_shroud_dirt_intensity_avg = 0.0
+            phase2_sensor_camera_shroud_fog_intensity_avg = 0.0
+            phase2_sensor_camera_shroud_occlusion_ratio_avg = 0.0
+            phase2_sensor_camera_shroud_scatter_strength_avg = 0.0
+            phase2_sensor_camera_shroud_droplet_coverage_ratio_avg = 0.0
+            phase2_sensor_camera_shroud_droplets_state_counts: dict[str, int] = {}
             phase2_sensor_camera_depth_enabled_frame_count = 0
             phase2_sensor_camera_depth_min_m_avg = 0.0
             phase2_sensor_camera_depth_max_m_avg = 0.0
@@ -1741,6 +1748,83 @@ def discover_pipeline_manifests(scan_roots: list[Path], release_prefix: str) -> 
                                 continue
                             value = max(0, _to_int(raw_value, default=0))
                             phase2_sensor_camera_bloom_level_counts[key] = value
+                    phase2_sensor_camera_shroud_input_enabled_frame_count = max(
+                        0,
+                        _to_int(
+                            phase2_sensor_quality_summary_raw.get(
+                                "camera_shroud_input_enabled_frame_count"
+                            ),
+                            default=0,
+                        ),
+                    )
+                    phase2_sensor_camera_shroud_dirt_intensity_avg = max(
+                        0.0,
+                        float(
+                            _to_float_or_none(
+                                phase2_sensor_quality_summary_raw.get(
+                                    "camera_shroud_dirt_intensity_avg"
+                                )
+                            )
+                            or 0.0
+                        ),
+                    )
+                    phase2_sensor_camera_shroud_fog_intensity_avg = max(
+                        0.0,
+                        float(
+                            _to_float_or_none(
+                                phase2_sensor_quality_summary_raw.get(
+                                    "camera_shroud_fog_intensity_avg"
+                                )
+                            )
+                            or 0.0
+                        ),
+                    )
+                    phase2_sensor_camera_shroud_occlusion_ratio_avg = max(
+                        0.0,
+                        float(
+                            _to_float_or_none(
+                                phase2_sensor_quality_summary_raw.get(
+                                    "camera_shroud_occlusion_ratio_avg"
+                                )
+                            )
+                            or 0.0
+                        ),
+                    )
+                    phase2_sensor_camera_shroud_scatter_strength_avg = max(
+                        0.0,
+                        float(
+                            _to_float_or_none(
+                                phase2_sensor_quality_summary_raw.get(
+                                    "camera_shroud_scatter_strength_avg"
+                                )
+                            )
+                            or 0.0
+                        ),
+                    )
+                    phase2_sensor_camera_shroud_droplet_coverage_ratio_avg = max(
+                        0.0,
+                        float(
+                            _to_float_or_none(
+                                phase2_sensor_quality_summary_raw.get(
+                                    "camera_shroud_droplet_coverage_ratio_avg"
+                                )
+                            )
+                            or 0.0
+                        ),
+                    )
+                    phase2_sensor_camera_shroud_droplets_state_counts_raw = (
+                        phase2_sensor_quality_summary_raw.get(
+                            "camera_shroud_droplets_state_counts",
+                            {},
+                        )
+                    )
+                    if isinstance(phase2_sensor_camera_shroud_droplets_state_counts_raw, dict):
+                        for raw_key, raw_value in phase2_sensor_camera_shroud_droplets_state_counts_raw.items():
+                            key = str(raw_key).strip().upper()
+                            if not key:
+                                continue
+                            value = max(0, _to_int(raw_value, default=0))
+                            phase2_sensor_camera_shroud_droplets_state_counts[key] = value
                     phase2_sensor_camera_depth_enabled_frame_count = max(
                         0,
                         _to_int(
@@ -2803,6 +2887,28 @@ def discover_pipeline_manifests(scan_roots: list[Path], release_prefix: str) -> 
                     "phase2_sensor_camera_bloom_level_counts": {
                         key: phase2_sensor_camera_bloom_level_counts[key]
                         for key in sorted(phase2_sensor_camera_bloom_level_counts.keys())
+                    },
+                    "phase2_sensor_camera_shroud_input_enabled_frame_count": (
+                        phase2_sensor_camera_shroud_input_enabled_frame_count
+                    ),
+                    "phase2_sensor_camera_shroud_dirt_intensity_avg": (
+                        phase2_sensor_camera_shroud_dirt_intensity_avg
+                    ),
+                    "phase2_sensor_camera_shroud_fog_intensity_avg": (
+                        phase2_sensor_camera_shroud_fog_intensity_avg
+                    ),
+                    "phase2_sensor_camera_shroud_occlusion_ratio_avg": (
+                        phase2_sensor_camera_shroud_occlusion_ratio_avg
+                    ),
+                    "phase2_sensor_camera_shroud_scatter_strength_avg": (
+                        phase2_sensor_camera_shroud_scatter_strength_avg
+                    ),
+                    "phase2_sensor_camera_shroud_droplet_coverage_ratio_avg": (
+                        phase2_sensor_camera_shroud_droplet_coverage_ratio_avg
+                    ),
+                    "phase2_sensor_camera_shroud_droplets_state_counts": {
+                        key: phase2_sensor_camera_shroud_droplets_state_counts[key]
+                        for key in sorted(phase2_sensor_camera_shroud_droplets_state_counts.keys())
                     },
                     "phase2_sensor_camera_depth_enabled_frame_count": (
                         phase2_sensor_camera_depth_enabled_frame_count
@@ -6910,6 +7016,7 @@ def summarize_phase2_sensor_fidelity(pipeline_manifests: list[dict[str, Any]]) -
         modality_counts: dict[str, int] = {}
         camera_projection_mode_counts: dict[str, int] = {}
         camera_bloom_level_counts: dict[str, int] = {}
+        camera_shroud_droplets_state_counts: dict[str, int] = {}
         camera_depth_mode_counts: dict[str, int] = {}
         camera_optical_flow_velocity_direction_counts: dict[str, int] = {}
         camera_optical_flow_y_axis_direction_counts: dict[str, int] = {}
@@ -6934,6 +7041,16 @@ def summarize_phase2_sensor_fidelity(pipeline_manifests: list[dict[str, Any]]) -
                 if not key:
                     continue
                 camera_bloom_level_counts[key] = max(0, _to_int(raw_value, default=0))
+        camera_shroud_droplets_state_counts_raw = manifest.get(
+            "phase2_sensor_camera_shroud_droplets_state_counts",
+            {},
+        )
+        if isinstance(camera_shroud_droplets_state_counts_raw, dict):
+            for raw_key, raw_value in camera_shroud_droplets_state_counts_raw.items():
+                key = str(raw_key).strip().upper()
+                if not key:
+                    continue
+                camera_shroud_droplets_state_counts[key] = max(0, _to_int(raw_value, default=0))
         camera_depth_mode_counts_raw = manifest.get("phase2_sensor_camera_depth_mode_counts", {})
         if isinstance(camera_depth_mode_counts_raw, dict):
             for raw_key, raw_value in camera_depth_mode_counts_raw.items():
@@ -7084,6 +7201,42 @@ def summarize_phase2_sensor_fidelity(pipeline_manifests: list[dict[str, Any]]) -
                 ),
                 "camera_bloom_level_counts": {
                     key: camera_bloom_level_counts[key] for key in sorted(camera_bloom_level_counts.keys())
+                },
+                "camera_shroud_input_enabled_frame_count": max(
+                    0,
+                    _to_int(
+                        manifest.get("phase2_sensor_camera_shroud_input_enabled_frame_count"),
+                        default=0,
+                    ),
+                ),
+                "camera_shroud_dirt_intensity_avg": max(
+                    0.0,
+                    float(_to_float_or_none(manifest.get("phase2_sensor_camera_shroud_dirt_intensity_avg")) or 0.0),
+                ),
+                "camera_shroud_fog_intensity_avg": max(
+                    0.0,
+                    float(_to_float_or_none(manifest.get("phase2_sensor_camera_shroud_fog_intensity_avg")) or 0.0),
+                ),
+                "camera_shroud_occlusion_ratio_avg": max(
+                    0.0,
+                    float(_to_float_or_none(manifest.get("phase2_sensor_camera_shroud_occlusion_ratio_avg")) or 0.0),
+                ),
+                "camera_shroud_scatter_strength_avg": max(
+                    0.0,
+                    float(_to_float_or_none(manifest.get("phase2_sensor_camera_shroud_scatter_strength_avg")) or 0.0),
+                ),
+                "camera_shroud_droplet_coverage_ratio_avg": max(
+                    0.0,
+                    float(
+                        _to_float_or_none(
+                            manifest.get("phase2_sensor_camera_shroud_droplet_coverage_ratio_avg")
+                        )
+                        or 0.0
+                    ),
+                ),
+                "camera_shroud_droplets_state_counts": {
+                    key: camera_shroud_droplets_state_counts[key]
+                    for key in sorted(camera_shroud_droplets_state_counts.keys())
                 },
                 "camera_depth_enabled_frame_count": max(
                     0,
@@ -7296,6 +7449,13 @@ def summarize_phase2_sensor_fidelity(pipeline_manifests: list[dict[str, Any]]) -
             "sensor_camera_chromatic_aberration_shift_px_avg": 0.0,
             "sensor_camera_tonemapper_disabled_frame_count_total": 0,
             "sensor_camera_bloom_level_counts_total": {},
+            "sensor_camera_shroud_input_enabled_frame_count_total": 0,
+            "sensor_camera_shroud_dirt_intensity_avg": 0.0,
+            "sensor_camera_shroud_fog_intensity_avg": 0.0,
+            "sensor_camera_shroud_occlusion_ratio_avg": 0.0,
+            "sensor_camera_shroud_scatter_strength_avg": 0.0,
+            "sensor_camera_shroud_droplet_coverage_ratio_avg": 0.0,
+            "sensor_camera_shroud_droplets_state_counts_total": {},
             "sensor_camera_depth_enabled_frame_count_total": 0,
             "sensor_camera_depth_min_m_avg": 0.0,
             "sensor_camera_depth_max_m_avg": 0.0,
@@ -7352,6 +7512,7 @@ def summarize_phase2_sensor_fidelity(pipeline_manifests: list[dict[str, Any]]) -
     sensor_modality_counts_total: dict[str, int] = {}
     sensor_camera_projection_mode_counts_total: dict[str, int] = {}
     sensor_camera_bloom_level_counts_total: dict[str, int] = {}
+    sensor_camera_shroud_droplets_state_counts_total: dict[str, int] = {}
     sensor_camera_depth_mode_counts_total: dict[str, int] = {}
     sensor_camera_optical_flow_velocity_direction_counts_total: dict[str, int] = {}
     sensor_camera_optical_flow_y_axis_direction_counts_total: dict[str, int] = {}
@@ -7385,6 +7546,19 @@ def summarize_phase2_sensor_fidelity(pipeline_manifests: list[dict[str, Any]]) -
                 value = max(0, _to_int(raw_value, default=0))
                 sensor_camera_bloom_level_counts_total[key] = (
                     sensor_camera_bloom_level_counts_total.get(key, 0) + value
+                )
+        camera_shroud_droplets_state_counts_row = row.get(
+            "camera_shroud_droplets_state_counts",
+            {},
+        )
+        if isinstance(camera_shroud_droplets_state_counts_row, dict):
+            for raw_key, raw_value in camera_shroud_droplets_state_counts_row.items():
+                key = str(raw_key).strip().upper()
+                if not key:
+                    continue
+                value = max(0, _to_int(raw_value, default=0))
+                sensor_camera_shroud_droplets_state_counts_total[key] = (
+                    sensor_camera_shroud_droplets_state_counts_total.get(key, 0) + value
                 )
         camera_depth_mode_counts_row = row.get("camera_depth_mode_counts", {})
         if isinstance(camera_depth_mode_counts_row, dict):
@@ -7509,6 +7683,30 @@ def summarize_phase2_sensor_fidelity(pipeline_manifests: list[dict[str, Any]]) -
     )
     camera_tonemapper_disabled_frame_count_total = sum(
         int(row.get("camera_tonemapper_disabled_frame_count", 0)) for row in checked_rows
+    )
+    camera_shroud_input_enabled_frame_count_total = sum(
+        int(row.get("camera_shroud_input_enabled_frame_count", 0)) for row in checked_rows
+    )
+    camera_shroud_dirt_intensity_weighted_total = sum(
+        float(row.get("camera_shroud_dirt_intensity_avg", 0.0)) * float(int(row.get("camera_frame_count", 0)))
+        for row in checked_rows
+    )
+    camera_shroud_fog_intensity_weighted_total = sum(
+        float(row.get("camera_shroud_fog_intensity_avg", 0.0)) * float(int(row.get("camera_frame_count", 0)))
+        for row in checked_rows
+    )
+    camera_shroud_occlusion_ratio_weighted_total = sum(
+        float(row.get("camera_shroud_occlusion_ratio_avg", 0.0)) * float(int(row.get("camera_frame_count", 0)))
+        for row in checked_rows
+    )
+    camera_shroud_scatter_strength_weighted_total = sum(
+        float(row.get("camera_shroud_scatter_strength_avg", 0.0)) * float(int(row.get("camera_frame_count", 0)))
+        for row in checked_rows
+    )
+    camera_shroud_droplet_coverage_ratio_weighted_total = sum(
+        float(row.get("camera_shroud_droplet_coverage_ratio_avg", 0.0))
+        * float(int(row.get("camera_frame_count", 0)))
+        for row in checked_rows
     )
     camera_depth_enabled_frame_count_total = sum(
         int(row.get("camera_depth_enabled_frame_count", 0)) for row in checked_rows
@@ -7797,6 +7995,38 @@ def summarize_phase2_sensor_fidelity(pipeline_manifests: list[dict[str, Any]]) -
         "sensor_camera_bloom_level_counts_total": {
             key: sensor_camera_bloom_level_counts_total[key]
             for key in sorted(sensor_camera_bloom_level_counts_total.keys())
+        },
+        "sensor_camera_shroud_input_enabled_frame_count_total": int(
+            camera_shroud_input_enabled_frame_count_total
+        ),
+        "sensor_camera_shroud_dirt_intensity_avg": (
+            float(camera_shroud_dirt_intensity_weighted_total / float(camera_frame_count_total))
+            if camera_frame_count_total > 0
+            else 0.0
+        ),
+        "sensor_camera_shroud_fog_intensity_avg": (
+            float(camera_shroud_fog_intensity_weighted_total / float(camera_frame_count_total))
+            if camera_frame_count_total > 0
+            else 0.0
+        ),
+        "sensor_camera_shroud_occlusion_ratio_avg": (
+            float(camera_shroud_occlusion_ratio_weighted_total / float(camera_frame_count_total))
+            if camera_frame_count_total > 0
+            else 0.0
+        ),
+        "sensor_camera_shroud_scatter_strength_avg": (
+            float(camera_shroud_scatter_strength_weighted_total / float(camera_frame_count_total))
+            if camera_frame_count_total > 0
+            else 0.0
+        ),
+        "sensor_camera_shroud_droplet_coverage_ratio_avg": (
+            float(camera_shroud_droplet_coverage_ratio_weighted_total / float(camera_frame_count_total))
+            if camera_frame_count_total > 0
+            else 0.0
+        ),
+        "sensor_camera_shroud_droplets_state_counts_total": {
+            key: sensor_camera_shroud_droplets_state_counts_total[key]
+            for key in sorted(sensor_camera_shroud_droplets_state_counts_total.keys())
         },
         "sensor_camera_depth_enabled_frame_count_total": int(camera_depth_enabled_frame_count_total),
         "sensor_camera_depth_min_m_avg": (
@@ -11958,6 +12188,39 @@ def main() -> int:
             )
             else "n/a"
         )
+        phase2_sensor_camera_shroud_input_enabled_frame_total = int(
+            phase2_sensor_fidelity_summary.get("sensor_camera_shroud_input_enabled_frame_count_total", 0) or 0
+        )
+        phase2_sensor_camera_shroud_dirt_intensity_avg = float(
+            phase2_sensor_fidelity_summary.get("sensor_camera_shroud_dirt_intensity_avg", 0.0) or 0.0
+        )
+        phase2_sensor_camera_shroud_fog_intensity_avg = float(
+            phase2_sensor_fidelity_summary.get("sensor_camera_shroud_fog_intensity_avg", 0.0) or 0.0
+        )
+        phase2_sensor_camera_shroud_occlusion_ratio_avg = float(
+            phase2_sensor_fidelity_summary.get("sensor_camera_shroud_occlusion_ratio_avg", 0.0) or 0.0
+        )
+        phase2_sensor_camera_shroud_scatter_strength_avg = float(
+            phase2_sensor_fidelity_summary.get("sensor_camera_shroud_scatter_strength_avg", 0.0) or 0.0
+        )
+        phase2_sensor_camera_shroud_droplet_coverage_ratio_avg = float(
+            phase2_sensor_fidelity_summary.get("sensor_camera_shroud_droplet_coverage_ratio_avg", 0.0) or 0.0
+        )
+        phase2_sensor_camera_shroud_droplets_state_counts_total = phase2_sensor_fidelity_summary.get(
+            "sensor_camera_shroud_droplets_state_counts_total",
+            {},
+        )
+        phase2_sensor_camera_shroud_droplets_state_counts_total_text = (
+            ",".join(
+                f"{key}:{phase2_sensor_camera_shroud_droplets_state_counts_total[key]}"
+                for key in sorted(phase2_sensor_camera_shroud_droplets_state_counts_total)
+            )
+            if (
+                isinstance(phase2_sensor_camera_shroud_droplets_state_counts_total, dict)
+                and phase2_sensor_camera_shroud_droplets_state_counts_total
+            )
+            else "n/a"
+        )
         phase2_sensor_camera_depth_enabled_frame_total = int(
             phase2_sensor_fidelity_summary.get("sensor_camera_depth_enabled_frame_count_total", 0) or 0
         )
@@ -12079,6 +12342,13 @@ def main() -> int:
             f"camera_bloom_halo_avg:{phase2_sensor_camera_bloom_halo_strength_avg:.3f},"
             f"camera_tonemapper_disabled_total:{phase2_sensor_camera_tonemapper_disabled_frame_total},"
             f"camera_bloom_levels:{phase2_sensor_camera_bloom_level_counts_total_text},"
+            f"camera_shroud_enabled_total:{phase2_sensor_camera_shroud_input_enabled_frame_total},"
+            f"camera_shroud_dirt_avg:{phase2_sensor_camera_shroud_dirt_intensity_avg:.3f},"
+            f"camera_shroud_fog_avg:{phase2_sensor_camera_shroud_fog_intensity_avg:.3f},"
+            f"camera_shroud_occlusion_avg:{phase2_sensor_camera_shroud_occlusion_ratio_avg:.3f},"
+            f"camera_shroud_scatter_avg:{phase2_sensor_camera_shroud_scatter_strength_avg:.3f},"
+            f"camera_shroud_coverage_avg:{phase2_sensor_camera_shroud_droplet_coverage_ratio_avg:.3f},"
+            f"camera_shroud_states:{phase2_sensor_camera_shroud_droplets_state_counts_total_text},"
             f"camera_depth_enabled_total:{phase2_sensor_camera_depth_enabled_frame_total},"
             f"camera_depth_min_avg_m:{phase2_sensor_camera_depth_min_m_avg:.3f},"
             f"camera_depth_max_avg_m:{phase2_sensor_camera_depth_max_m_avg:.3f},"

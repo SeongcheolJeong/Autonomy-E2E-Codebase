@@ -58,6 +58,13 @@ class Phase2SensorFidelitySummaryFormatterTests(unittest.TestCase):
             "sensor_radar_false_positive_count_total": 20,
             "sensor_radar_false_positive_count_avg": 20.0,
             "sensor_radar_false_positive_rate_avg": 0.005,
+            "sensor_camera_shroud_input_enabled_frame_count_total": 12,
+            "sensor_camera_shroud_dirt_intensity_avg": 0.8,
+            "sensor_camera_shroud_fog_intensity_avg": 0.6,
+            "sensor_camera_shroud_occlusion_ratio_avg": 0.32,
+            "sensor_camera_shroud_scatter_strength_avg": 0.41,
+            "sensor_camera_shroud_droplet_coverage_ratio_avg": 0.27,
+            "sensor_camera_shroud_droplets_state_counts_total": {"DYNAMIC": 12},
             "sensor_camera_depth_enabled_frame_count_total": 12,
             "sensor_camera_depth_min_m_avg": 0.2,
             "sensor_camera_depth_max_m_avg": 75.0,
@@ -104,6 +111,7 @@ class Phase2SensorFidelitySummaryFormatterTests(unittest.TestCase):
             spaced=False,
         )
         self.assertIn("fidelity_score_max=0.880(BATCH_MAIN)", compact)
+        self.assertIn("camera_shroud_states=DYNAMIC:12", compact)
         self.assertIn("rig_sweep_best_camera_visibility_max=0.920(BATCH_SWEEP)", compact)
         self.assertIn("rig_sweep_best_radar_fp_rate_min=0.000910(BATCH_SWEEP)", compact)
         self.assertNotIn("0.880 (BATCH_MAIN)", compact)
@@ -114,6 +122,7 @@ class Phase2SensorFidelitySummaryFormatterTests(unittest.TestCase):
             spaced=True,
         )
         self.assertIn("fidelity_score_max=0.880 (BATCH_MAIN)", spaced)
+        self.assertIn("camera_shroud_states=DYNAMIC:12", spaced)
         self.assertIn("rig_sweep_best_camera_visibility_max=0.920 (BATCH_SWEEP)", spaced)
         self.assertIn("rig_sweep_best_radar_fp_rate_min=0.000910 (BATCH_SWEEP)", spaced)
         self.assertIn(", rig_sweep_evaluated=1, ", spaced)
