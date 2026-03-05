@@ -1953,6 +1953,18 @@ class SensorSimBridgeTests(unittest.TestCase):
                                 "sensor_type": "camera",
                                 "image_width_px": 1920,
                                 "image_height_px": 1080,
+                                "standard_params": {
+                                    "shroud_params": {
+                                        "dirt": {"intensity": 0.8},
+                                        "fog": {"intensity": 0.6},
+                                        "droplets": {
+                                            "state": "DYNAMIC",
+                                            "density": 24.0,
+                                            "vibration": {"frequency": 18.0, "amplitude": 1.5},
+                                            "seed": 7,
+                                        },
+                                    }
+                                },
                                 "lens_params": {
                                     "chromatic_aberration": 1.8,
                                     "lens_flare": 0.6,
@@ -2051,6 +2063,25 @@ class SensorSimBridgeTests(unittest.TestCase):
                 float(camera_postprocess.get("color_filter_demosaic_artifact_scale", 0.0) or 0.0),
                 0.0,
             )
+            self.assertTrue(bool(camera_postprocess.get("shroud_input_present")))
+            self.assertAlmostEqual(float(camera_postprocess.get("shroud_dirt_intensity", 0.0) or 0.0), 0.8, places=6)
+            self.assertAlmostEqual(float(camera_postprocess.get("shroud_fog_intensity", 0.0) or 0.0), 0.6, places=6)
+            self.assertEqual(str(camera_postprocess.get("shroud_droplets_state", "")), "DYNAMIC")
+            self.assertAlmostEqual(float(camera_postprocess.get("shroud_droplets_density", 0.0) or 0.0), 24.0, places=6)
+            self.assertAlmostEqual(
+                float(camera_postprocess.get("shroud_droplets_vibration_frequency_hz", 0.0) or 0.0),
+                18.0,
+                places=6,
+            )
+            self.assertAlmostEqual(
+                float(camera_postprocess.get("shroud_droplets_vibration_amplitude_mm", 0.0) or 0.0),
+                1.5,
+                places=6,
+            )
+            self.assertEqual(int(camera_postprocess.get("shroud_droplets_seed", 0) or 0), 7)
+            self.assertGreater(float(camera_postprocess.get("shroud_occlusion_ratio", 0.0) or 0.0), 0.0)
+            self.assertGreater(float(camera_postprocess.get("shroud_scatter_strength", 0.0) or 0.0), 0.0)
+            self.assertGreater(float(camera_postprocess.get("shroud_droplet_coverage_ratio", 0.0) or 0.0), 0.0)
             self.assertTrue(bool(camera_postprocess.get("piecewise_linear_mapping_present")))
             self.assertEqual(int(camera_postprocess.get("piecewise_linear_mapping_point_count", 0) or 0), 4)
             self.assertGreater(
@@ -2133,6 +2164,33 @@ class SensorSimBridgeTests(unittest.TestCase):
             self.assertGreater(
                 float(sensor_quality_summary.get("camera_saturation_effective_scale_avg", 0.0) or 0.0),
                 1.0,
+            )
+            self.assertEqual(int(sensor_quality_summary.get("camera_shroud_input_enabled_frame_count", 0) or 0), 1)
+            self.assertAlmostEqual(
+                float(sensor_quality_summary.get("camera_shroud_dirt_intensity_avg", 0.0) or 0.0),
+                0.8,
+                places=6,
+            )
+            self.assertAlmostEqual(
+                float(sensor_quality_summary.get("camera_shroud_fog_intensity_avg", 0.0) or 0.0),
+                0.6,
+                places=6,
+            )
+            self.assertGreater(
+                float(sensor_quality_summary.get("camera_shroud_occlusion_ratio_avg", 0.0) or 0.0),
+                0.0,
+            )
+            self.assertGreater(
+                float(sensor_quality_summary.get("camera_shroud_scatter_strength_avg", 0.0) or 0.0),
+                0.0,
+            )
+            self.assertGreater(
+                float(sensor_quality_summary.get("camera_shroud_droplet_coverage_ratio_avg", 0.0) or 0.0),
+                0.0,
+            )
+            self.assertEqual(
+                sensor_quality_summary.get("camera_shroud_droplets_state_counts"),
+                {"DYNAMIC": 1},
             )
 
     def test_camera_color_filter_array_matrix_inputs_are_reflected_in_payload(self) -> None:
@@ -37463,6 +37521,13 @@ class RunE2EPipelineTests(unittest.TestCase):
             )
             self.assertIn("camera_color_filter_array_matrix_artifact_risk_avg", phase2_sensor_quality_summary)
             self.assertIn("camera_color_filter_array_matrix_clamp_hit_ratio_avg", phase2_sensor_quality_summary)
+            self.assertIn("camera_shroud_input_enabled_frame_count", phase2_sensor_quality_summary)
+            self.assertIn("camera_shroud_dirt_intensity_avg", phase2_sensor_quality_summary)
+            self.assertIn("camera_shroud_fog_intensity_avg", phase2_sensor_quality_summary)
+            self.assertIn("camera_shroud_occlusion_ratio_avg", phase2_sensor_quality_summary)
+            self.assertIn("camera_shroud_scatter_strength_avg", phase2_sensor_quality_summary)
+            self.assertIn("camera_shroud_droplet_coverage_ratio_avg", phase2_sensor_quality_summary)
+            self.assertIn("camera_shroud_droplets_state_counts", phase2_sensor_quality_summary)
             self.assertIn("camera_bloom_level_counts", phase2_sensor_quality_summary)
             self.assertIn("camera_depth_enabled_frame_count", phase2_sensor_quality_summary)
             self.assertIn("camera_depth_mode_counts", phase2_sensor_quality_summary)

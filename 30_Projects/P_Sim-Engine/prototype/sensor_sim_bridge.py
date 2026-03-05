@@ -667,6 +667,13 @@ def _resolve_demosaic_mode(raw: Any) -> str:
     return "IDEAL"
 
 
+def _resolve_droplets_state(raw: Any) -> str:
+    value = str(raw if raw is not None else "").strip().upper()
+    if value in {"DISABLED", "STATIC", "DYNAMIC"}:
+        return value
+    return "DISABLED"
+
+
 def _resolve_cfa_channel(raw: Any, *, default: str) -> str:
     value = str(raw if raw is not None else "").strip().upper()
     if value in {"R", "G", "B", "C", "M", "Y", "W"}:
@@ -879,9 +886,16 @@ def _resolve_camera_postprocess_config(sensor_config: dict[str, Any]) -> dict[st
     if not system_params:
         system_params = _as_dict(standard_params.get("system_params"))
     fidelity = _as_dict(sensor_config.get("fidelity"))
+    shroud_params = _as_dict(sensor_config.get("shroud_params"))
+    if not shroud_params:
+        shroud_params = _as_dict(standard_params.get("shroud_params"))
 
     vignetting = _as_dict(lens_params.get("vignetting"))
     fidelity_bloom = _as_dict(fidelity.get("bloom"))
+    dirt_params = _as_dict(shroud_params.get("dirt"))
+    fog_shroud_params = _as_dict(shroud_params.get("fog"))
+    droplets_params = _as_dict(shroud_params.get("droplets"))
+    droplets_vibration = _as_dict(droplets_params.get("vibration"))
     auto_black_level_offset = _as_dict(system_params.get("auto_black_level_offset"))
     color_filter_array = _as_dict(sensor_params.get("color_filter_array"))
     if not color_filter_array:
@@ -966,6 +980,14 @@ def _resolve_camera_postprocess_config(sensor_config: dict[str, Any]) -> dict[st
             "transmittance",
         )
     ) or any(
+        key in shroud_params
+        for key in (
+            "dirt",
+            "fog",
+            "droplets",
+            "rain",
+        )
+    ) or any(
         key in color_filter_array_matrix
         for key in (
             "white_balance",
@@ -980,7 +1002,13 @@ def _resolve_camera_postprocess_config(sensor_config: dict[str, Any]) -> dict[st
             "disable_tonemapper",
         )
     ) or any(
-        key in sensor_params for key in ("bloom", "demosaic", "color_filter_array", "color_filter_array_matrix")
+        key in sensor_params
+        for key in (
+            "bloom",
+            "demosaic",
+            "color_filter_array",
+            "color_filter_array_matrix",
+        )
     ) or any(
         key in sensor_config
         for key in (
@@ -1004,6 +1032,14 @@ def _resolve_camera_postprocess_config(sensor_config: dict[str, Any]) -> dict[st
             "color_filter_array_matrix_layout",
             "color_filter_array_matrix_transmittance",
             "color_filter_array_matrix_clamping",
+            "shroud_params",
+            "shroud_dirt_intensity",
+            "shroud_fog_intensity",
+            "shroud_droplets_state",
+            "shroud_droplets_density",
+            "shroud_droplets_vibration_frequency_hz",
+            "shroud_droplets_vibration_amplitude_mm",
+            "shroud_droplets_seed",
             "color_space",
             "data_type",
             "piecewise_linear_mapping",
@@ -1147,6 +1183,58 @@ def _resolve_camera_postprocess_config(sensor_config: dict[str, Any]) -> dict[st
         minimum=0.0,
         maximum=4.0,
     )
+    shroud_dirt_intensity = _clamp_float(
+        _to_float(
+            sensor_config.get("shroud_dirt_intensity", dirt_params.get("intensity", 0.0)),
+            default=0.0,
+        ),
+        minimum=0.0,
+        maximum=4.0,
+    )
+    shroud_fog_intensity = _clamp_float(
+        _to_float(
+            sensor_config.get("shroud_fog_intensity", fog_shroud_params.get("intensity", 0.0)),
+            default=0.0,
+        ),
+        minimum=0.0,
+        maximum=4.0,
+    )
+    shroud_droplets_state = _resolve_droplets_state(
+        sensor_config.get("shroud_droplets_state", droplets_params.get("state", "DISABLED"))
+    )
+    shroud_droplets_density = _clamp_float(
+        _to_float(
+            sensor_config.get("shroud_droplets_density", droplets_params.get("density", 0.0)),
+            default=0.0,
+        ),
+        minimum=0.0,
+        maximum=200.0,
+    )
+    shroud_droplets_vibration_frequency_hz = _clamp_float(
+        _to_float(
+            sensor_config.get(
+                "shroud_droplets_vibration_frequency_hz",
+                droplets_vibration.get("frequency", 0.0),
+            ),
+            default=0.0,
+        ),
+        minimum=0.0,
+        maximum=200.0,
+    )
+    shroud_droplets_vibration_amplitude_mm = _clamp_float(
+        _to_float(
+            sensor_config.get(
+                "shroud_droplets_vibration_amplitude_mm",
+                droplets_vibration.get("amplitude", 0.0),
+            ),
+            default=0.0,
+        ),
+        minimum=0.0,
+        maximum=20.0,
+    )
+    shroud_droplets_seed = _to_non_negative_int(
+        sensor_config.get("shroud_droplets_seed", droplets_params.get("seed", 0))
+    )
     bloom_disable = _to_bool(
         sensor_config.get("bloom_disable", fidelity_bloom.get("disable", False)),
         default=False,
@@ -1174,6 +1262,14 @@ def _resolve_camera_postprocess_config(sensor_config: dict[str, Any]) -> dict[st
         "auto_black_level_stddev_to_subtract": float(auto_black_level_stddev_to_subtract),
         "black_level_offset": black_level_offset,
         "saturation": saturation,
+        "shroud_input_present": bool(shroud_params),
+        "shroud_dirt_intensity": float(shroud_dirt_intensity),
+        "shroud_fog_intensity": float(shroud_fog_intensity),
+        "shroud_droplets_state": shroud_droplets_state,
+        "shroud_droplets_density": float(shroud_droplets_density),
+        "shroud_droplets_vibration_frequency_hz": float(shroud_droplets_vibration_frequency_hz),
+        "shroud_droplets_vibration_amplitude_mm": float(shroud_droplets_vibration_amplitude_mm),
+        "shroud_droplets_seed": int(shroud_droplets_seed),
         "color_filter_array_input_present": bool(color_filter_array),
         "demosaic_mode": demosaic_mode,
         "color_filter_layout": color_filter_layout,
@@ -1222,6 +1318,18 @@ def _compute_camera_postprocess(
     saturation_g = _to_non_negative_float(saturation.get("g", 1.0))
     saturation_b = _to_non_negative_float(saturation.get("b", 1.0))
     saturation_a = _to_non_negative_float(saturation.get("a", 1.0))
+    shroud_input_present = bool(config.get("shroud_input_present", False))
+    shroud_dirt_intensity = _to_non_negative_float(config.get("shroud_dirt_intensity", 0.0))
+    shroud_fog_intensity = _to_non_negative_float(config.get("shroud_fog_intensity", 0.0))
+    shroud_droplets_state = str(config.get("shroud_droplets_state", "DISABLED")).strip().upper()
+    shroud_droplets_density = _to_non_negative_float(config.get("shroud_droplets_density", 0.0))
+    shroud_droplets_vibration_frequency_hz = _to_non_negative_float(
+        config.get("shroud_droplets_vibration_frequency_hz", 0.0)
+    )
+    shroud_droplets_vibration_amplitude_mm = _to_non_negative_float(
+        config.get("shroud_droplets_vibration_amplitude_mm", 0.0)
+    )
+    shroud_droplets_seed = _to_non_negative_int(config.get("shroud_droplets_seed", 0))
     color_filter_array_input_present = bool(config.get("color_filter_array_input_present", False))
     demosaic_mode = str(config.get("demosaic_mode", "IDEAL"))
     color_filter_layout = _as_dict(config.get("color_filter_layout"))
@@ -1280,6 +1388,67 @@ def _compute_camera_postprocess(
         maximum=4.0,
     )
     saturation_deviation = abs(saturation_effective_scale - 1.0)
+    shroud_dirt_norm = _clamp_float(shroud_dirt_intensity / 2.0, minimum=0.0, maximum=2.0)
+    shroud_fog_norm = _clamp_float(shroud_fog_intensity / 2.0, minimum=0.0, maximum=2.0)
+    shroud_droplets_state_scale = 0.0
+    if shroud_droplets_state == "STATIC":
+        shroud_droplets_state_scale = 0.7
+    elif shroud_droplets_state == "DYNAMIC":
+        shroud_droplets_state_scale = 1.0
+    shroud_seed_phase = 0.0
+    if shroud_droplets_seed > 0:
+        shroud_seed_phase = float(
+            ((shroud_droplets_seed * 1103515245 + 12345) & 0x7FFFFFFF) / float(0x7FFFFFFF)
+        )
+    shroud_droplets_density_norm = _clamp_float(shroud_droplets_density / 30.0, minimum=0.0, maximum=3.0)
+    shroud_droplet_coverage_ratio = _clamp_float(
+        shroud_droplets_density_norm
+        * shroud_droplets_state_scale
+        * (0.65 + (0.35 * shroud_seed_phase)),
+        minimum=0.0,
+        maximum=2.0,
+    )
+    shroud_droplets_vibration_norm = _clamp_float(
+        (shroud_droplets_vibration_frequency_hz / 20.0) * (shroud_droplets_vibration_amplitude_mm / 3.0),
+        minimum=0.0,
+        maximum=2.0,
+    )
+    shroud_dynamic_blur_scale = _clamp_float(
+        (
+            (0.25 if shroud_droplets_state == "DYNAMIC" else 0.12 if shroud_droplets_state == "STATIC" else 0.0)
+            * shroud_droplets_vibration_norm
+            * shroud_droplet_coverage_ratio
+        ),
+        minimum=0.0,
+        maximum=1.0,
+    )
+    shroud_occlusion_ratio = _clamp_float(
+        (0.18 * shroud_dirt_norm) + (0.16 * shroud_fog_norm) + (0.22 * shroud_droplet_coverage_ratio),
+        minimum=0.0,
+        maximum=0.95,
+    )
+    shroud_scatter_strength = _clamp_float(
+        (0.14 * shroud_dirt_norm)
+        + (0.28 * shroud_fog_norm)
+        + (0.24 * shroud_droplet_coverage_ratio)
+        + (0.1 * shroud_droplets_vibration_norm),
+        minimum=0.0,
+        maximum=2.0,
+    )
+    if not shroud_input_present:
+        if (
+            shroud_dirt_intensity > 0.0
+            or shroud_fog_intensity > 0.0
+            or shroud_droplets_density > 0.0
+            or shroud_droplets_state != "DISABLED"
+        ):
+            shroud_input_present = True
+        else:
+            shroud_occlusion_ratio = 0.0
+            shroud_scatter_strength = 0.0
+            shroud_droplet_coverage_ratio = 0.0
+            shroud_dynamic_blur_scale = 0.0
+            shroud_droplets_vibration_norm = 0.0
     cfa_layout = _resolve_cfa_layout(color_filter_layout)
     cfa_transmittance = _resolve_cfa_transmittance(color_filter_transmittance)
     cfa_layout_values = [str(cfa_layout.get(key, "W")) for key in ("p1", "p2", "p3", "p4")]
@@ -1556,6 +1725,19 @@ def _compute_camera_postprocess(
         minimum=0.5,
         maximum=1.05,
     )
+    postprocess_visibility_scale = _clamp_float(
+        postprocess_visibility_scale
+        * _clamp_float(
+            1.0
+            - (0.38 * shroud_occlusion_ratio)
+            - (0.12 * shroud_scatter_strength)
+            - (0.08 * shroud_dynamic_blur_scale),
+            minimum=0.35,
+            maximum=1.0,
+        ),
+        minimum=0.2,
+        maximum=1.05,
+    )
     camera_noise_stddev_px_delta = _clamp_float(
         max(0.0, gain_linear - 1.0) * 0.35
         + (abs(gamma - 0.4545) * 0.12)
@@ -1568,6 +1750,9 @@ def _compute_camera_postprocess(
         + (0.18 * (1.0 - cfa_effective_color_reconstruction_score))
         + (0.08 * cfa_effective_demosaic_artifact_scale)
         + cfa_matrix_noise_delta
+        + (0.25 * shroud_occlusion_ratio)
+        + (0.35 * shroud_scatter_strength)
+        + (0.15 * shroud_dynamic_blur_scale)
         + (0.05 * piecewise_mapping_contrast_deviation),
         minimum=0.0,
         maximum=2.0,
@@ -1581,6 +1766,8 @@ def _compute_camera_postprocess(
         + (0.35 * (cfa_effective_luma_throughput - 0.5))
         - (0.14 * cfa_effective_demosaic_artifact_scale)
         + cfa_matrix_dynamic_range_delta
+        - (0.95 * shroud_occlusion_ratio)
+        - (0.32 * shroud_scatter_strength)
         + (0.45 * (piecewise_mapping_dynamic_range_scale - 1.0))
         + data_type_dynamic_range_delta
         + (0.2 if disable_tonemapper else 0.0),
@@ -1592,6 +1779,11 @@ def _compute_camera_postprocess(
         * (0.95 if disable_tonemapper else 1.0)
         * _clamp_float(1.0 + (0.2 * white_balance_offset_norm), minimum=0.7, maximum=1.3)
         * _clamp_float(1.0 + (0.25 * effective_black_level_lift), minimum=0.7, maximum=1.35),
+        minimum=0.05,
+        maximum=8.0,
+    )
+    effective_luminance_gain = _clamp_float(
+        effective_luminance_gain * _clamp_float(1.0 - (0.22 * shroud_occlusion_ratio), minimum=0.5, maximum=1.0),
         minimum=0.05,
         maximum=8.0,
     )
@@ -1618,6 +1810,19 @@ def _compute_camera_postprocess(
             "b": float(saturation_b),
             "a": float(saturation_a),
         },
+        "shroud_input_present": bool(shroud_input_present),
+        "shroud_dirt_intensity": float(shroud_dirt_intensity),
+        "shroud_fog_intensity": float(shroud_fog_intensity),
+        "shroud_droplets_state": shroud_droplets_state,
+        "shroud_droplets_density": float(shroud_droplets_density),
+        "shroud_droplets_vibration_frequency_hz": float(shroud_droplets_vibration_frequency_hz),
+        "shroud_droplets_vibration_amplitude_mm": float(shroud_droplets_vibration_amplitude_mm),
+        "shroud_droplets_seed": int(shroud_droplets_seed),
+        "shroud_droplet_coverage_ratio": float(shroud_droplet_coverage_ratio),
+        "shroud_droplets_vibration_norm": float(shroud_droplets_vibration_norm),
+        "shroud_dynamic_blur_scale": float(shroud_dynamic_blur_scale),
+        "shroud_occlusion_ratio": float(shroud_occlusion_ratio),
+        "shroud_scatter_strength": float(shroud_scatter_strength),
         "color_filter_array_input_present": bool(color_filter_array_input_present),
         "demosaic_mode": demosaic_mode,
         "color_filter_layout": {
@@ -2607,6 +2812,13 @@ def _summarize_sensor_quality(frames: list[dict[str, Any]]) -> dict[str, Any]:
     camera_color_filter_array_matrix_color_reconstruction_score_total = 0.0
     camera_color_filter_array_matrix_artifact_risk_total = 0.0
     camera_color_filter_array_matrix_clamp_hit_ratio_total = 0.0
+    camera_shroud_input_enabled_frame_count = 0
+    camera_shroud_dirt_intensity_total = 0.0
+    camera_shroud_fog_intensity_total = 0.0
+    camera_shroud_occlusion_ratio_total = 0.0
+    camera_shroud_scatter_strength_total = 0.0
+    camera_shroud_droplet_coverage_ratio_total = 0.0
+    camera_shroud_droplets_state_counts: dict[str, int] = {}
     camera_tonemapper_disabled_frame_count = 0
     camera_bloom_level_counts: dict[str, int] = {}
     camera_depth_enabled_frame_count = 0
@@ -2771,6 +2983,28 @@ def _summarize_sensor_quality(frames: list[dict[str, Any]]) -> dict[str, Any]:
             camera_color_filter_array_matrix_clamp_hit_ratio_total += _to_non_negative_float(
                 camera_postprocess.get("color_filter_array_matrix_clamp_hit_ratio", 0.0)
             )
+            if bool(camera_postprocess.get("shroud_input_present", False)):
+                camera_shroud_input_enabled_frame_count += 1
+            camera_shroud_dirt_intensity_total += _to_non_negative_float(
+                camera_postprocess.get("shroud_dirt_intensity", 0.0)
+            )
+            camera_shroud_fog_intensity_total += _to_non_negative_float(
+                camera_postprocess.get("shroud_fog_intensity", 0.0)
+            )
+            camera_shroud_occlusion_ratio_total += _to_non_negative_float(
+                camera_postprocess.get("shroud_occlusion_ratio", 0.0)
+            )
+            camera_shroud_scatter_strength_total += _to_non_negative_float(
+                camera_postprocess.get("shroud_scatter_strength", 0.0)
+            )
+            camera_shroud_droplet_coverage_ratio_total += _to_non_negative_float(
+                camera_postprocess.get("shroud_droplet_coverage_ratio", 0.0)
+            )
+            shroud_droplets_state = str(camera_postprocess.get("shroud_droplets_state", "")).strip().upper()
+            if shroud_droplets_state:
+                camera_shroud_droplets_state_counts[shroud_droplets_state] = (
+                    camera_shroud_droplets_state_counts.get(shroud_droplets_state, 0) + 1
+                )
             if bool(camera_postprocess.get("disable_tonemapper", False)):
                 camera_tonemapper_disabled_frame_count += 1
             bloom_level = str(camera_postprocess.get("bloom_level", "")).strip().upper()
@@ -2984,6 +3218,31 @@ def _summarize_sensor_quality(frames: list[dict[str, Any]]) -> dict[str, Any]:
         if camera_frame_count > 0
         else 0.0
     )
+    camera_shroud_dirt_intensity_avg = (
+        camera_shroud_dirt_intensity_total / float(camera_frame_count)
+        if camera_frame_count > 0
+        else 0.0
+    )
+    camera_shroud_fog_intensity_avg = (
+        camera_shroud_fog_intensity_total / float(camera_frame_count)
+        if camera_frame_count > 0
+        else 0.0
+    )
+    camera_shroud_occlusion_ratio_avg = (
+        camera_shroud_occlusion_ratio_total / float(camera_frame_count)
+        if camera_frame_count > 0
+        else 0.0
+    )
+    camera_shroud_scatter_strength_avg = (
+        camera_shroud_scatter_strength_total / float(camera_frame_count)
+        if camera_frame_count > 0
+        else 0.0
+    )
+    camera_shroud_droplet_coverage_ratio_avg = (
+        camera_shroud_droplet_coverage_ratio_total / float(camera_frame_count)
+        if camera_frame_count > 0
+        else 0.0
+    )
     camera_depth_min_m_avg = (
         camera_depth_min_m_total / float(camera_frame_count)
         if camera_frame_count > 0
@@ -3129,6 +3388,16 @@ def _summarize_sensor_quality(frames: list[dict[str, Any]]) -> dict[str, Any]:
         "camera_color_filter_array_matrix_clamp_hit_ratio_avg": float(
             camera_color_filter_array_matrix_clamp_hit_ratio_avg
         ),
+        "camera_shroud_input_enabled_frame_count": int(camera_shroud_input_enabled_frame_count),
+        "camera_shroud_dirt_intensity_avg": float(camera_shroud_dirt_intensity_avg),
+        "camera_shroud_fog_intensity_avg": float(camera_shroud_fog_intensity_avg),
+        "camera_shroud_occlusion_ratio_avg": float(camera_shroud_occlusion_ratio_avg),
+        "camera_shroud_scatter_strength_avg": float(camera_shroud_scatter_strength_avg),
+        "camera_shroud_droplet_coverage_ratio_avg": float(camera_shroud_droplet_coverage_ratio_avg),
+        "camera_shroud_droplets_state_counts": {
+            key: camera_shroud_droplets_state_counts[key]
+            for key in sorted(camera_shroud_droplets_state_counts.keys())
+        },
         "camera_tonemapper_disabled_frame_count": int(camera_tonemapper_disabled_frame_count),
         "camera_bloom_level_counts": {
             key: camera_bloom_level_counts[key] for key in sorted(camera_bloom_level_counts.keys())

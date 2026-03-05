@@ -1,0 +1,42 @@
+{
+  "rig_schema_version": "sensor_rig_v0",
+  "sensors": [
+    {
+      "sensor_id": "camera_front_shroud",
+      "sensor_type": "camera",
+      "image_width_px": 1920,
+      "image_height_px": 1080,
+      "standard_params": {
+        "shroud_params": {
+          "dirt": {
+            "intensity": 0.85
+          },
+          "fog": {
+            "intensity": 0.65
+          },
+          "droplets": {
+            "state": "DYNAMIC",
+            "density": 26.0,
+            "vibration": {
+              "frequency": 16.0,
+              "amplitude": 1.2
+            },
+            "seed": 19
+          }
+        }
+      },
+      "system_params": {
+        "gain": 9.0,
+        "gamma": 0.58,
+        "white_balance": 5100.0
+      },
+      "fidelity": {
+        "bloom": {
+          "disable": false,
+          "level": "LOW"
+        },
+        "disable_tonemapper": false
+      }
+    }
+  ]
+}

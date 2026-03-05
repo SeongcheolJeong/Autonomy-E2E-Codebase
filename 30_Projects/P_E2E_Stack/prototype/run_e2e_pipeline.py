@@ -2079,6 +2079,13 @@ def run_phase2_hooks(args: argparse.Namespace) -> dict[str, Any]:
         "camera_color_filter_array_matrix_color_reconstruction_score_avg": 0.0,
         "camera_color_filter_array_matrix_artifact_risk_avg": 0.0,
         "camera_color_filter_array_matrix_clamp_hit_ratio_avg": 0.0,
+        "camera_shroud_input_enabled_frame_count": 0,
+        "camera_shroud_dirt_intensity_avg": 0.0,
+        "camera_shroud_fog_intensity_avg": 0.0,
+        "camera_shroud_occlusion_ratio_avg": 0.0,
+        "camera_shroud_scatter_strength_avg": 0.0,
+        "camera_shroud_droplet_coverage_ratio_avg": 0.0,
+        "camera_shroud_droplets_state_counts": {},
         "camera_tonemapper_disabled_frame_count": 0,
         "camera_bloom_level_counts": {},
         "camera_depth_enabled_frame_count": 0,
@@ -2239,6 +2246,27 @@ def run_phase2_hooks(args: argparse.Namespace) -> dict[str, Any]:
             "camera_color_filter_array_matrix_clamp_hit_ratio_avg": _to_non_negative_float(
                 sensor_quality_summary_raw.get("camera_color_filter_array_matrix_clamp_hit_ratio_avg", 0.0)
             ),
+            "camera_shroud_input_enabled_frame_count": _to_non_negative_int(
+                sensor_quality_summary_raw.get("camera_shroud_input_enabled_frame_count", 0)
+            ),
+            "camera_shroud_dirt_intensity_avg": _to_non_negative_float(
+                sensor_quality_summary_raw.get("camera_shroud_dirt_intensity_avg", 0.0)
+            ),
+            "camera_shroud_fog_intensity_avg": _to_non_negative_float(
+                sensor_quality_summary_raw.get("camera_shroud_fog_intensity_avg", 0.0)
+            ),
+            "camera_shroud_occlusion_ratio_avg": _to_non_negative_float(
+                sensor_quality_summary_raw.get("camera_shroud_occlusion_ratio_avg", 0.0)
+            ),
+            "camera_shroud_scatter_strength_avg": _to_non_negative_float(
+                sensor_quality_summary_raw.get("camera_shroud_scatter_strength_avg", 0.0)
+            ),
+            "camera_shroud_droplet_coverage_ratio_avg": _to_non_negative_float(
+                sensor_quality_summary_raw.get("camera_shroud_droplet_coverage_ratio_avg", 0.0)
+            ),
+            "camera_shroud_droplets_state_counts": _normalize_uppercase_mode_counts(
+                sensor_quality_summary_raw.get("camera_shroud_droplets_state_counts", {})
+            ),
             "camera_tonemapper_disabled_frame_count": _to_non_negative_int(
                 sensor_quality_summary_raw.get("camera_tonemapper_disabled_frame_count", 0)
             ),
@@ -2355,6 +2383,13 @@ def run_phase2_hooks(args: argparse.Namespace) -> dict[str, Any]:
         camera_color_filter_array_matrix_color_reconstruction_score_total = 0.0
         camera_color_filter_array_matrix_artifact_risk_total = 0.0
         camera_color_filter_array_matrix_clamp_hit_ratio_total = 0.0
+        camera_shroud_input_enabled_frame_count = 0
+        camera_shroud_dirt_intensity_total = 0.0
+        camera_shroud_fog_intensity_total = 0.0
+        camera_shroud_occlusion_ratio_total = 0.0
+        camera_shroud_scatter_strength_total = 0.0
+        camera_shroud_droplet_coverage_ratio_total = 0.0
+        camera_shroud_droplets_state_counts: dict[str, int] = {}
         camera_tonemapper_disabled_frame_count = 0
         camera_bloom_level_counts: dict[str, int] = {}
         camera_depth_enabled_frame_count = 0
@@ -2527,6 +2562,28 @@ def run_phase2_hooks(args: argparse.Namespace) -> dict[str, Any]:
                 camera_color_filter_array_matrix_clamp_hit_ratio_total += _to_non_negative_float(
                     camera_postprocess_payload.get("color_filter_array_matrix_clamp_hit_ratio", 0.0)
                 )
+                if bool(camera_postprocess_payload.get("shroud_input_present", False)):
+                    camera_shroud_input_enabled_frame_count += 1
+                camera_shroud_dirt_intensity_total += _to_non_negative_float(
+                    camera_postprocess_payload.get("shroud_dirt_intensity", 0.0)
+                )
+                camera_shroud_fog_intensity_total += _to_non_negative_float(
+                    camera_postprocess_payload.get("shroud_fog_intensity", 0.0)
+                )
+                camera_shroud_occlusion_ratio_total += _to_non_negative_float(
+                    camera_postprocess_payload.get("shroud_occlusion_ratio", 0.0)
+                )
+                camera_shroud_scatter_strength_total += _to_non_negative_float(
+                    camera_postprocess_payload.get("shroud_scatter_strength", 0.0)
+                )
+                camera_shroud_droplet_coverage_ratio_total += _to_non_negative_float(
+                    camera_postprocess_payload.get("shroud_droplet_coverage_ratio", 0.0)
+                )
+                shroud_droplets_state = str(camera_postprocess_payload.get("shroud_droplets_state", "")).strip().upper()
+                if shroud_droplets_state:
+                    camera_shroud_droplets_state_counts[shroud_droplets_state] = (
+                        camera_shroud_droplets_state_counts.get(shroud_droplets_state, 0) + 1
+                    )
                 if bool(camera_postprocess_payload.get("disable_tonemapper", False)):
                     camera_tonemapper_disabled_frame_count += 1
                 bloom_level = str(camera_postprocess_payload.get("bloom_level", "")).strip().upper()
@@ -2787,6 +2844,36 @@ def run_phase2_hooks(args: argparse.Namespace) -> dict[str, Any]:
                 if camera_frame_count > 0
                 else 0.0
             ),
+            "camera_shroud_input_enabled_frame_count": int(camera_shroud_input_enabled_frame_count),
+            "camera_shroud_dirt_intensity_avg": (
+                float(camera_shroud_dirt_intensity_total / float(camera_frame_count))
+                if camera_frame_count > 0
+                else 0.0
+            ),
+            "camera_shroud_fog_intensity_avg": (
+                float(camera_shroud_fog_intensity_total / float(camera_frame_count))
+                if camera_frame_count > 0
+                else 0.0
+            ),
+            "camera_shroud_occlusion_ratio_avg": (
+                float(camera_shroud_occlusion_ratio_total / float(camera_frame_count))
+                if camera_frame_count > 0
+                else 0.0
+            ),
+            "camera_shroud_scatter_strength_avg": (
+                float(camera_shroud_scatter_strength_total / float(camera_frame_count))
+                if camera_frame_count > 0
+                else 0.0
+            ),
+            "camera_shroud_droplet_coverage_ratio_avg": (
+                float(camera_shroud_droplet_coverage_ratio_total / float(camera_frame_count))
+                if camera_frame_count > 0
+                else 0.0
+            ),
+            "camera_shroud_droplets_state_counts": {
+                key: camera_shroud_droplets_state_counts[key]
+                for key in sorted(camera_shroud_droplets_state_counts.keys())
+            },
             "camera_tonemapper_disabled_frame_count": int(camera_tonemapper_disabled_frame_count),
             "camera_bloom_level_counts": {
                 key: camera_bloom_level_counts[key] for key in sorted(camera_bloom_level_counts.keys())

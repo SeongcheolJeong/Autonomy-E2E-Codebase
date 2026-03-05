@@ -189,6 +189,12 @@ Camera postprocess/system-lens effects inputs (Applied docs aligned subset):
 - `sensor_params.color_filter_array_matrix.layout.p1..p4.r|g|b|bias`
 - `sensor_params.color_filter_array_matrix.transmittance.p1|p2|p3|p4`
 - `sensor_params.color_filter_array_matrix.clamping.min|max`
+- `standard_params.shroud_params.dirt.intensity`
+- `standard_params.shroud_params.fog.intensity`
+- `standard_params.shroud_params.droplets.state` (`DISABLED|STATIC|DYNAMIC`)
+- `standard_params.shroud_params.droplets.density`
+- `standard_params.shroud_params.droplets.vibration.frequency|amplitude`
+- `standard_params.shroud_params.droplets.seed`
 - `fidelity.bloom.disable|level`, `fidelity.disable_tonemapper`
 
 Camera postprocess example:
@@ -239,6 +245,16 @@ python3 sensor_sim_bridge.py \
   --sensor-rig examples/sensor_rig_camera_tonemapping_v0.json \
   --fidelity-tier high \
   --out runs/sensor_frames_camera_tonemapping_v0.json
+```
+
+Camera shroud contamination example:
+
+```bash
+python3 sensor_sim_bridge.py \
+  --world-state examples/world_state_adverse_weather_v0.json \
+  --sensor-rig examples/sensor_rig_camera_shroud_v0.json \
+  --fidelity-tier high \
+  --out runs/sensor_frames_camera_shroud_v0.json
 ```
 
 Camera depth/optical-flow inputs (Applied docs aligned subset):
