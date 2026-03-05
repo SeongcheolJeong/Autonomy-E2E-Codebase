@@ -52583,6 +52583,33 @@ class BuildNotificationPayloadTests(unittest.TestCase):
                             "sensor_camera_optical_flow_magnitude_px_avg": 4.2,
                             "sensor_camera_optical_flow_velocity_direction_counts_total": {"FORWARD": 2},
                             "sensor_camera_optical_flow_y_axis_direction_counts_total": {"UP": 2},
+                            "rig_sweep_evaluated_manifest_count": 1,
+                            "rig_sweep_fidelity_tier_counts": {"high": 1},
+                            "rig_sweep_candidate_count_total": 3,
+                            "rig_sweep_candidate_count_avg": 3.0,
+                            "rig_sweep_candidate_count_max": 3,
+                            "rig_sweep_highest_candidate_count_batch_id": "BATCH_MAP_WARN_001",
+                            "rig_sweep_best_heuristic_score_max": 12.5,
+                            "rig_sweep_highest_best_heuristic_score_batch_id": "BATCH_MAP_WARN_001",
+                            "rig_sweep_best_rig_id_counts": {"rig_cam_lidar": 1},
+                            "rig_sweep_best_quality_sample_count": 1,
+                            "rig_sweep_best_camera_visibility_score_avg": 0.88,
+                            "rig_sweep_best_camera_noise_stddev_px_avg": 1.2,
+                            "rig_sweep_best_lidar_detection_ratio_avg": 0.85,
+                            "rig_sweep_best_lidar_effective_range_ratio_avg": 0.683333,
+                            "rig_sweep_best_radar_target_detection_ratio_avg": 0.75,
+                            "rig_sweep_best_radar_false_positive_rate_avg": 0.25,
+                            "rig_sweep_best_radar_clutter_index_avg": 0.12,
+                            "rig_sweep_best_camera_visibility_score_max": 0.88,
+                            "rig_sweep_best_camera_visibility_score_max_batch_id": "BATCH_MAP_WARN_001",
+                            "rig_sweep_best_lidar_detection_ratio_max": 0.85,
+                            "rig_sweep_best_lidar_detection_ratio_max_batch_id": "BATCH_MAP_WARN_001",
+                            "rig_sweep_best_radar_target_detection_ratio_max": 0.75,
+                            "rig_sweep_best_radar_target_detection_ratio_max_batch_id": "BATCH_MAP_WARN_001",
+                            "rig_sweep_best_radar_false_positive_rate_min": 0.25,
+                            "rig_sweep_best_radar_false_positive_rate_min_batch_id": "BATCH_MAP_WARN_001",
+                            "rig_sweep_best_radar_clutter_index_min": 0.12,
+                            "rig_sweep_best_radar_clutter_index_min_batch_id": "BATCH_MAP_WARN_001",
                         },
                     }
                 )
@@ -52621,10 +52648,27 @@ class BuildNotificationPayloadTests(unittest.TestCase):
             self.assertIn("radar_fp_rate_avg=0.250000", str(payload.get("phase2_sensor_fidelity_summary_text", "")))
             self.assertIn("camera_depth_enabled_total=2", str(payload.get("phase2_sensor_fidelity_summary_text", "")))
             self.assertIn("camera_flow_velocity_dirs=FORWARD:2", str(payload.get("phase2_sensor_fidelity_summary_text", "")))
+            self.assertIn("rig_sweep_evaluated=1", str(payload.get("phase2_sensor_fidelity_summary_text", "")))
+            self.assertIn(
+                "rig_sweep_best_camera_visibility_max=0.880(BATCH_MAP_WARN_001)",
+                str(payload.get("phase2_sensor_fidelity_summary_text", "")),
+            )
+            self.assertIn(
+                "rig_sweep_best_radar_fp_rate_min=0.250000(BATCH_MAP_WARN_001)",
+                str(payload.get("phase2_sensor_fidelity_summary_text", "")),
+            )
             self.assertIn("route_segment_total=3", str(payload.get("phase2_map_routing_summary_text", "")))
             self.assertIn("route_via_lane_total=1", str(payload.get("phase2_map_routing_summary_text", "")))
             self.assertIn("*phase2 map routing*", json.dumps(payload.get("slack", {})))
             self.assertIn("*phase2 sensor fidelity*", json.dumps(payload.get("slack", {})))
+            self.assertIn(
+                "rig_sweep_best_camera_visibility_max=0.880(BATCH_MAP_WARN_001)",
+                json.dumps(payload.get("slack", {})),
+            )
+            self.assertIn(
+                "rig_sweep_best_radar_fp_rate_min=0.250000(BATCH_MAP_WARN_001)",
+                payload.get("message_text", ""),
+            )
 
     def test_phase2_map_routing_hold_threshold_promotes_pass_to_hold(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

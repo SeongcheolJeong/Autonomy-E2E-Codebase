@@ -2542,6 +2542,177 @@ def _format_phase2_sensor_fidelity_summary(summary: dict[str, Any]) -> str:
         if sensor_camera_optical_flow_y_axis_direction_counts_total
         else "n/a"
     )
+    try:
+        rig_sweep_evaluated_manifest_count = int(summary.get("rig_sweep_evaluated_manifest_count", 0))
+    except (TypeError, ValueError):
+        rig_sweep_evaluated_manifest_count = 0
+    rig_sweep_summary_suffix = ""
+    if rig_sweep_evaluated_manifest_count > 0:
+        rig_sweep_fidelity_tier_counts = _as_non_negative_int_map(summary.get("rig_sweep_fidelity_tier_counts", {}))
+        rig_sweep_fidelity_tier_counts_text = (
+            ",".join(
+                f"{key}:{rig_sweep_fidelity_tier_counts[key]}"
+                for key in sorted(rig_sweep_fidelity_tier_counts.keys())
+            )
+            if rig_sweep_fidelity_tier_counts
+            else "n/a"
+        )
+        rig_sweep_best_rig_id_counts = _as_non_negative_int_map(summary.get("rig_sweep_best_rig_id_counts", {}))
+        rig_sweep_best_rig_id_counts_text = (
+            ",".join(
+                f"{key}:{rig_sweep_best_rig_id_counts[key]}"
+                for key in sorted(rig_sweep_best_rig_id_counts.keys())
+            )
+            if rig_sweep_best_rig_id_counts
+            else "n/a"
+        )
+        try:
+            rig_sweep_candidate_count_total = int(summary.get("rig_sweep_candidate_count_total", 0))
+        except (TypeError, ValueError):
+            rig_sweep_candidate_count_total = 0
+        try:
+            rig_sweep_candidate_count_avg = float(summary.get("rig_sweep_candidate_count_avg", 0.0))
+        except (TypeError, ValueError):
+            rig_sweep_candidate_count_avg = 0.0
+        try:
+            rig_sweep_candidate_count_max = int(summary.get("rig_sweep_candidate_count_max", 0))
+        except (TypeError, ValueError):
+            rig_sweep_candidate_count_max = 0
+        rig_sweep_highest_candidate_count_batch_id = (
+            str(summary.get("rig_sweep_highest_candidate_count_batch_id", "")).strip() or "n/a"
+        )
+        try:
+            rig_sweep_best_heuristic_score_max = float(summary.get("rig_sweep_best_heuristic_score_max", 0.0))
+        except (TypeError, ValueError):
+            rig_sweep_best_heuristic_score_max = 0.0
+        rig_sweep_highest_best_heuristic_score_batch_id = (
+            str(summary.get("rig_sweep_highest_best_heuristic_score_batch_id", "")).strip() or "n/a"
+        )
+        try:
+            rig_sweep_best_quality_sample_count = int(summary.get("rig_sweep_best_quality_sample_count", 0))
+        except (TypeError, ValueError):
+            rig_sweep_best_quality_sample_count = 0
+        try:
+            rig_sweep_best_camera_visibility_score_avg = float(
+                summary.get("rig_sweep_best_camera_visibility_score_avg", 0.0)
+            )
+        except (TypeError, ValueError):
+            rig_sweep_best_camera_visibility_score_avg = 0.0
+        try:
+            rig_sweep_best_camera_noise_stddev_px_avg = float(
+                summary.get("rig_sweep_best_camera_noise_stddev_px_avg", 0.0)
+            )
+        except (TypeError, ValueError):
+            rig_sweep_best_camera_noise_stddev_px_avg = 0.0
+        try:
+            rig_sweep_best_lidar_detection_ratio_avg = float(
+                summary.get("rig_sweep_best_lidar_detection_ratio_avg", 0.0)
+            )
+        except (TypeError, ValueError):
+            rig_sweep_best_lidar_detection_ratio_avg = 0.0
+        try:
+            rig_sweep_best_lidar_effective_range_ratio_avg = float(
+                summary.get("rig_sweep_best_lidar_effective_range_ratio_avg", 0.0)
+            )
+        except (TypeError, ValueError):
+            rig_sweep_best_lidar_effective_range_ratio_avg = 0.0
+        try:
+            rig_sweep_best_radar_target_detection_ratio_avg = float(
+                summary.get("rig_sweep_best_radar_target_detection_ratio_avg", 0.0)
+            )
+        except (TypeError, ValueError):
+            rig_sweep_best_radar_target_detection_ratio_avg = 0.0
+        try:
+            rig_sweep_best_radar_false_positive_rate_avg = float(
+                summary.get("rig_sweep_best_radar_false_positive_rate_avg", 0.0)
+            )
+        except (TypeError, ValueError):
+            rig_sweep_best_radar_false_positive_rate_avg = 0.0
+        try:
+            rig_sweep_best_radar_clutter_index_avg = float(
+                summary.get("rig_sweep_best_radar_clutter_index_avg", 0.0)
+            )
+        except (TypeError, ValueError):
+            rig_sweep_best_radar_clutter_index_avg = 0.0
+        try:
+            rig_sweep_best_camera_visibility_score_max = float(
+                summary.get("rig_sweep_best_camera_visibility_score_max", 0.0)
+            )
+        except (TypeError, ValueError):
+            rig_sweep_best_camera_visibility_score_max = 0.0
+        rig_sweep_best_camera_visibility_score_max_batch_id = (
+            str(summary.get("rig_sweep_best_camera_visibility_score_max_batch_id", "")).strip() or "n/a"
+        )
+        try:
+            rig_sweep_best_lidar_detection_ratio_max = float(
+                summary.get("rig_sweep_best_lidar_detection_ratio_max", 0.0)
+            )
+        except (TypeError, ValueError):
+            rig_sweep_best_lidar_detection_ratio_max = 0.0
+        rig_sweep_best_lidar_detection_ratio_max_batch_id = (
+            str(summary.get("rig_sweep_best_lidar_detection_ratio_max_batch_id", "")).strip() or "n/a"
+        )
+        try:
+            rig_sweep_best_radar_target_detection_ratio_max = float(
+                summary.get("rig_sweep_best_radar_target_detection_ratio_max", 0.0)
+            )
+        except (TypeError, ValueError):
+            rig_sweep_best_radar_target_detection_ratio_max = 0.0
+        rig_sweep_best_radar_target_detection_ratio_max_batch_id = (
+            str(summary.get("rig_sweep_best_radar_target_detection_ratio_max_batch_id", "")).strip() or "n/a"
+        )
+        try:
+            rig_sweep_best_radar_false_positive_rate_min = float(
+                summary.get("rig_sweep_best_radar_false_positive_rate_min", 0.0)
+            )
+        except (TypeError, ValueError):
+            rig_sweep_best_radar_false_positive_rate_min = 0.0
+        rig_sweep_best_radar_false_positive_rate_min_batch_id = (
+            str(summary.get("rig_sweep_best_radar_false_positive_rate_min_batch_id", "")).strip() or "n/a"
+        )
+        try:
+            rig_sweep_best_radar_clutter_index_min = float(
+                summary.get("rig_sweep_best_radar_clutter_index_min", 0.0)
+            )
+        except (TypeError, ValueError):
+            rig_sweep_best_radar_clutter_index_min = 0.0
+        rig_sweep_best_radar_clutter_index_min_batch_id = (
+            str(summary.get("rig_sweep_best_radar_clutter_index_min_batch_id", "")).strip() or "n/a"
+        )
+        rig_sweep_summary_suffix = (
+            f",rig_sweep_evaluated={rig_sweep_evaluated_manifest_count},"
+            f"rig_sweep_tier_counts={rig_sweep_fidelity_tier_counts_text},"
+            f"rig_sweep_candidate_total={rig_sweep_candidate_count_total},"
+            f"rig_sweep_candidate_avg={rig_sweep_candidate_count_avg:.3f},"
+            "rig_sweep_candidate_max="
+            f"{rig_sweep_candidate_count_max}({rig_sweep_highest_candidate_count_batch_id}),"
+            "rig_sweep_best_score_max="
+            f"{rig_sweep_best_heuristic_score_max:.3f}({rig_sweep_highest_best_heuristic_score_batch_id}),"
+            f"rig_sweep_best_rig_counts={rig_sweep_best_rig_id_counts_text},"
+            f"rig_sweep_quality_samples={rig_sweep_best_quality_sample_count},"
+            f"rig_sweep_best_camera_visibility_avg={rig_sweep_best_camera_visibility_score_avg:.3f},"
+            f"rig_sweep_best_camera_noise_avg_px={rig_sweep_best_camera_noise_stddev_px_avg:.3f},"
+            f"rig_sweep_best_lidar_detection_avg={rig_sweep_best_lidar_detection_ratio_avg:.3f},"
+            f"rig_sweep_best_lidar_range_ratio_avg={rig_sweep_best_lidar_effective_range_ratio_avg:.3f},"
+            f"rig_sweep_best_radar_detect_ratio_avg={rig_sweep_best_radar_target_detection_ratio_avg:.3f},"
+            f"rig_sweep_best_radar_fp_rate_avg={rig_sweep_best_radar_false_positive_rate_avg:.6f},"
+            f"rig_sweep_best_radar_clutter_avg={rig_sweep_best_radar_clutter_index_avg:.3f},"
+            "rig_sweep_best_camera_visibility_max="
+            f"{rig_sweep_best_camera_visibility_score_max:.3f}"
+            f"({rig_sweep_best_camera_visibility_score_max_batch_id}),"
+            "rig_sweep_best_lidar_detection_max="
+            f"{rig_sweep_best_lidar_detection_ratio_max:.3f}"
+            f"({rig_sweep_best_lidar_detection_ratio_max_batch_id}),"
+            "rig_sweep_best_radar_detect_max="
+            f"{rig_sweep_best_radar_target_detection_ratio_max:.3f}"
+            f"({rig_sweep_best_radar_target_detection_ratio_max_batch_id}),"
+            "rig_sweep_best_radar_fp_rate_min="
+            f"{rig_sweep_best_radar_false_positive_rate_min:.6f}"
+            f"({rig_sweep_best_radar_false_positive_rate_min_batch_id}),"
+            "rig_sweep_best_radar_clutter_min="
+            f"{rig_sweep_best_radar_clutter_index_min:.3f}"
+            f"({rig_sweep_best_radar_clutter_index_min_batch_id})"
+        )
     return (
         f"evaluated={evaluated_count},tier_counts={fidelity_tier_counts_text},"
         f"fidelity_score_avg={fidelity_tier_score_avg:.3f},"
@@ -2564,6 +2735,7 @@ def _format_phase2_sensor_fidelity_summary(summary: dict[str, Any]) -> str:
         f"camera_flow_mag_avg_px={sensor_camera_optical_flow_magnitude_px_avg:.3f},"
         f"camera_flow_velocity_dirs={sensor_camera_optical_flow_velocity_direction_counts_total_text},"
         f"camera_flow_y_axis_dirs={sensor_camera_optical_flow_y_axis_direction_counts_total_text}"
+        f"{rig_sweep_summary_suffix}"
     )
 
 
