@@ -3835,6 +3835,13 @@ class SensorRigSweepTests(unittest.TestCase):
                                                 "detection_sensitivity": 0.6,
                                                 "attenuation_sensitivity": 1.8,
                                                 "returns_per_laser_bias": -2,
+                                                "wavelength_nm": 905.0,
+                                                "beam_divergence_mrad": 1.0,
+                                                "min_reflectivity": 0.25,
+                                                "atmospheric_extinction_per_km": 8.0,
+                                                "rain_backscatter_sensitivity": 1.8,
+                                                "scan_pattern": "NONUNIFORM",
+                                                "multi_echo_gain": 0.8,
                                             }
                                         },
                                     },
@@ -3864,6 +3871,13 @@ class SensorRigSweepTests(unittest.TestCase):
                                                 "detection_sensitivity": 1.5,
                                                 "attenuation_sensitivity": 0.5,
                                                 "returns_per_laser_bias": 3,
+                                                "wavelength_nm": 1064.0,
+                                                "beam_divergence_mrad": 0.2,
+                                                "min_reflectivity": 0.05,
+                                                "atmospheric_extinction_per_km": 2.0,
+                                                "rain_backscatter_sensitivity": 0.6,
+                                                "scan_pattern": "UNIFORM",
+                                                "multi_echo_gain": 1.5,
                                             }
                                         },
                                     },
@@ -3929,6 +3943,26 @@ class SensorRigSweepTests(unittest.TestCase):
             self.assertGreater(
                 float(tuned_metrics.get("lidar_returns_per_laser_avg", 0.0) or 0.0),
                 float(poor_metrics.get("lidar_returns_per_laser_avg", 0.0) or 0.0),
+            )
+            self.assertGreater(
+                float(tuned_metrics.get("lidar_atmospheric_transmittance_avg", 0.0) or 0.0),
+                float(poor_metrics.get("lidar_atmospheric_transmittance_avg", 0.0) or 0.0),
+            )
+            self.assertLess(
+                float(tuned_metrics.get("lidar_backscatter_noise_ratio_avg", 0.0) or 0.0),
+                float(poor_metrics.get("lidar_backscatter_noise_ratio_avg", 0.0) or 0.0),
+            )
+            self.assertGreater(
+                float(tuned_metrics.get("lidar_reflectivity_detection_scale_avg", 0.0) or 0.0),
+                float(poor_metrics.get("lidar_reflectivity_detection_scale_avg", 0.0) or 0.0),
+            )
+            self.assertLess(
+                float(tuned_metrics.get("lidar_beam_spot_size_cm_at_max_range_avg", 0.0) or 0.0),
+                float(poor_metrics.get("lidar_beam_spot_size_cm_at_max_range_avg", 0.0) or 0.0),
+            )
+            self.assertGreater(
+                float(tuned_metrics.get("lidar_beam_focus_quality_avg", 0.0) or 0.0),
+                float(poor_metrics.get("lidar_beam_focus_quality_avg", 0.0) or 0.0),
             )
             self.assertGreater(
                 float(tuned_metrics.get("radar_target_detection_ratio_avg", 0.0) or 0.0),

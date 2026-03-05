@@ -85,6 +85,10 @@ def _score_frames(frames: list[dict[str, Any]]) -> tuple[float, dict[str, Any]]:
     lidar_detection_ratio_total = 0.0
     lidar_effective_range_ratio_total = 0.0
     lidar_returns_per_laser_total = 0
+    lidar_atmospheric_transmittance_total = 0.0
+    lidar_backscatter_noise_ratio_total = 0.0
+    lidar_reflectivity_detection_scale_total = 0.0
+    lidar_beam_spot_size_cm_at_max_range_total = 0.0
     lidar_frame_count = 0
     radar_target_count_total = 0
     radar_target_detection_ratio_total = 0.0
@@ -109,6 +113,18 @@ def _score_frames(frames: list[dict[str, Any]]) -> tuple[float, dict[str, Any]]:
             lidar_point_count_total += _to_non_negative_int(payload.get("point_count", 0))
             lidar_detection_ratio_total += _to_non_negative_float(payload.get("detection_ratio", 0.0))
             lidar_returns_per_laser_total += _to_non_negative_int(payload.get("returns_per_laser", 0))
+            lidar_atmospheric_transmittance_total += _to_non_negative_float(
+                payload.get("atmospheric_transmittance", 0.0)
+            )
+            lidar_backscatter_noise_ratio_total += _to_non_negative_float(
+                payload.get("backscatter_noise_ratio", 0.0)
+            )
+            lidar_reflectivity_detection_scale_total += _to_non_negative_float(
+                payload.get("reflectivity_detection_scale", 0.0)
+            )
+            lidar_beam_spot_size_cm_at_max_range_total += _to_non_negative_float(
+                payload.get("beam_spot_size_cm_at_max_range", 0.0)
+            )
             max_range_m = _to_non_negative_float(payload.get("max_range_m", 0.0))
             effective_max_range_m = _to_non_negative_float(payload.get("effective_max_range_m", 0.0))
             if max_range_m > 0.0:
@@ -147,6 +163,31 @@ def _score_frames(frames: list[dict[str, Any]]) -> tuple[float, dict[str, Any]]:
         if lidar_frame_count > 0
         else 0.0
     )
+    lidar_atmospheric_transmittance_avg = (
+        lidar_atmospheric_transmittance_total / float(lidar_frame_count)
+        if lidar_frame_count > 0
+        else 0.0
+    )
+    lidar_backscatter_noise_ratio_avg = (
+        lidar_backscatter_noise_ratio_total / float(lidar_frame_count)
+        if lidar_frame_count > 0
+        else 0.0
+    )
+    lidar_reflectivity_detection_scale_avg = (
+        lidar_reflectivity_detection_scale_total / float(lidar_frame_count)
+        if lidar_frame_count > 0
+        else 0.0
+    )
+    lidar_beam_spot_size_cm_at_max_range_avg = (
+        lidar_beam_spot_size_cm_at_max_range_total / float(lidar_frame_count)
+        if lidar_frame_count > 0
+        else 0.0
+    )
+    lidar_beam_focus_quality_avg = (
+        1.0 / (1.0 + (lidar_beam_spot_size_cm_at_max_range_avg / 25.0))
+        if lidar_frame_count > 0
+        else 0.0
+    )
     radar_target_detection_ratio_avg = (
         radar_target_detection_ratio_total / float(radar_frame_count)
         if radar_frame_count > 0
@@ -171,6 +212,10 @@ def _score_frames(frames: list[dict[str, Any]]) -> tuple[float, dict[str, Any]]:
         + (lidar_detection_ratio_avg * 8.0)
         + (lidar_effective_range_ratio_avg * 6.0)
         + (lidar_returns_per_laser_avg * 0.5)
+        + (lidar_atmospheric_transmittance_avg * 3.0)
+        - (lidar_backscatter_noise_ratio_avg * 1.5)
+        + (lidar_reflectivity_detection_scale_avg * 2.0)
+        + (lidar_beam_focus_quality_avg * 1.5)
         + (float(radar_target_count_total) * 2.0)
         + (radar_target_detection_ratio_avg * 6.0)
         - (radar_false_positive_rate_avg * 10.0)
@@ -188,6 +233,11 @@ def _score_frames(frames: list[dict[str, Any]]) -> tuple[float, dict[str, Any]]:
         "lidar_detection_ratio_avg": float(round(lidar_detection_ratio_avg, 6)),
         "lidar_effective_range_ratio_avg": float(round(lidar_effective_range_ratio_avg, 6)),
         "lidar_returns_per_laser_avg": float(round(lidar_returns_per_laser_avg, 6)),
+        "lidar_atmospheric_transmittance_avg": float(round(lidar_atmospheric_transmittance_avg, 6)),
+        "lidar_backscatter_noise_ratio_avg": float(round(lidar_backscatter_noise_ratio_avg, 6)),
+        "lidar_reflectivity_detection_scale_avg": float(round(lidar_reflectivity_detection_scale_avg, 6)),
+        "lidar_beam_spot_size_cm_at_max_range_avg": float(round(lidar_beam_spot_size_cm_at_max_range_avg, 6)),
+        "lidar_beam_focus_quality_avg": float(round(lidar_beam_focus_quality_avg, 6)),
         "radar_frame_count": int(radar_frame_count),
         "radar_target_count_total": int(radar_target_count_total),
         "radar_target_detection_ratio_avg": float(round(radar_target_detection_ratio_avg, 6)),
