@@ -1611,6 +1611,180 @@ class SensorSimBridgeTests(unittest.TestCase):
                 0.0,
             )
 
+    def test_lidar_and_radar_tuning_inputs_shift_quality_metrics(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp_path = Path(tmp)
+            world_state = tmp_path / "world_state.json"
+            baseline_sensor_rig = tmp_path / "sensor_rig_baseline.json"
+            tuned_sensor_rig = tmp_path / "sensor_rig_tuned.json"
+            baseline_out = tmp_path / "sensor_frames_baseline.json"
+            tuned_out = tmp_path / "sensor_frames_tuned.json"
+
+            world_state.write_text(
+                json.dumps(
+                    {
+                        "world_state_schema_version": "world_state_v0",
+                        "frame_timestamp": "2026-02-27T03:40:00Z",
+                        "environment": {
+                            "precipitation_intensity": 0.4,
+                            "fog_density": 0.6,
+                            "ambient_light_lux": 4000.0,
+                        },
+                        "actors": [
+                            {"actor_id": "ego", "speed_mps": 20.0},
+                            {"actor_id": "npc_001", "speed_mps": 18.0},
+                            {"actor_id": "npc_002", "speed_mps": 16.0},
+                        ],
+                    }
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+            baseline_sensor_rig.write_text(
+                json.dumps(
+                    {
+                        "rig_schema_version": "sensor_rig_v0",
+                        "sensors": [
+                            {"sensor_id": "lidar_top", "sensor_type": "lidar", "points_per_actor": 30},
+                            {"sensor_id": "radar_front", "sensor_type": "radar"},
+                        ],
+                    }
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+            tuned_sensor_rig.write_text(
+                json.dumps(
+                    {
+                        "rig_schema_version": "sensor_rig_v0",
+                        "sensors": [
+                            {
+                                "sensor_id": "lidar_top",
+                                "sensor_type": "lidar",
+                                "points_per_actor": 30,
+                                "sensor_params": {
+                                    "lidar_params": {
+                                        "detection_sensitivity": 1.4,
+                                        "attenuation_sensitivity": 0.7,
+                                        "returns_per_laser_bias": 2,
+                                    }
+                                },
+                            },
+                            {
+                                "sensor_id": "radar_front",
+                                "sensor_type": "radar",
+                                "sensor_params": {
+                                    "radar_params": {
+                                        "detection_sensitivity": 0.6,
+                                        "clutter_sensitivity": 1.8,
+                                        "false_positive_rate_bias": 0.1,
+                                    }
+                                },
+                            },
+                        ],
+                    }
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+
+            run_script(
+                PROTOTYPE_DIR / "../../P_Sim-Engine/prototype/sensor_sim_bridge.py",
+                "--world-state",
+                str(world_state),
+                "--sensor-rig",
+                str(baseline_sensor_rig),
+                "--fidelity-tier",
+                "high",
+                "--out",
+                str(baseline_out),
+            )
+            run_script(
+                PROTOTYPE_DIR / "../../P_Sim-Engine/prototype/sensor_sim_bridge.py",
+                "--world-state",
+                str(world_state),
+                "--sensor-rig",
+                str(tuned_sensor_rig),
+                "--fidelity-tier",
+                "high",
+                "--out",
+                str(tuned_out),
+            )
+
+            baseline_payload = read_json_file(self, file_path=baseline_out)
+            tuned_payload = read_json_file(self, file_path=tuned_out)
+
+            baseline_frames = baseline_payload.get("frames", [])
+            tuned_frames = tuned_payload.get("frames", [])
+            self.assertEqual(len(baseline_frames), 2)
+            self.assertEqual(len(tuned_frames), 2)
+
+            baseline_by_sensor = {
+                str(frame.get("sensor_id", "")): frame.get("payload", {})
+                for frame in baseline_frames
+                if isinstance(frame, dict)
+            }
+            tuned_by_sensor = {
+                str(frame.get("sensor_id", "")): frame.get("payload", {})
+                for frame in tuned_frames
+                if isinstance(frame, dict)
+            }
+
+            baseline_lidar = baseline_by_sensor.get("lidar_top", {})
+            tuned_lidar = tuned_by_sensor.get("lidar_top", {})
+            self.assertIsInstance(baseline_lidar, dict)
+            self.assertIsInstance(tuned_lidar, dict)
+            self.assertAlmostEqual(float(tuned_lidar.get("detection_sensitivity", 0.0) or 0.0), 1.4, places=6)
+            self.assertAlmostEqual(float(tuned_lidar.get("attenuation_sensitivity", 0.0) or 0.0), 0.7, places=6)
+            self.assertEqual(int(tuned_lidar.get("returns_per_laser_bias", 0) or 0), 2)
+            self.assertGreater(
+                float(tuned_lidar.get("detection_ratio", 0.0) or 0.0),
+                float(baseline_lidar.get("detection_ratio", 0.0) or 0.0),
+            )
+            self.assertGreater(
+                float(tuned_lidar.get("effective_max_range_m", 0.0) or 0.0),
+                float(baseline_lidar.get("effective_max_range_m", 0.0) or 0.0),
+            )
+            self.assertGreater(
+                int(tuned_lidar.get("returns_per_laser", 0) or 0),
+                int(baseline_lidar.get("returns_per_laser", 0) or 0),
+            )
+
+            baseline_radar = baseline_by_sensor.get("radar_front", {})
+            tuned_radar = tuned_by_sensor.get("radar_front", {})
+            self.assertIsInstance(baseline_radar, dict)
+            self.assertIsInstance(tuned_radar, dict)
+            self.assertAlmostEqual(float(tuned_radar.get("detection_sensitivity", 0.0) or 0.0), 0.6, places=6)
+            self.assertAlmostEqual(float(tuned_radar.get("clutter_sensitivity", 0.0) or 0.0), 1.8, places=6)
+            self.assertAlmostEqual(float(tuned_radar.get("false_positive_rate_bias", 0.0) or 0.0), 0.1, places=6)
+            self.assertGreater(
+                float(tuned_radar.get("radar_false_positive_rate", 0.0) or 0.0),
+                float(baseline_radar.get("radar_false_positive_rate", 0.0) or 0.0),
+            )
+            self.assertGreater(
+                float(tuned_radar.get("radar_clutter_index", 0.0) or 0.0),
+                float(baseline_radar.get("radar_clutter_index", 0.0) or 0.0),
+            )
+            self.assertLess(
+                float(tuned_radar.get("target_detection_ratio", 1.0) or 1.0),
+                float(baseline_radar.get("target_detection_ratio", 1.0) or 1.0),
+            )
+
+            baseline_quality = baseline_payload.get("sensor_quality_summary", {})
+            tuned_quality = tuned_payload.get("sensor_quality_summary", {})
+            self.assertGreater(
+                float(tuned_quality.get("lidar_detection_ratio_avg", 0.0) or 0.0),
+                float(baseline_quality.get("lidar_detection_ratio_avg", 0.0) or 0.0),
+            )
+            self.assertGreater(
+                float(tuned_quality.get("lidar_effective_max_range_m_avg", 0.0) or 0.0),
+                float(baseline_quality.get("lidar_effective_max_range_m_avg", 0.0) or 0.0),
+            )
+            self.assertGreater(
+                float(tuned_quality.get("radar_false_positive_rate_avg", 0.0) or 0.0),
+                float(baseline_quality.get("radar_false_positive_rate_avg", 0.0) or 0.0),
+            )
+
     def test_camera_geometry_and_distortion_inputs_are_reflected_in_payload(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             tmp_path = Path(tmp)

@@ -1473,23 +1473,79 @@ class LidarStubPlugin(SensorPlugin):
         environment = _resolve_world_environment(world_state)
         precipitation_intensity = float(environment["precipitation_intensity"])
         fog_density = float(environment["fog_density"])
-        points_per_actor = int(sensor_config.get("points_per_actor", 50))
+        sensor_params = _as_dict(sensor_config.get("sensor_params"))
+        lidar_params = _as_dict(sensor_params.get("lidar_params"))
+        points_per_actor = max(
+            1,
+            int(
+                round(
+                    _to_float(
+                        sensor_config.get(
+                            "points_per_actor",
+                            lidar_params.get("points_per_actor", 50),
+                        ),
+                        default=50.0,
+                    )
+                )
+            ),
+        )
+        detection_sensitivity = _clamp_float(
+            _to_float(
+                sensor_config.get(
+                    "detection_sensitivity",
+                    lidar_params.get("detection_sensitivity", 1.0),
+                ),
+                default=1.0,
+            ),
+            minimum=0.5,
+            maximum=1.5,
+        )
+        attenuation_sensitivity = _clamp_float(
+            _to_float(
+                sensor_config.get(
+                    "attenuation_sensitivity",
+                    lidar_params.get("attenuation_sensitivity", 1.0),
+                ),
+                default=1.0,
+            ),
+            minimum=0.5,
+            maximum=2.0,
+        )
+        returns_per_laser_bias = int(
+            round(
+                _to_float(
+                    sensor_config.get(
+                        "returns_per_laser_bias",
+                        lidar_params.get("returns_per_laser_bias", 0.0),
+                    ),
+                    default=0.0,
+                )
+            )
+        )
+        returns_per_laser_bias = max(-4, min(4, returns_per_laser_bias))
         profile = FIDELITY_TIER_PROFILE[fidelity_tier]
         score = int(profile["score"])
         lidar_point_scale = float(profile["lidar_point_scale"])
         base_point_count = int(round(len(actors) * points_per_actor * lidar_point_scale))
+        weather_detection_penalty = (
+            (0.5 * fog_density) + (0.3 * precipitation_intensity)
+        ) / max(0.1, detection_sensitivity)
         weather_detection_ratio = _clamp_float(
-            1.0 - ((0.5 * fog_density) + (0.3 * precipitation_intensity)),
+            1.0 - weather_detection_penalty,
             minimum=0.15,
             maximum=1.0,
         )
         point_count = int(round(float(base_point_count) * weather_detection_ratio))
         max_range_m = float(sensor_config.get("max_range_m", 120.0))
+        range_weather_penalty = (
+            (0.35 * fog_density) + (0.2 * precipitation_intensity)
+        ) * attenuation_sensitivity
         effective_max_range_m = max(
             10.0,
-            max_range_m * (1.0 - ((0.35 * fog_density) + (0.2 * precipitation_intensity))),
+            max_range_m * (1.0 - range_weather_penalty),
         )
-        returns_per_laser = max(1, score - int(round((fog_density + precipitation_intensity) * 1.5)))
+        returns_weather_penalty_steps = int(round((fog_density + precipitation_intensity) * 1.5))
+        returns_per_laser = max(1, score - returns_weather_penalty_steps + returns_per_laser_bias)
         return {
             "modality": "lidar",
             "channel_count": int(sensor_config.get("channel_count", 64)),
@@ -1499,6 +1555,11 @@ class LidarStubPlugin(SensorPlugin):
             "returns_per_laser": int(returns_per_laser),
             "intensity_model": "stub_linear",
             "detection_ratio": float(weather_detection_ratio),
+            "detection_sensitivity": float(detection_sensitivity),
+            "attenuation_sensitivity": float(attenuation_sensitivity),
+            "returns_per_laser_bias": int(returns_per_laser_bias),
+            "weather_detection_penalty": float(weather_detection_penalty),
+            "range_weather_penalty": float(range_weather_penalty),
             "weather_precipitation_intensity": precipitation_intensity,
             "weather_fog_density": fog_density,
         }
@@ -1516,27 +1577,68 @@ class RadarStubPlugin(SensorPlugin):
         environment = _resolve_world_environment(world_state)
         precipitation_intensity = float(environment["precipitation_intensity"])
         fog_density = float(environment["fog_density"])
+        sensor_params = _as_dict(sensor_config.get("sensor_params"))
+        radar_params = _as_dict(sensor_params.get("radar_params"))
+        detection_sensitivity = _clamp_float(
+            _to_float(
+                sensor_config.get(
+                    "detection_sensitivity",
+                    radar_params.get("detection_sensitivity", 1.0),
+                ),
+                default=1.0,
+            ),
+            minimum=0.5,
+            maximum=1.5,
+        )
+        clutter_sensitivity = _clamp_float(
+            _to_float(
+                sensor_config.get(
+                    "clutter_sensitivity",
+                    radar_params.get("clutter_sensitivity", 1.0),
+                ),
+                default=1.0,
+            ),
+            minimum=0.5,
+            maximum=2.0,
+        )
+        false_positive_rate_bias = _clamp_float(
+            _to_float(
+                sensor_config.get(
+                    "false_positive_rate_bias",
+                    radar_params.get("false_positive_rate_bias", 0.0),
+                ),
+                default=0.0,
+            ),
+            minimum=-0.3,
+            maximum=0.3,
+        )
         profile = FIDELITY_TIER_PROFILE[fidelity_tier]
         base_false_positive_rate = float(profile["radar_false_positive_rate"])
         false_positive_rate = _clamp_float(
-            base_false_positive_rate + (0.08 * precipitation_intensity) + (0.05 * fog_density),
+            base_false_positive_rate
+            + (((0.08 * precipitation_intensity) + (0.05 * fog_density)) * clutter_sensitivity)
+            + false_positive_rate_bias,
             minimum=0.0,
             maximum=0.9,
         )
+        target_detection_penalty = (
+            (0.25 * fog_density) + (0.1 * precipitation_intensity)
+        ) / max(0.1, detection_sensitivity)
         target_detection_ratio = _clamp_float(
-            1.0 - (0.25 * fog_density),
-            minimum=0.6,
+            1.0 - target_detection_penalty,
+            minimum=0.4,
             maximum=1.0,
         )
         target_count = int(round(float(len(actors)) * target_detection_ratio))
         radar_clutter_index = _clamp_float(
-            (0.5 * precipitation_intensity) + (0.35 * fog_density),
+            ((0.5 * precipitation_intensity) + (0.35 * fog_density)) * clutter_sensitivity,
             minimum=0.0,
             maximum=1.0,
         )
         ghost_target_count = 0
         if radar_clutter_index > 0.0:
-            ghost_target_count = max(1, int(round(float(len(actors)) * radar_clutter_index * 0.75)))
+            ghost_scale = 0.75 + max(0.0, false_positive_rate_bias * 2.0)
+            ghost_target_count = max(1, int(round(float(len(actors)) * radar_clutter_index * ghost_scale)))
         false_positive_count = int(round(float(target_count + ghost_target_count) * false_positive_rate))
         return {
             "modality": "radar",
@@ -1548,6 +1650,10 @@ class RadarStubPlugin(SensorPlugin):
             "radar_false_positive_rate": float(false_positive_rate),
             "radar_clutter_index": float(radar_clutter_index),
             "target_detection_ratio": float(target_detection_ratio),
+            "detection_sensitivity": float(detection_sensitivity),
+            "clutter_sensitivity": float(clutter_sensitivity),
+            "false_positive_rate_bias": float(false_positive_rate_bias),
+            "target_detection_penalty": float(target_detection_penalty),
             "weather_precipitation_intensity": precipitation_intensity,
             "weather_fog_density": fog_density,
         }
