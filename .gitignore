@@ -10,3 +10,7 @@
 **/*.sqlite
 **/*.db
 **/*.log
+
+# local external reference snapshots (not vendored)
+references/applieddocs_v1.64/
+references/_reference_repos/

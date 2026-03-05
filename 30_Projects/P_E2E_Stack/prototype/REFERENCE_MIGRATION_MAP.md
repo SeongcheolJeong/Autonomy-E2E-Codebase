@@ -2,7 +2,7 @@
 
 ## Local Reference Root
 
-- `/Users/seongcheoljeong/Documents/Autonomy-E2E/_reference_repos`
+- `references/_reference_repos`
 - Inventory: `30_Projects/P_E2E_Stack/prototype/reference_repo_inventory.json`
 
 ## Downloaded References (Pinned)

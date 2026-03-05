@@ -16,7 +16,7 @@ Reference matrix: `STACK_MODULE_PARITY_MATRIX.md`.
 
 ## sensor_sim
 
-Applied reference: `20_Knowledge/Sim/AppliedDocs_v1.64/manual/v1.64/docs/sensor_sim/index.clean.md`
+Applied reference: `references/applieddocs_v1.64/manual/v1.64/docs/sensor_sim/index.clean.md`
 
 | Feature | Local Evidence Path | Status | Verification Command |
 |---|---|---|---|
@@ -26,7 +26,7 @@ Applied reference: `20_Knowledge/Sim/AppliedDocs_v1.64/manual/v1.64/docs/sensor_
 
 ## log_sim
 
-Applied reference: `20_Knowledge/Sim/AppliedDocs_v1.64/manual/v1.64/docs/log_sim/index.clean.md`
+Applied reference: `references/applieddocs_v1.64/manual/v1.64/docs/log_sim/index.clean.md`
 
 | Feature | Local Evidence Path | Status | Verification Command |
 |---|---|---|---|
@@ -36,7 +36,7 @@ Applied reference: `20_Knowledge/Sim/AppliedDocs_v1.64/manual/v1.64/docs/log_sim
 
 ## map_toolset
 
-Applied reference: `20_Knowledge/Sim/AppliedDocs_v1.64/manual/v1.64/docs/map_toolset/index.clean.md`
+Applied reference: `references/applieddocs_v1.64/manual/v1.64/docs/map_toolset/index.clean.md`
 
 | Feature | Local Evidence Path | Status | Verification Command |
 |---|---|---|---|

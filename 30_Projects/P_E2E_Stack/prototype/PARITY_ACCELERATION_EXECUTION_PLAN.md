@@ -27,7 +27,7 @@ Scope priority is:
 ## 3.1 Priority order
 
 1. Product behavior contract:
-   `20_Knowledge/Sim/AppliedDocs_v1.64/manual/v1.64/docs/*`
+   `references/applieddocs_v1.64/manual/v1.64/docs/*`
 2. Architecture/pattern references:
    `autoware`, `openpilot`, `AWSIM`, `CARLA`, `Apollo`, `scenario_runner`, `lanelet2`, `SUMO`, `esmini`, `scenariogeneration`
 3. Local implementation targets:

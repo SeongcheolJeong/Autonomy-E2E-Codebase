@@ -17,7 +17,7 @@ Reference matrix: `STACK_MODULE_PARITY_MATRIX.md`.
 
 ## cloud_engine
 
-Applied reference: `20_Knowledge/Sim/AppliedDocs_v1.64/manual/v1.64/docs/cloud_engine/index.clean.md`
+Applied reference: `references/applieddocs_v1.64/manual/v1.64/docs/cloud_engine/index.clean.md`
 
 | Feature | Local Evidence Path | Status | Verification Command |
 |---|---|---|---|
@@ -28,7 +28,7 @@ Applied reference: `20_Knowledge/Sim/AppliedDocs_v1.64/manual/v1.64/docs/cloud_e
 
 ## data_explorer
 
-Applied reference: `20_Knowledge/Sim/AppliedDocs_v1.64/manual/v1.64/docs/data_explorer/index.clean.md`
+Applied reference: `references/applieddocs_v1.64/manual/v1.64/docs/data_explorer/index.clean.md`
 
 | Feature | Local Evidence Path | Status | Verification Command |
 |---|---|---|---|
@@ -39,7 +39,7 @@ Applied reference: `20_Knowledge/Sim/AppliedDocs_v1.64/manual/v1.64/docs/data_ex
 
 ## validation_toolset
 
-Applied reference: `20_Knowledge/Sim/AppliedDocs_v1.64/manual/v1.64/docs/validation_toolset/index.clean.md`
+Applied reference: `references/applieddocs_v1.64/manual/v1.64/docs/validation_toolset/index.clean.md`
 
 | Feature | Local Evidence Path | Status | Verification Command |
 |---|---|---|---|
@@ -50,7 +50,7 @@ Applied reference: `20_Knowledge/Sim/AppliedDocs_v1.64/manual/v1.64/docs/validat
 
 ## object_sim
 
-Applied reference: `20_Knowledge/Sim/AppliedDocs_v1.64/manual/v1.64/docs/object_sim/index.clean.md`
+Applied reference: `references/applieddocs_v1.64/manual/v1.64/docs/object_sim/index.clean.md`
 
 | Feature | Local Evidence Path | Status | Verification Command |
 |---|---|---|---|

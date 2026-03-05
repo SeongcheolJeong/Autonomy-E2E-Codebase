@@ -16,7 +16,7 @@ Reference matrix: `STACK_MODULE_PARITY_MATRIX.md`.
 
 ## neural_sim
 
-Applied reference: `20_Knowledge/Sim/AppliedDocs_v1.64/manual/v1.64/docs/neural_sim/index.clean.md`
+Applied reference: `references/applieddocs_v1.64/manual/v1.64/docs/neural_sim/index.clean.md`
 
 | Feature | Local Evidence Path | Status | Verification Command |
 |---|---|---|---|
@@ -26,7 +26,7 @@ Applied reference: `20_Knowledge/Sim/AppliedDocs_v1.64/manual/v1.64/docs/neural_
 
 ## vehiclesim
 
-Applied reference: `20_Knowledge/Sim/AppliedDocs_v1.64/manual/v1.64/docs/vehiclesim/index.clean.md`
+Applied reference: `references/applieddocs_v1.64/manual/v1.64/docs/vehiclesim/index.clean.md`
 
 | Feature | Local Evidence Path | Status | Verification Command |
 |---|---|---|---|
@@ -37,7 +37,7 @@ Applied reference: `20_Knowledge/Sim/AppliedDocs_v1.64/manual/v1.64/docs/vehicle
 
 ## synthetic_datasets
 
-Applied reference: `20_Knowledge/Sim/AppliedDocs_v1.64/manual/v1.64/docs/synthetic_datasets/index.clean.md`
+Applied reference: `references/applieddocs_v1.64/manual/v1.64/docs/synthetic_datasets/index.clean.md`
 
 | Feature | Local Evidence Path | Status | Verification Command |
 |---|---|---|---|

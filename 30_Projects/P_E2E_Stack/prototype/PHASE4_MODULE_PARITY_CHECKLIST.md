@@ -17,7 +17,7 @@ External reference map: `PHASE4_EXTERNAL_REFERENCE_MAP.md`.
 
 ## hil_sim
 
-Applied reference: `20_Knowledge/Sim/AppliedDocs_v1.64/manual/v1.64/docs/hil_sim/index.clean.md`
+Applied reference: `references/applieddocs_v1.64/manual/v1.64/docs/hil_sim/index.clean.md`
 External reference baseline: `autowarefoundation/autoware`, `tier4/AWSIM`
 Secondary reference pool: `tier4/scenario_simulator_v2`, `eclipse-sumo/sumo`
 
@@ -29,7 +29,7 @@ Secondary reference pool: `tier4/scenario_simulator_v2`, `eclipse-sumo/sumo`
 
 ## adp
 
-Applied reference: `20_Knowledge/Sim/AppliedDocs_v1.64/manual/v1.64/docs/adp/index.clean.md`
+Applied reference: `references/applieddocs_v1.64/manual/v1.64/docs/adp/index.clean.md`
 External reference baseline: `autowarefoundation/autoware`, `carla-simulator/carla`
 Secondary reference pool: `ApolloAuto/apollo`, `CommonRoad/commonroad-io`
 
@@ -41,7 +41,7 @@ Secondary reference pool: `ApolloAuto/apollo`, `CommonRoad/commonroad-io`
 
 ## copilot
 
-Applied reference: `20_Knowledge/Sim/AppliedDocs_v1.64/manual/v1.64/docs/copilot/index.clean.md`
+Applied reference: `references/applieddocs_v1.64/manual/v1.64/docs/copilot/index.clean.md`
 External reference baseline: `commaai/openpilot`, `carla-simulator/carla`
 Secondary reference pool: `CommonRoad/commonroad-scenario-designer`, `ApolloAuto/apollo`
 
