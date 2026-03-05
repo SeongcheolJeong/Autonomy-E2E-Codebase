@@ -121,6 +121,23 @@ python3 sensor_sim_bridge.py \
   --out runs/sensor_frames_adverse_weather_v0.json
 ```
 
+Camera basic physics inputs (Applied docs aligned subset):
+
+- `f_number`, `iso`, `shutter_speed_hz`
+- `quantum_efficiency`, `full_well_capacity`, `readout_noise`
+- `fixed_pattern_noise.dsnu`, `fixed_pattern_noise.prnu`
+- `rolling_shutter.row_delay`, `rolling_shutter.col_delay`, `rolling_shutter.num_time_steps`, `rolling_shutter.num_exposure_samples_per_pixel`
+
+Camera physics example:
+
+```bash
+python3 sensor_sim_bridge.py \
+  --world-state examples/world_state_adverse_weather_v0.json \
+  --sensor-rig examples/sensor_rig_camera_physics_v0.json \
+  --fidelity-tier high \
+  --out runs/sensor_frames_camera_physics_v0.json
+```
+
 ## Sensor rig sweep scaffold
 
 ```bash

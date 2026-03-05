@@ -1514,6 +1514,103 @@ class SensorSimBridgeTests(unittest.TestCase):
             self.assertIsInstance(radar_payload, dict)
             self.assertGreater(int(radar_payload.get("ghost_target_count", 0) or 0), 0)
 
+    def test_camera_physics_inputs_are_reflected_in_camera_payload(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp_path = Path(tmp)
+            world_state = tmp_path / "world_state.json"
+            sensor_rig = tmp_path / "sensor_rig.json"
+            out_path = tmp_path / "sensor_frames.json"
+
+            world_state.write_text(
+                json.dumps(
+                    {
+                        "world_state_schema_version": "world_state_v0",
+                        "frame_timestamp": "2026-02-27T03:45:00Z",
+                        "environment": {
+                            "precipitation_intensity": 0.2,
+                            "fog_density": 0.15,
+                            "ambient_light_lux": 3500.0,
+                        },
+                        "actors": [
+                            {"actor_id": "ego", "speed_mps": 24.0},
+                            {"actor_id": "npc_001", "speed_mps": 16.0},
+                        ],
+                    }
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+            sensor_rig.write_text(
+                json.dumps(
+                    {
+                        "rig_schema_version": "sensor_rig_v0",
+                        "sensors": [
+                            {
+                                "sensor_id": "camera_front",
+                                "sensor_type": "camera",
+                                "image_width_px": 1920,
+                                "image_height_px": 1080,
+                                "f_number": 1.8,
+                                "iso": 800,
+                                "shutter_speed_hz": 60,
+                                "readout_noise": 0.003,
+                                "quantum_efficiency": 0.65,
+                                "full_well_capacity": 30000,
+                                "fixed_pattern_noise": {"dsnu": 0.002, "prnu": 0.01},
+                                "rolling_shutter": {
+                                    "row_delay": 28000,
+                                    "col_delay": 1000,
+                                    "num_time_steps": 1080,
+                                    "num_exposure_samples_per_pixel": 24,
+                                },
+                                "frame_rate_hz": 30.0,
+                                "field_of_view_deg": 90.0,
+                            }
+                        ],
+                    }
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+
+            proc = run_script(
+                PROTOTYPE_DIR / "../../P_Sim-Engine/prototype/sensor_sim_bridge.py",
+                "--world-state",
+                str(world_state),
+                "--sensor-rig",
+                str(sensor_rig),
+                "--fidelity-tier",
+                "high",
+                "--out",
+                str(out_path),
+            )
+            self.assertIn("[ok] sensor_fidelity_tier=high", proc.stdout)
+
+            payload = read_json_file(self, file_path=out_path)
+            frames = payload.get("frames", [])
+            self.assertEqual(len(frames), 1)
+            camera_payload = frames[0].get("payload", {})
+            self.assertIsInstance(camera_payload, dict)
+            camera_physics = camera_payload.get("camera_physics", {})
+            self.assertIsInstance(camera_physics, dict)
+            self.assertTrue(bool(camera_physics.get("physics_input_present")))
+            self.assertAlmostEqual(float(camera_physics.get("iso", 0.0) or 0.0), 800.0, places=6)
+            self.assertAlmostEqual(float(camera_physics.get("shutter_speed_hz", 0.0) or 0.0), 60.0, places=6)
+            self.assertAlmostEqual(float(camera_physics.get("exposure_time_ms", 0.0) or 0.0), 16.6666666667, places=3)
+            self.assertGreater(float(camera_physics.get("snr_db", -200.0) or -200.0), -100.0)
+            self.assertGreater(float(camera_physics.get("rolling_shutter_total_delay_ms", 0.0) or 0.0), 0.0)
+
+            self.assertGreater(float(camera_payload.get("camera_noise_stddev_px", 0.0) or 0.0), 1.2)
+            self.assertGreater(int(camera_payload.get("motion_blur_level", 0) or 0), 2)
+
+            sensor_quality_summary = payload.get("sensor_quality_summary", {})
+            self.assertGreater(float(sensor_quality_summary.get("camera_snr_db_avg", -200.0) or -200.0), -100.0)
+            self.assertGreater(float(sensor_quality_summary.get("camera_exposure_time_ms_avg", 0.0) or 0.0), 0.0)
+            self.assertGreater(
+                float(sensor_quality_summary.get("camera_rolling_shutter_total_delay_ms_avg", 0.0) or 0.0),
+                0.0,
+            )
+
     def test_invalid_sensor_type_is_reported_without_traceback(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             tmp_path = Path(tmp)

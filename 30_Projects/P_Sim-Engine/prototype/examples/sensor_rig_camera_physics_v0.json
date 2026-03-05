@@ -1,0 +1,29 @@
+{
+  "rig_schema_version": "sensor_rig_v0",
+  "sensors": [
+    {
+      "sensor_id": "camera_front_physics",
+      "sensor_type": "camera",
+      "image_width_px": 1920,
+      "image_height_px": 1080,
+      "f_number": 1.8,
+      "iso": 400,
+      "shutter_speed_hz": 90.0,
+      "quantum_efficiency": 0.62,
+      "full_well_capacity": 42000,
+      "readout_noise": 0.002,
+      "fixed_pattern_noise": {
+        "dsnu": 0.0015,
+        "prnu": 0.008
+      },
+      "rolling_shutter": {
+        "row_delay": 25000,
+        "col_delay": 1200,
+        "num_time_steps": 1080,
+        "num_exposure_samples_per_pixel": 20
+      },
+      "frame_rate_hz": 30.0,
+      "field_of_view_deg": 90.0
+    }
+  ]
+}
