@@ -7336,6 +7336,16 @@ def summarize_phase2_sensor_fidelity(pipeline_manifests: list[dict[str, Any]]) -
             "rig_sweep_best_radar_target_detection_ratio_avg": 0.0,
             "rig_sweep_best_radar_false_positive_rate_avg": 0.0,
             "rig_sweep_best_radar_clutter_index_avg": 0.0,
+            "rig_sweep_best_camera_visibility_score_max": 0.0,
+            "rig_sweep_best_camera_visibility_score_max_batch_id": "",
+            "rig_sweep_best_lidar_detection_ratio_max": 0.0,
+            "rig_sweep_best_lidar_detection_ratio_max_batch_id": "",
+            "rig_sweep_best_radar_target_detection_ratio_max": 0.0,
+            "rig_sweep_best_radar_target_detection_ratio_max_batch_id": "",
+            "rig_sweep_best_radar_false_positive_rate_min": 0.0,
+            "rig_sweep_best_radar_false_positive_rate_min_batch_id": "",
+            "rig_sweep_best_radar_clutter_index_min": 0.0,
+            "rig_sweep_best_radar_clutter_index_min_batch_id": "",
         }
 
     fidelity_tier_counts: dict[str, int] = {}
@@ -7583,6 +7593,63 @@ def summarize_phase2_sensor_fidelity(pipeline_manifests: list[dict[str, Any]]) -
     rig_sweep_best_radar_clutter_index_total = sum(
         float(row.get("rig_sweep_best_radar_clutter_index_avg", 0.0)) for row in rig_sweep_quality_rows
     )
+    if rig_sweep_quality_rows:
+        highest_rig_sweep_best_camera_visibility_row = max(
+            rig_sweep_quality_rows,
+            key=lambda row: (
+                float(row.get("rig_sweep_best_camera_visibility_score_avg", 0.0)),
+                str(row.get("batch_id", "")),
+            ),
+        )
+        highest_rig_sweep_best_lidar_detection_row = max(
+            rig_sweep_quality_rows,
+            key=lambda row: (
+                float(row.get("rig_sweep_best_lidar_detection_ratio_avg", 0.0)),
+                str(row.get("batch_id", "")),
+            ),
+        )
+        highest_rig_sweep_best_radar_detection_row = max(
+            rig_sweep_quality_rows,
+            key=lambda row: (
+                float(row.get("rig_sweep_best_radar_target_detection_ratio_avg", 0.0)),
+                str(row.get("batch_id", "")),
+            ),
+        )
+        lowest_rig_sweep_best_radar_fp_rate_row = min(
+            rig_sweep_quality_rows,
+            key=lambda row: (
+                float(row.get("rig_sweep_best_radar_false_positive_rate_avg", 0.0)),
+                str(row.get("batch_id", "")),
+            ),
+        )
+        lowest_rig_sweep_best_radar_clutter_row = min(
+            rig_sweep_quality_rows,
+            key=lambda row: (
+                float(row.get("rig_sweep_best_radar_clutter_index_avg", 0.0)),
+                str(row.get("batch_id", "")),
+            ),
+        )
+    else:
+        highest_rig_sweep_best_camera_visibility_row = {
+            "rig_sweep_best_camera_visibility_score_avg": 0.0,
+            "batch_id": "",
+        }
+        highest_rig_sweep_best_lidar_detection_row = {
+            "rig_sweep_best_lidar_detection_ratio_avg": 0.0,
+            "batch_id": "",
+        }
+        highest_rig_sweep_best_radar_detection_row = {
+            "rig_sweep_best_radar_target_detection_ratio_avg": 0.0,
+            "batch_id": "",
+        }
+        lowest_rig_sweep_best_radar_fp_rate_row = {
+            "rig_sweep_best_radar_false_positive_rate_avg": 0.0,
+            "batch_id": "",
+        }
+        lowest_rig_sweep_best_radar_clutter_row = {
+            "rig_sweep_best_radar_clutter_index_avg": 0.0,
+            "batch_id": "",
+        }
     if rig_sweep_checked_rows:
         highest_rig_sweep_candidate_count_row = max(
             rig_sweep_checked_rows,
@@ -7873,6 +7940,36 @@ def summarize_phase2_sensor_fidelity(pipeline_manifests: list[dict[str, Any]]) -
             float(rig_sweep_best_radar_clutter_index_total / float(len(rig_sweep_quality_rows)))
             if rig_sweep_quality_rows
             else 0.0
+        ),
+        "rig_sweep_best_camera_visibility_score_max": float(
+            highest_rig_sweep_best_camera_visibility_row.get("rig_sweep_best_camera_visibility_score_avg", 0.0)
+        ),
+        "rig_sweep_best_camera_visibility_score_max_batch_id": str(
+            highest_rig_sweep_best_camera_visibility_row.get("batch_id", "")
+        ),
+        "rig_sweep_best_lidar_detection_ratio_max": float(
+            highest_rig_sweep_best_lidar_detection_row.get("rig_sweep_best_lidar_detection_ratio_avg", 0.0)
+        ),
+        "rig_sweep_best_lidar_detection_ratio_max_batch_id": str(
+            highest_rig_sweep_best_lidar_detection_row.get("batch_id", "")
+        ),
+        "rig_sweep_best_radar_target_detection_ratio_max": float(
+            highest_rig_sweep_best_radar_detection_row.get("rig_sweep_best_radar_target_detection_ratio_avg", 0.0)
+        ),
+        "rig_sweep_best_radar_target_detection_ratio_max_batch_id": str(
+            highest_rig_sweep_best_radar_detection_row.get("batch_id", "")
+        ),
+        "rig_sweep_best_radar_false_positive_rate_min": float(
+            lowest_rig_sweep_best_radar_fp_rate_row.get("rig_sweep_best_radar_false_positive_rate_avg", 0.0)
+        ),
+        "rig_sweep_best_radar_false_positive_rate_min_batch_id": str(
+            lowest_rig_sweep_best_radar_fp_rate_row.get("batch_id", "")
+        ),
+        "rig_sweep_best_radar_clutter_index_min": float(
+            lowest_rig_sweep_best_radar_clutter_row.get("rig_sweep_best_radar_clutter_index_avg", 0.0)
+        ),
+        "rig_sweep_best_radar_clutter_index_min_batch_id": str(
+            lowest_rig_sweep_best_radar_clutter_row.get("batch_id", "")
         ),
     }
 
@@ -12070,6 +12167,56 @@ def main() -> int:
             phase2_sensor_rig_sweep_best_radar_clutter_avg = float(
                 phase2_sensor_fidelity_summary.get("rig_sweep_best_radar_clutter_index_avg", 0.0) or 0.0
             )
+            phase2_sensor_rig_sweep_best_camera_visibility_max = float(
+                phase2_sensor_fidelity_summary.get("rig_sweep_best_camera_visibility_score_max", 0.0) or 0.0
+            )
+            phase2_sensor_rig_sweep_best_camera_visibility_max_batch = (
+                str(phase2_sensor_fidelity_summary.get("rig_sweep_best_camera_visibility_score_max_batch_id", "")).strip()
+                or "n/a"
+            )
+            phase2_sensor_rig_sweep_best_lidar_detection_max = float(
+                phase2_sensor_fidelity_summary.get("rig_sweep_best_lidar_detection_ratio_max", 0.0) or 0.0
+            )
+            phase2_sensor_rig_sweep_best_lidar_detection_max_batch = (
+                str(phase2_sensor_fidelity_summary.get("rig_sweep_best_lidar_detection_ratio_max_batch_id", "")).strip()
+                or "n/a"
+            )
+            phase2_sensor_rig_sweep_best_radar_detect_max = float(
+                phase2_sensor_fidelity_summary.get("rig_sweep_best_radar_target_detection_ratio_max", 0.0) or 0.0
+            )
+            phase2_sensor_rig_sweep_best_radar_detect_max_batch = (
+                str(
+                    phase2_sensor_fidelity_summary.get(
+                        "rig_sweep_best_radar_target_detection_ratio_max_batch_id",
+                        "",
+                    )
+                ).strip()
+                or "n/a"
+            )
+            phase2_sensor_rig_sweep_best_radar_fp_rate_min = float(
+                phase2_sensor_fidelity_summary.get("rig_sweep_best_radar_false_positive_rate_min", 0.0) or 0.0
+            )
+            phase2_sensor_rig_sweep_best_radar_fp_rate_min_batch = (
+                str(
+                    phase2_sensor_fidelity_summary.get(
+                        "rig_sweep_best_radar_false_positive_rate_min_batch_id",
+                        "",
+                    )
+                ).strip()
+                or "n/a"
+            )
+            phase2_sensor_rig_sweep_best_radar_clutter_min = float(
+                phase2_sensor_fidelity_summary.get("rig_sweep_best_radar_clutter_index_min", 0.0) or 0.0
+            )
+            phase2_sensor_rig_sweep_best_radar_clutter_min_batch = (
+                str(
+                    phase2_sensor_fidelity_summary.get(
+                        "rig_sweep_best_radar_clutter_index_min_batch_id",
+                        "",
+                    )
+                ).strip()
+                or "n/a"
+            )
             lines.append(
                 "phase2_sensor_rig_sweep="
                 f"evaluated:{phase2_sensor_rig_sweep_evaluated_count},"
@@ -12086,7 +12233,22 @@ def main() -> int:
                 f"best_lidar_range_ratio_avg:{phase2_sensor_rig_sweep_best_lidar_range_ratio_avg:.3f},"
                 f"best_radar_detect_ratio_avg:{phase2_sensor_rig_sweep_best_radar_detect_ratio_avg:.3f},"
                 f"best_radar_fp_rate_avg:{phase2_sensor_rig_sweep_best_radar_fp_rate_avg:.6f},"
-                f"best_radar_clutter_avg:{phase2_sensor_rig_sweep_best_radar_clutter_avg:.3f}"
+                f"best_radar_clutter_avg:{phase2_sensor_rig_sweep_best_radar_clutter_avg:.3f},"
+                "best_camera_visibility_max:"
+                f"{phase2_sensor_rig_sweep_best_camera_visibility_max:.3f}"
+                f"({phase2_sensor_rig_sweep_best_camera_visibility_max_batch}),"
+                "best_lidar_detection_max:"
+                f"{phase2_sensor_rig_sweep_best_lidar_detection_max:.3f}"
+                f"({phase2_sensor_rig_sweep_best_lidar_detection_max_batch}),"
+                "best_radar_detect_max:"
+                f"{phase2_sensor_rig_sweep_best_radar_detect_max:.3f}"
+                f"({phase2_sensor_rig_sweep_best_radar_detect_max_batch}),"
+                "best_radar_fp_rate_min:"
+                f"{phase2_sensor_rig_sweep_best_radar_fp_rate_min:.6f}"
+                f"({phase2_sensor_rig_sweep_best_radar_fp_rate_min_batch}),"
+                "best_radar_clutter_min:"
+                f"{phase2_sensor_rig_sweep_best_radar_clutter_min:.3f}"
+                f"({phase2_sensor_rig_sweep_best_radar_clutter_min_batch})"
             )
         else:
             lines.append("phase2_sensor_rig_sweep=n/a")

@@ -48769,6 +48769,71 @@ class BuildReleaseSummaryArtifactTests(unittest.TestCase):
                 0.12,
                 places=6,
             )
+            self.assertAlmostEqual(
+                float(phase2_sensor_fidelity_summary.get("rig_sweep_best_camera_visibility_score_max", 0.0) or 0.0),
+                0.88,
+                places=6,
+            )
+            self.assertEqual(
+                str(phase2_sensor_fidelity_summary.get("rig_sweep_best_camera_visibility_score_max_batch_id", "")),
+                "BATCH_MAP",
+            )
+            self.assertAlmostEqual(
+                float(phase2_sensor_fidelity_summary.get("rig_sweep_best_lidar_detection_ratio_max", 0.0) or 0.0),
+                0.85,
+                places=6,
+            )
+            self.assertEqual(
+                str(phase2_sensor_fidelity_summary.get("rig_sweep_best_lidar_detection_ratio_max_batch_id", "")),
+                "BATCH_MAP",
+            )
+            self.assertAlmostEqual(
+                float(
+                    phase2_sensor_fidelity_summary.get("rig_sweep_best_radar_target_detection_ratio_max", 0.0) or 0.0
+                ),
+                0.75,
+                places=6,
+            )
+            self.assertEqual(
+                str(
+                    phase2_sensor_fidelity_summary.get(
+                        "rig_sweep_best_radar_target_detection_ratio_max_batch_id",
+                        "",
+                    )
+                ),
+                "BATCH_MAP",
+            )
+            self.assertAlmostEqual(
+                float(
+                    phase2_sensor_fidelity_summary.get("rig_sweep_best_radar_false_positive_rate_min", 0.0)
+                    or 0.0
+                ),
+                0.25,
+                places=6,
+            )
+            self.assertEqual(
+                str(
+                    phase2_sensor_fidelity_summary.get(
+                        "rig_sweep_best_radar_false_positive_rate_min_batch_id",
+                        "",
+                    )
+                ),
+                "BATCH_MAP",
+            )
+            self.assertAlmostEqual(
+                float(phase2_sensor_fidelity_summary.get("rig_sweep_best_radar_clutter_index_min", 0.0) or 0.0),
+                0.12,
+                places=6,
+            )
+            self.assertEqual(
+                str(
+                    phase2_sensor_fidelity_summary.get(
+                        "rig_sweep_best_radar_clutter_index_min_batch_id",
+                        "",
+                    )
+                ),
+                "BATCH_MAP",
+            )
             assert_text_file_contains(
                 self,
                 file_path=out_text,
@@ -48785,6 +48850,293 @@ class BuildReleaseSummaryArtifactTests(unittest.TestCase):
                     "camera_flow_enabled_total:2,camera_flow_mag_avg_px:4.200,camera_flow_velocity_dirs:FORWARD:2,camera_flow_y_axis_dirs:UP:2,lidar_detection_ratio_avg:0.850,radar_ghost_total:2",
                     "phase2_sensor_rig_sweep=evaluated:1,tier_counts:high:1,candidate_total:3,candidate_avg:3.000,candidate_max:3(BATCH_MAP),best_score_max:12.500(BATCH_MAP),best_rig_counts:rig_cam_lidar:1",
                     "quality_samples:1,best_camera_visibility_avg:0.880,best_camera_noise_avg_px:1.200,best_lidar_detection_avg:0.850,best_lidar_range_ratio_avg:0.683,best_radar_detect_ratio_avg:0.750,best_radar_fp_rate_avg:0.250000,best_radar_clutter_avg:0.120",
+                    "best_camera_visibility_max:0.880(BATCH_MAP),best_lidar_detection_max:0.850(BATCH_MAP),best_radar_detect_max:0.750(BATCH_MAP),best_radar_fp_rate_min:0.250000(BATCH_MAP),best_radar_clutter_min:0.120(BATCH_MAP)",
+                ],
+            )
+
+    def test_phase2_sensor_rig_sweep_quality_summary_aggregates_across_manifests(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp_path = Path(tmp)
+            artifacts_root = tmp_path / "artifacts"
+            reports_root = artifacts_root / "reports"
+            reports_root.mkdir(parents=True, exist_ok=True)
+            release_prefix = "REL_TEST_PHASE2_SENSOR_SWEEP_MULTI_001"
+
+            cases = [
+                {
+                    "batch_id": "BATCH_A",
+                    "sds_version": "sds_v0.1.0",
+                    "candidate_count": 3,
+                    "best_rig_id": "rig_alpha",
+                    "best_heuristic_score": 13.0,
+                    "metrics": {
+                        "camera_visibility_score_avg": 0.9,
+                        "camera_noise_stddev_px_avg": 1.1,
+                        "lidar_detection_ratio_avg": 0.8,
+                        "lidar_effective_range_ratio_avg": 0.7,
+                        "radar_target_detection_ratio_avg": 0.72,
+                        "radar_false_positive_rate_avg": 0.2,
+                        "radar_clutter_index_avg": 0.1,
+                    },
+                },
+                {
+                    "batch_id": "BATCH_B",
+                    "sds_version": "sds_v0.2.0",
+                    "candidate_count": 4,
+                    "best_rig_id": "rig_beta",
+                    "best_heuristic_score": 11.5,
+                    "metrics": {
+                        "camera_visibility_score_avg": 0.6,
+                        "camera_noise_stddev_px_avg": 2.0,
+                        "lidar_detection_ratio_avg": 0.5,
+                        "lidar_effective_range_ratio_avg": 0.4,
+                        "radar_target_detection_ratio_avg": 0.65,
+                        "radar_false_positive_rate_avg": 0.35,
+                        "radar_clutter_index_avg": 0.3,
+                    },
+                },
+            ]
+
+            for case in cases:
+                batch_root = artifacts_root / str(case["batch_id"]).lower()
+                batch_root.mkdir(parents=True, exist_ok=True)
+
+                summary_path = reports_root / (
+                    f"{release_prefix}_{str(case['sds_version']).replace('.', '_')}.summary.json"
+                )
+                summary_path.write_text(
+                    json.dumps(
+                        {
+                            "release_id": f"{release_prefix}_{case['batch_id']}",
+                            "sds_version": case["sds_version"],
+                            "final_result": "PASS",
+                            "generated_at": "2026-01-01T00:00:00+00:00",
+                        }
+                    )
+                    + "\n",
+                    encoding="utf-8",
+                )
+
+                sensor_bridge_report = batch_root / "sensor_bridge_report.json"
+                sensor_bridge_report.write_text(
+                    json.dumps(
+                        {
+                            "sensor_bridge_schema_version": "sensor_sim_bridge_report_v0",
+                            "sensor_fidelity_tier": "high",
+                            "sensor_fidelity_tier_score": 3.0,
+                            "frame_count": 3,
+                            "sensor_stream_modality_counts": {"camera": 1, "lidar": 1, "radar": 1},
+                            "sensor_quality_summary": {
+                                "camera_frame_count": 1,
+                                "lidar_frame_count": 1,
+                                "radar_frame_count": 1,
+                            },
+                        }
+                    )
+                    + "\n",
+                    encoding="utf-8",
+                )
+
+                sensor_sweep_report = batch_root / "sensor_sweep_report.json"
+                sensor_sweep_report.write_text(
+                    json.dumps(
+                        {
+                            "rig_sweep_schema_version": "sensor_rig_sweep_report_v0",
+                            "sensor_fidelity_tier": "high",
+                            "candidate_count": case["candidate_count"],
+                            "best_rig_id": case["best_rig_id"],
+                            "best_heuristic_score": case["best_heuristic_score"],
+                            "rankings": [
+                                {
+                                    "rig_id": case["best_rig_id"],
+                                    "heuristic_score": case["best_heuristic_score"],
+                                    "metrics": case["metrics"],
+                                }
+                            ],
+                        }
+                    )
+                    + "\n",
+                    encoding="utf-8",
+                )
+
+                pipeline_manifest_path = batch_root / "pipeline_result.json"
+                pipeline_manifest_path.write_text(
+                    json.dumps(
+                        {
+                            "release_id": f"{release_prefix}_{case['batch_id']}",
+                            "batch_id": case["batch_id"],
+                            "overall_result": "PASS",
+                            "strict_gate": True,
+                            "trend_gate": {"result": "PASS"},
+                            "phase2_hooks": {
+                                "enabled": True,
+                                "sensor_bridge_out": str(sensor_bridge_report),
+                                "sensor_sweep_out": str(sensor_sweep_report),
+                            },
+                            "reports": [{"sds_version": case["sds_version"]}],
+                        }
+                    )
+                    + "\n",
+                    encoding="utf-8",
+                )
+
+            out_text = tmp_path / "summary.txt"
+            out_json = tmp_path / "summary.json"
+            run_script(
+                PROTOTYPE_DIR / "build_release_summary_artifact.py",
+                "--artifacts-root",
+                str(artifacts_root),
+                "--release-prefix",
+                release_prefix,
+                "--out-text",
+                str(out_text),
+                "--out-json",
+                str(out_json),
+                "--out-db",
+                str(tmp_path / "summary.sqlite"),
+            )
+
+            payload = read_json_file(self, file_path=out_json)
+            phase2_sensor_fidelity_summary = payload.get("phase2_sensor_fidelity_summary", {})
+            self.assertIsInstance(phase2_sensor_fidelity_summary, dict)
+            self.assertEqual(int(phase2_sensor_fidelity_summary.get("evaluated_manifest_count", 0) or 0), 2)
+            self.assertEqual(int(phase2_sensor_fidelity_summary.get("rig_sweep_evaluated_manifest_count", 0) or 0), 2)
+            self.assertEqual(int(phase2_sensor_fidelity_summary.get("rig_sweep_candidate_count_total", 0) or 0), 7)
+            self.assertAlmostEqual(
+                float(phase2_sensor_fidelity_summary.get("rig_sweep_candidate_count_avg", 0.0) or 0.0),
+                3.5,
+                places=6,
+            )
+            self.assertEqual(int(phase2_sensor_fidelity_summary.get("rig_sweep_candidate_count_max", 0) or 0), 4)
+            self.assertEqual(
+                str(phase2_sensor_fidelity_summary.get("rig_sweep_highest_candidate_count_batch_id", "")),
+                "BATCH_B",
+            )
+            self.assertAlmostEqual(
+                float(phase2_sensor_fidelity_summary.get("rig_sweep_best_heuristic_score_max", 0.0) or 0.0),
+                13.0,
+                places=6,
+            )
+            self.assertEqual(
+                str(phase2_sensor_fidelity_summary.get("rig_sweep_highest_best_heuristic_score_batch_id", "")),
+                "BATCH_A",
+            )
+            self.assertEqual(
+                phase2_sensor_fidelity_summary.get("rig_sweep_best_rig_id_counts"),
+                {"rig_alpha": 1, "rig_beta": 1},
+            )
+            self.assertEqual(int(phase2_sensor_fidelity_summary.get("rig_sweep_best_quality_sample_count", 0) or 0), 2)
+            self.assertAlmostEqual(
+                float(phase2_sensor_fidelity_summary.get("rig_sweep_best_camera_visibility_score_avg", 0.0) or 0.0),
+                0.75,
+                places=6,
+            )
+            self.assertAlmostEqual(
+                float(phase2_sensor_fidelity_summary.get("rig_sweep_best_camera_noise_stddev_px_avg", 0.0) or 0.0),
+                1.55,
+                places=6,
+            )
+            self.assertAlmostEqual(
+                float(phase2_sensor_fidelity_summary.get("rig_sweep_best_lidar_detection_ratio_avg", 0.0) or 0.0),
+                0.65,
+                places=6,
+            )
+            self.assertAlmostEqual(
+                float(
+                    phase2_sensor_fidelity_summary.get("rig_sweep_best_lidar_effective_range_ratio_avg", 0.0) or 0.0
+                ),
+                0.55,
+                places=6,
+            )
+            self.assertAlmostEqual(
+                float(
+                    phase2_sensor_fidelity_summary.get("rig_sweep_best_radar_target_detection_ratio_avg", 0.0) or 0.0
+                ),
+                0.685,
+                places=6,
+            )
+            self.assertAlmostEqual(
+                float(phase2_sensor_fidelity_summary.get("rig_sweep_best_radar_false_positive_rate_avg", 0.0) or 0.0),
+                0.275,
+                places=6,
+            )
+            self.assertAlmostEqual(
+                float(phase2_sensor_fidelity_summary.get("rig_sweep_best_radar_clutter_index_avg", 0.0) or 0.0),
+                0.2,
+                places=6,
+            )
+            self.assertAlmostEqual(
+                float(phase2_sensor_fidelity_summary.get("rig_sweep_best_camera_visibility_score_max", 0.0) or 0.0),
+                0.9,
+                places=6,
+            )
+            self.assertEqual(
+                str(phase2_sensor_fidelity_summary.get("rig_sweep_best_camera_visibility_score_max_batch_id", "")),
+                "BATCH_A",
+            )
+            self.assertAlmostEqual(
+                float(phase2_sensor_fidelity_summary.get("rig_sweep_best_lidar_detection_ratio_max", 0.0) or 0.0),
+                0.8,
+                places=6,
+            )
+            self.assertEqual(
+                str(phase2_sensor_fidelity_summary.get("rig_sweep_best_lidar_detection_ratio_max_batch_id", "")),
+                "BATCH_A",
+            )
+            self.assertAlmostEqual(
+                float(
+                    phase2_sensor_fidelity_summary.get("rig_sweep_best_radar_target_detection_ratio_max", 0.0) or 0.0
+                ),
+                0.72,
+                places=6,
+            )
+            self.assertEqual(
+                str(
+                    phase2_sensor_fidelity_summary.get(
+                        "rig_sweep_best_radar_target_detection_ratio_max_batch_id",
+                        "",
+                    )
+                ),
+                "BATCH_A",
+            )
+            self.assertAlmostEqual(
+                float(
+                    phase2_sensor_fidelity_summary.get("rig_sweep_best_radar_false_positive_rate_min", 0.0)
+                    or 0.0
+                ),
+                0.2,
+                places=6,
+            )
+            self.assertEqual(
+                str(
+                    phase2_sensor_fidelity_summary.get(
+                        "rig_sweep_best_radar_false_positive_rate_min_batch_id",
+                        "",
+                    )
+                ),
+                "BATCH_A",
+            )
+            self.assertAlmostEqual(
+                float(phase2_sensor_fidelity_summary.get("rig_sweep_best_radar_clutter_index_min", 0.0) or 0.0),
+                0.1,
+                places=6,
+            )
+            self.assertEqual(
+                str(
+                    phase2_sensor_fidelity_summary.get(
+                        "rig_sweep_best_radar_clutter_index_min_batch_id",
+                        "",
+                    )
+                ),
+                "BATCH_A",
+            )
+            assert_text_file_contains(
+                self,
+                file_path=out_text,
+                expected_substrings=[
+                    "phase2_sensor_rig_sweep=evaluated:2,tier_counts:high:2,candidate_total:7,candidate_avg:3.500,candidate_max:4(BATCH_B),best_score_max:13.000(BATCH_A),best_rig_counts:rig_alpha:1,rig_beta:1",
+                    "quality_samples:2,best_camera_visibility_avg:0.750,best_camera_noise_avg_px:1.550,best_lidar_detection_avg:0.650,best_lidar_range_ratio_avg:0.550,best_radar_detect_ratio_avg:0.685,best_radar_fp_rate_avg:0.275000,best_radar_clutter_avg:0.200",
+                    "best_camera_visibility_max:0.900(BATCH_A),best_lidar_detection_max:0.800(BATCH_A),best_radar_detect_max:0.720(BATCH_A),best_radar_fp_rate_min:0.200000(BATCH_A),best_radar_clutter_min:0.100(BATCH_A)",
                 ],
             )
 
