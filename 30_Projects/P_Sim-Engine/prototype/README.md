@@ -182,6 +182,9 @@ Camera postprocess/system-lens effects inputs (Applied docs aligned subset):
 - `system_params.color_space` (`RGB|LABD65|XYZD65|MONO|RAINBOW`)
 - `system_params.data_type` (`UINT|FLOAT`)
 - `system_params.piecewise_linear_mapping` (`[{input,output}, ...]`, normalized)
+- `sensor_params.color_filter_array.demosaic` (`NONE|IDEAL|BILINEAR`)
+- `sensor_params.color_filter_array.layout.p1|p2|p3|p4` (`R|G|B|C|M|Y|W`)
+- `sensor_params.color_filter_array.transmittance.p1|p2|p3|p4` (`0..1`)
 - `fidelity.bloom.disable|level`, `fidelity.disable_tonemapper`
 
 Camera postprocess example:
@@ -202,6 +205,16 @@ python3 sensor_sim_bridge.py \
   --sensor-rig examples/sensor_rig_camera_color_pipeline_v0.json \
   --fidelity-tier high \
   --out runs/sensor_frames_camera_color_pipeline_v0.json
+```
+
+Camera CFA/demosaic example:
+
+```bash
+python3 sensor_sim_bridge.py \
+  --world-state examples/world_state_adverse_weather_v0.json \
+  --sensor-rig examples/sensor_rig_camera_cfa_demosaic_v0.json \
+  --fidelity-tier high \
+  --out runs/sensor_frames_camera_cfa_demosaic_v0.json
 ```
 
 Camera tonemapping/black-level example:

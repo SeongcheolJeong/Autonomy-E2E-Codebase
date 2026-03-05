@@ -660,6 +660,64 @@ def _resolve_camera_output_data_type(raw: Any) -> str:
     return "UINT"
 
 
+def _resolve_demosaic_mode(raw: Any) -> str:
+    value = str(raw if raw is not None else "").strip().upper()
+    if value in {"NONE", "IDEAL", "BILINEAR"}:
+        return value
+    return "IDEAL"
+
+
+def _resolve_cfa_channel(raw: Any, *, default: str) -> str:
+    value = str(raw if raw is not None else "").strip().upper()
+    if value in {"R", "G", "B", "C", "M", "Y", "W"}:
+        return value
+    return default
+
+
+def _resolve_cfa_layout(raw_value: Any) -> dict[str, str]:
+    defaults = {
+        "p1": "R",
+        "p2": "G",
+        "p3": "G",
+        "p4": "B",
+    }
+    resolved = dict(defaults)
+    if isinstance(raw_value, dict):
+        for key in ("p1", "p2", "p3", "p4"):
+            resolved[key] = _resolve_cfa_channel(
+                raw_value.get(key, raw_value.get(key.upper(), resolved[key])),
+                default=resolved[key],
+            )
+    elif isinstance(raw_value, (list, tuple)):
+        ordered_keys = ("p1", "p2", "p3", "p4")
+        for idx, key in enumerate(ordered_keys):
+            if idx >= len(raw_value):
+                break
+            resolved[key] = _resolve_cfa_channel(raw_value[idx], default=resolved[key])
+    return resolved
+
+
+def _resolve_cfa_transmittance(raw_value: Any) -> dict[str, float]:
+    defaults = {
+        "p1": 1.0,
+        "p2": 1.0,
+        "p3": 1.0,
+        "p4": 1.0,
+    }
+    resolved: dict[str, float] = dict(defaults)
+    if isinstance(raw_value, dict):
+        for key in ("p1", "p2", "p3", "p4"):
+            value = raw_value.get(key, raw_value.get(key.upper(), resolved[key]))
+            resolved[key] = _clamp_float(_to_float(value, default=resolved[key]), minimum=0.0, maximum=1.0)
+    elif isinstance(raw_value, (list, tuple)):
+        ordered_keys = ("p1", "p2", "p3", "p4")
+        for idx, key in enumerate(ordered_keys):
+            if idx >= len(raw_value):
+                break
+            resolved[key] = _clamp_float(_to_float(raw_value[idx], default=resolved[key]), minimum=0.0, maximum=1.0)
+    return resolved
+
+
 def _resolve_piecewise_linear_mapping(raw: Any) -> list[dict[str, float]]:
     if not isinstance(raw, list):
         return []
@@ -727,8 +785,23 @@ def _resolve_camera_postprocess_config(sensor_config: dict[str, Any]) -> dict[st
     vignetting = _as_dict(lens_params.get("vignetting"))
     fidelity_bloom = _as_dict(fidelity.get("bloom"))
     auto_black_level_offset = _as_dict(system_params.get("auto_black_level_offset"))
+    color_filter_array = _as_dict(sensor_params.get("color_filter_array"))
+    if not color_filter_array:
+        color_filter_array = _as_dict(sensor_config.get("color_filter_array"))
     black_level_offset_raw = system_params.get("black_level_offset", sensor_config.get("black_level_offset"))
     saturation_raw = system_params.get("saturation", sensor_config.get("saturation"))
+    demosaic_mode = _resolve_demosaic_mode(
+        color_filter_array.get(
+            "demosaic",
+            sensor_params.get("demosaic", sensor_config.get("demosaic", "IDEAL")),
+        )
+    )
+    color_filter_layout = _resolve_cfa_layout(
+        color_filter_array.get("layout", sensor_config.get("color_filter_layout"))
+    )
+    color_filter_transmittance = _resolve_cfa_transmittance(
+        color_filter_array.get("transmittance", sensor_config.get("color_filter_transmittance"))
+    )
     piecewise_linear_mapping = _resolve_piecewise_linear_mapping(
         system_params.get("piecewise_linear_mapping", sensor_config.get("piecewise_linear_mapping"))
     )
@@ -761,13 +834,20 @@ def _resolve_camera_postprocess_config(sensor_config: dict[str, Any]) -> dict[st
             "piecewise_linear_mapping",
         )
     ) or any(
+        key in color_filter_array
+        for key in (
+            "demosaic",
+            "layout",
+            "transmittance",
+        )
+    ) or any(
         key in fidelity
         for key in (
             "bloom",
             "disable_tonemapper",
         )
     ) or any(
-        key in sensor_params for key in ("bloom",)
+        key in sensor_params for key in ("bloom", "demosaic", "color_filter_array")
     ) or any(
         key in sensor_config
         for key in (
@@ -782,6 +862,10 @@ def _resolve_camera_postprocess_config(sensor_config: dict[str, Any]) -> dict[st
             "auto_black_level_offset",
             "black_level_offset",
             "saturation",
+            "demosaic",
+            "color_filter_array",
+            "color_filter_layout",
+            "color_filter_transmittance",
             "color_space",
             "data_type",
             "piecewise_linear_mapping",
@@ -952,6 +1036,10 @@ def _resolve_camera_postprocess_config(sensor_config: dict[str, Any]) -> dict[st
         "auto_black_level_stddev_to_subtract": float(auto_black_level_stddev_to_subtract),
         "black_level_offset": black_level_offset,
         "saturation": saturation,
+        "color_filter_array_input_present": bool(color_filter_array),
+        "demosaic_mode": demosaic_mode,
+        "color_filter_layout": color_filter_layout,
+        "color_filter_transmittance": color_filter_transmittance,
         "color_space": color_space,
         "output_data_type": output_data_type,
         "piecewise_linear_mapping": piecewise_linear_mapping,
@@ -991,6 +1079,10 @@ def _compute_camera_postprocess(
     saturation_g = _to_non_negative_float(saturation.get("g", 1.0))
     saturation_b = _to_non_negative_float(saturation.get("b", 1.0))
     saturation_a = _to_non_negative_float(saturation.get("a", 1.0))
+    color_filter_array_input_present = bool(config.get("color_filter_array_input_present", False))
+    demosaic_mode = str(config.get("demosaic_mode", "IDEAL"))
+    color_filter_layout = _as_dict(config.get("color_filter_layout"))
+    color_filter_transmittance = _as_dict(config.get("color_filter_transmittance"))
     color_space = str(config.get("color_space", "RGB"))
     output_data_type = str(config.get("output_data_type", "UINT"))
     piecewise_linear_mapping = config.get("piecewise_linear_mapping", [])
@@ -1040,6 +1132,55 @@ def _compute_camera_postprocess(
         maximum=4.0,
     )
     saturation_deviation = abs(saturation_effective_scale - 1.0)
+    cfa_layout = _resolve_cfa_layout(color_filter_layout)
+    cfa_transmittance = _resolve_cfa_transmittance(color_filter_transmittance)
+    cfa_layout_values = [str(cfa_layout.get(key, "W")) for key in ("p1", "p2", "p3", "p4")]
+    cfa_transmittance_values = [_to_non_negative_float(cfa_transmittance.get(key, 1.0)) for key in ("p1", "p2", "p3", "p4")]
+    cfa_transmittance_avg = sum(cfa_transmittance_values) / 4.0
+    cfa_green_channel_count = sum(1 for channel in cfa_layout_values if channel == "G")
+    cfa_non_rgb_channel_count = sum(1 for channel in cfa_layout_values if channel not in {"R", "G", "B"})
+    cfa_rgb_presence_score = (
+        len({channel for channel in cfa_layout_values if channel in {"R", "G", "B"}}) / 3.0
+    )
+    cfa_green_balance_score = _clamp_float(cfa_green_channel_count / 2.0, minimum=0.0, maximum=1.0)
+    cfa_non_rgb_ratio = cfa_non_rgb_channel_count / 4.0
+    cfa_luma_weights = {
+        "R": 0.299,
+        "G": 0.587,
+        "B": 0.114,
+        "C": 0.701,
+        "M": 0.413,
+        "Y": 0.886,
+        "W": 1.0,
+    }
+    cfa_luma_throughput = (
+        sum(
+            cfa_luma_weights.get(channel, 1.0) * cfa_transmittance_values[idx]
+            for idx, channel in enumerate(cfa_layout_values)
+        )
+        / 4.0
+    )
+    if demosaic_mode == "NONE":
+        cfa_demosaic_artifact_scale = 1.0
+        cfa_demosaic_quality_scale = 0.72
+    elif demosaic_mode == "BILINEAR":
+        cfa_demosaic_artifact_scale = 0.55
+        cfa_demosaic_quality_scale = 0.88
+    else:
+        cfa_demosaic_artifact_scale = 0.0
+        cfa_demosaic_quality_scale = 1.0
+    cfa_color_reconstruction_score = _clamp_float(
+        (
+            (0.45 * cfa_rgb_presence_score)
+            + (0.25 * cfa_green_balance_score)
+            + (0.2 * cfa_transmittance_avg)
+            + (0.1 * cfa_luma_throughput)
+            - (0.22 * cfa_non_rgb_ratio)
+        )
+        * cfa_demosaic_quality_scale,
+        minimum=0.0,
+        maximum=1.0,
+    )
     piecewise_linear_mapping_present = len(piecewise_linear_mapping) >= 2
     piecewise_linear_mapping_point_count = int(len(piecewise_linear_mapping))
     if piecewise_linear_mapping_present:
@@ -1139,6 +1280,11 @@ def _compute_camera_postprocess(
         postprocess_visibility_scale
         * color_space_visibility_scale
         * _clamp_float(
+            0.92 + (0.14 * cfa_color_reconstruction_score) - (0.07 * cfa_demosaic_artifact_scale),
+            minimum=0.75,
+            maximum=1.08,
+        )
+        * _clamp_float(
             1.0 - (0.04 * piecewise_mapping_midtone_deviation),
             minimum=0.85,
             maximum=1.08,
@@ -1155,6 +1301,8 @@ def _compute_camera_postprocess(
         + (0.05 * saturation_deviation)
         + color_space_noise_delta
         + data_type_noise_delta
+        + (0.18 * (1.0 - cfa_color_reconstruction_score))
+        + (0.08 * cfa_demosaic_artifact_scale)
         + (0.05 * piecewise_mapping_contrast_deviation),
         minimum=0.0,
         maximum=2.0,
@@ -1165,6 +1313,8 @@ def _compute_camera_postprocess(
         - (0.08 * flare_glare_ratio)
         - (1.1 * effective_black_level_lift)
         - (0.15 * max(0.0, saturation_effective_scale - 1.0))
+        + (0.35 * (cfa_luma_throughput - 0.5))
+        - (0.14 * cfa_demosaic_artifact_scale)
         + (0.45 * (piecewise_mapping_dynamic_range_scale - 1.0))
         + data_type_dynamic_range_delta
         + (0.2 if disable_tonemapper else 0.0),
@@ -1202,6 +1352,26 @@ def _compute_camera_postprocess(
             "b": float(saturation_b),
             "a": float(saturation_a),
         },
+        "color_filter_array_input_present": bool(color_filter_array_input_present),
+        "demosaic_mode": demosaic_mode,
+        "color_filter_layout": {
+            "p1": str(cfa_layout.get("p1", "R")),
+            "p2": str(cfa_layout.get("p2", "G")),
+            "p3": str(cfa_layout.get("p3", "G")),
+            "p4": str(cfa_layout.get("p4", "B")),
+        },
+        "color_filter_transmittance": {
+            "p1": float(cfa_transmittance.get("p1", 1.0)),
+            "p2": float(cfa_transmittance.get("p2", 1.0)),
+            "p3": float(cfa_transmittance.get("p3", 1.0)),
+            "p4": float(cfa_transmittance.get("p4", 1.0)),
+        },
+        "color_filter_transmittance_avg": float(cfa_transmittance_avg),
+        "color_filter_non_rgb_channel_count": int(cfa_non_rgb_channel_count),
+        "color_filter_green_channel_count": int(cfa_green_channel_count),
+        "color_filter_luma_throughput": float(cfa_luma_throughput),
+        "color_filter_color_reconstruction_score": float(cfa_color_reconstruction_score),
+        "color_filter_demosaic_artifact_scale": float(cfa_demosaic_artifact_scale),
         "color_space": color_space,
         "output_data_type": output_data_type,
         "piecewise_linear_mapping_present": bool(piecewise_linear_mapping_present),
@@ -2131,6 +2301,11 @@ def _summarize_sensor_quality(frames: list[dict[str, Any]]) -> dict[str, Any]:
     camera_piecewise_linear_mapping_midtone_gain_total = 0.0
     camera_color_space_counts: dict[str, int] = {}
     camera_output_data_type_counts: dict[str, int] = {}
+    camera_color_filter_array_enabled_frame_count = 0
+    camera_color_filter_transmittance_avg_total = 0.0
+    camera_color_filter_non_rgb_channel_count_total = 0.0
+    camera_color_filter_color_reconstruction_score_total = 0.0
+    camera_demosaic_mode_counts: dict[str, int] = {}
     camera_tonemapper_disabled_frame_count = 0
     camera_bloom_level_counts: dict[str, int] = {}
     camera_depth_enabled_frame_count = 0
@@ -2266,6 +2441,20 @@ def _summarize_sensor_quality(frames: list[dict[str, Any]]) -> dict[str, Any]:
                 camera_output_data_type_counts[output_data_type] = (
                     camera_output_data_type_counts.get(output_data_type, 0) + 1
                 )
+            if bool(camera_postprocess.get("color_filter_array_input_present", False)):
+                camera_color_filter_array_enabled_frame_count += 1
+            camera_color_filter_transmittance_avg_total += _to_non_negative_float(
+                camera_postprocess.get("color_filter_transmittance_avg", 0.0)
+            )
+            camera_color_filter_non_rgb_channel_count_total += _to_non_negative_float(
+                camera_postprocess.get("color_filter_non_rgb_channel_count", 0.0)
+            )
+            camera_color_filter_color_reconstruction_score_total += _to_non_negative_float(
+                camera_postprocess.get("color_filter_color_reconstruction_score", 0.0)
+            )
+            demosaic_mode = str(camera_postprocess.get("demosaic_mode", "")).strip().upper()
+            if demosaic_mode:
+                camera_demosaic_mode_counts[demosaic_mode] = camera_demosaic_mode_counts.get(demosaic_mode, 0) + 1
             if bool(camera_postprocess.get("disable_tonemapper", False)):
                 camera_tonemapper_disabled_frame_count += 1
             bloom_level = str(camera_postprocess.get("bloom_level", "")).strip().upper()
@@ -2449,6 +2638,21 @@ def _summarize_sensor_quality(frames: list[dict[str, Any]]) -> dict[str, Any]:
         if camera_frame_count > 0
         else 0.0
     )
+    camera_color_filter_transmittance_avg = (
+        camera_color_filter_transmittance_avg_total / float(camera_frame_count)
+        if camera_frame_count > 0
+        else 0.0
+    )
+    camera_color_filter_non_rgb_channel_count_avg = (
+        camera_color_filter_non_rgb_channel_count_total / float(camera_frame_count)
+        if camera_frame_count > 0
+        else 0.0
+    )
+    camera_color_filter_color_reconstruction_score_avg = (
+        camera_color_filter_color_reconstruction_score_total / float(camera_frame_count)
+        if camera_frame_count > 0
+        else 0.0
+    )
     camera_depth_min_m_avg = (
         camera_depth_min_m_total / float(camera_frame_count)
         if camera_frame_count > 0
@@ -2566,6 +2770,15 @@ def _summarize_sensor_quality(frames: list[dict[str, Any]]) -> dict[str, Any]:
         "camera_output_data_type_counts": {
             key: camera_output_data_type_counts[key]
             for key in sorted(camera_output_data_type_counts.keys())
+        },
+        "camera_color_filter_array_enabled_frame_count": int(camera_color_filter_array_enabled_frame_count),
+        "camera_color_filter_transmittance_avg": float(camera_color_filter_transmittance_avg),
+        "camera_color_filter_non_rgb_channel_count_avg": float(camera_color_filter_non_rgb_channel_count_avg),
+        "camera_color_filter_color_reconstruction_score_avg": float(
+            camera_color_filter_color_reconstruction_score_avg
+        ),
+        "camera_demosaic_mode_counts": {
+            key: camera_demosaic_mode_counts[key] for key in sorted(camera_demosaic_mode_counts.keys())
         },
         "camera_tonemapper_disabled_frame_count": int(camera_tonemapper_disabled_frame_count),
         "camera_bloom_level_counts": {

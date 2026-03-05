@@ -1,0 +1,52 @@
+{
+  "rig_schema_version": "sensor_rig_v0",
+  "sensors": [
+    {
+      "sensor_id": "camera_front_cfa",
+      "sensor_type": "camera",
+      "image_width_px": 1920,
+      "image_height_px": 1080,
+      "lens_params": {
+        "chromatic_aberration": 1.4,
+        "lens_flare": 0.5,
+        "vignetting": {
+          "intensity": 0.4,
+          "alpha": 1.1,
+          "radius": 0.85
+        }
+      },
+      "sensor_params": {
+        "bloom": 0.6,
+        "color_filter_array": {
+          "demosaic": "BILINEAR",
+          "layout": {
+            "p1": "R",
+            "p2": "G",
+            "p3": "Y",
+            "p4": "B"
+          },
+          "transmittance": {
+            "p1": 0.9,
+            "p2": 0.85,
+            "p3": 0.7,
+            "p4": 0.8
+          }
+        }
+      },
+      "system_params": {
+        "gain": 10.0,
+        "gamma": 0.58,
+        "white_balance": 5100.0,
+        "color_space": "MONO",
+        "data_type": "FLOAT"
+      },
+      "fidelity": {
+        "bloom": {
+          "disable": false,
+          "level": "HIGH"
+        },
+        "disable_tonemapper": true
+      }
+    }
+  ]
+}

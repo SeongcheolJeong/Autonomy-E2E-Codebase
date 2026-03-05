@@ -2068,6 +2068,11 @@ def run_phase2_hooks(args: argparse.Namespace) -> dict[str, Any]:
         "camera_piecewise_linear_mapping_midtone_gain_avg": 0.0,
         "camera_color_space_counts": {},
         "camera_output_data_type_counts": {},
+        "camera_color_filter_array_enabled_frame_count": 0,
+        "camera_color_filter_transmittance_avg": 0.0,
+        "camera_color_filter_non_rgb_channel_count_avg": 0.0,
+        "camera_color_filter_color_reconstruction_score_avg": 0.0,
+        "camera_demosaic_mode_counts": {},
         "camera_tonemapper_disabled_frame_count": 0,
         "camera_bloom_level_counts": {},
         "camera_depth_enabled_frame_count": 0,
@@ -2195,6 +2200,21 @@ def run_phase2_hooks(args: argparse.Namespace) -> dict[str, Any]:
             "camera_output_data_type_counts": _normalize_uppercase_mode_counts(
                 sensor_quality_summary_raw.get("camera_output_data_type_counts", {})
             ),
+            "camera_color_filter_array_enabled_frame_count": _to_non_negative_int(
+                sensor_quality_summary_raw.get("camera_color_filter_array_enabled_frame_count", 0)
+            ),
+            "camera_color_filter_transmittance_avg": _to_non_negative_float(
+                sensor_quality_summary_raw.get("camera_color_filter_transmittance_avg", 0.0)
+            ),
+            "camera_color_filter_non_rgb_channel_count_avg": _to_non_negative_float(
+                sensor_quality_summary_raw.get("camera_color_filter_non_rgb_channel_count_avg", 0.0)
+            ),
+            "camera_color_filter_color_reconstruction_score_avg": _to_non_negative_float(
+                sensor_quality_summary_raw.get("camera_color_filter_color_reconstruction_score_avg", 0.0)
+            ),
+            "camera_demosaic_mode_counts": _normalize_uppercase_mode_counts(
+                sensor_quality_summary_raw.get("camera_demosaic_mode_counts", {})
+            ),
             "camera_tonemapper_disabled_frame_count": _to_non_negative_int(
                 sensor_quality_summary_raw.get("camera_tonemapper_disabled_frame_count", 0)
             ),
@@ -2300,6 +2320,11 @@ def run_phase2_hooks(args: argparse.Namespace) -> dict[str, Any]:
         camera_piecewise_linear_mapping_midtone_gain_total = 0.0
         camera_color_space_counts: dict[str, int] = {}
         camera_output_data_type_counts: dict[str, int] = {}
+        camera_color_filter_array_enabled_frame_count = 0
+        camera_color_filter_transmittance_avg_total = 0.0
+        camera_color_filter_non_rgb_channel_count_total = 0.0
+        camera_color_filter_color_reconstruction_score_total = 0.0
+        camera_demosaic_mode_counts: dict[str, int] = {}
         camera_tonemapper_disabled_frame_count = 0
         camera_bloom_level_counts: dict[str, int] = {}
         camera_depth_enabled_frame_count = 0
@@ -2443,6 +2468,20 @@ def run_phase2_hooks(args: argparse.Namespace) -> dict[str, Any]:
                     camera_output_data_type_counts[output_data_type] = (
                         camera_output_data_type_counts.get(output_data_type, 0) + 1
                     )
+                if bool(camera_postprocess_payload.get("color_filter_array_input_present", False)):
+                    camera_color_filter_array_enabled_frame_count += 1
+                camera_color_filter_transmittance_avg_total += _to_non_negative_float(
+                    camera_postprocess_payload.get("color_filter_transmittance_avg", 0.0)
+                )
+                camera_color_filter_non_rgb_channel_count_total += _to_non_negative_float(
+                    camera_postprocess_payload.get("color_filter_non_rgb_channel_count", 0.0)
+                )
+                camera_color_filter_color_reconstruction_score_total += _to_non_negative_float(
+                    camera_postprocess_payload.get("color_filter_color_reconstruction_score", 0.0)
+                )
+                demosaic_mode = str(camera_postprocess_payload.get("demosaic_mode", "")).strip().upper()
+                if demosaic_mode:
+                    camera_demosaic_mode_counts[demosaic_mode] = camera_demosaic_mode_counts.get(demosaic_mode, 0) + 1
                 if bool(camera_postprocess_payload.get("disable_tonemapper", False)):
                     camera_tonemapper_disabled_frame_count += 1
                 bloom_level = str(camera_postprocess_payload.get("bloom_level", "")).strip().upper()
@@ -2658,6 +2697,26 @@ def run_phase2_hooks(args: argparse.Namespace) -> dict[str, Any]:
             "camera_output_data_type_counts": {
                 key: camera_output_data_type_counts[key]
                 for key in sorted(camera_output_data_type_counts.keys())
+            },
+            "camera_color_filter_array_enabled_frame_count": int(camera_color_filter_array_enabled_frame_count),
+            "camera_color_filter_transmittance_avg": (
+                float(camera_color_filter_transmittance_avg_total / float(camera_frame_count))
+                if camera_frame_count > 0
+                else 0.0
+            ),
+            "camera_color_filter_non_rgb_channel_count_avg": (
+                float(camera_color_filter_non_rgb_channel_count_total / float(camera_frame_count))
+                if camera_frame_count > 0
+                else 0.0
+            ),
+            "camera_color_filter_color_reconstruction_score_avg": (
+                float(camera_color_filter_color_reconstruction_score_total / float(camera_frame_count))
+                if camera_frame_count > 0
+                else 0.0
+            ),
+            "camera_demosaic_mode_counts": {
+                key: camera_demosaic_mode_counts[key]
+                for key in sorted(camera_demosaic_mode_counts.keys())
             },
             "camera_tonemapper_disabled_frame_count": int(camera_tonemapper_disabled_frame_count),
             "camera_bloom_level_counts": {

@@ -1964,6 +1964,11 @@ class SensorSimBridgeTests(unittest.TestCase):
                                 },
                                 "sensor_params": {
                                     "bloom": 0.7,
+                                    "color_filter_array": {
+                                        "demosaic": "BILINEAR",
+                                        "layout": {"p1": "R", "p2": "G", "p3": "Y", "p4": "B"},
+                                        "transmittance": {"p1": 0.9, "p2": 0.85, "p3": 0.7, "p4": 0.8},
+                                    },
                                 },
                                 "system_params": {
                                     "gain": 12.0,
@@ -2027,6 +2032,25 @@ class SensorSimBridgeTests(unittest.TestCase):
             )
             self.assertEqual(str(camera_postprocess.get("color_space", "")), "MONO")
             self.assertEqual(str(camera_postprocess.get("output_data_type", "")), "FLOAT")
+            self.assertTrue(bool(camera_postprocess.get("color_filter_array_input_present")))
+            self.assertEqual(str(camera_postprocess.get("demosaic_mode", "")), "BILINEAR")
+            color_filter_layout = camera_postprocess.get("color_filter_layout", {})
+            self.assertIsInstance(color_filter_layout, dict)
+            self.assertEqual(str(color_filter_layout.get("p3", "")), "Y")
+            self.assertAlmostEqual(
+                float(camera_postprocess.get("color_filter_transmittance_avg", 0.0) or 0.0),
+                0.8125,
+                places=6,
+            )
+            self.assertEqual(int(camera_postprocess.get("color_filter_non_rgb_channel_count", 0) or 0), 1)
+            self.assertGreater(
+                float(camera_postprocess.get("color_filter_color_reconstruction_score", 0.0) or 0.0),
+                0.0,
+            )
+            self.assertGreater(
+                float(camera_postprocess.get("color_filter_demosaic_artifact_scale", 0.0) or 0.0),
+                0.0,
+            )
             self.assertTrue(bool(camera_postprocess.get("piecewise_linear_mapping_present")))
             self.assertEqual(int(camera_postprocess.get("piecewise_linear_mapping_point_count", 0) or 0), 4)
             self.assertGreater(
@@ -2065,6 +2089,28 @@ class SensorSimBridgeTests(unittest.TestCase):
             )
             self.assertEqual(sensor_quality_summary.get("camera_color_space_counts"), {"MONO": 1})
             self.assertEqual(sensor_quality_summary.get("camera_output_data_type_counts"), {"FLOAT": 1})
+            self.assertEqual(int(sensor_quality_summary.get("camera_color_filter_array_enabled_frame_count", 0) or 0), 1)
+            self.assertAlmostEqual(
+                float(sensor_quality_summary.get("camera_color_filter_transmittance_avg", 0.0) or 0.0),
+                0.8125,
+                places=6,
+            )
+            self.assertAlmostEqual(
+                float(sensor_quality_summary.get("camera_color_filter_non_rgb_channel_count_avg", 0.0) or 0.0),
+                1.0,
+                places=6,
+            )
+            self.assertGreater(
+                float(
+                    sensor_quality_summary.get(
+                        "camera_color_filter_color_reconstruction_score_avg",
+                        0.0,
+                    )
+                    or 0.0
+                ),
+                0.0,
+            )
+            self.assertEqual(sensor_quality_summary.get("camera_demosaic_mode_counts"), {"BILINEAR": 1})
             self.assertEqual(
                 int(sensor_quality_summary.get("camera_piecewise_linear_mapping_enabled_frame_count", 0) or 0),
                 1,
@@ -37262,6 +37308,11 @@ class RunE2EPipelineTests(unittest.TestCase):
             self.assertIn("camera_piecewise_linear_mapping_midtone_gain_avg", phase2_sensor_quality_summary)
             self.assertIn("camera_color_space_counts", phase2_sensor_quality_summary)
             self.assertIn("camera_output_data_type_counts", phase2_sensor_quality_summary)
+            self.assertIn("camera_color_filter_array_enabled_frame_count", phase2_sensor_quality_summary)
+            self.assertIn("camera_color_filter_transmittance_avg", phase2_sensor_quality_summary)
+            self.assertIn("camera_color_filter_non_rgb_channel_count_avg", phase2_sensor_quality_summary)
+            self.assertIn("camera_color_filter_color_reconstruction_score_avg", phase2_sensor_quality_summary)
+            self.assertIn("camera_demosaic_mode_counts", phase2_sensor_quality_summary)
             self.assertIn("camera_bloom_level_counts", phase2_sensor_quality_summary)
             self.assertIn("camera_depth_enabled_frame_count", phase2_sensor_quality_summary)
             self.assertIn("camera_depth_mode_counts", phase2_sensor_quality_summary)
