@@ -1453,6 +1453,10 @@ def discover_pipeline_manifests(scan_roots: list[Path], release_prefix: str) -> 
             phase2_sensor_lidar_returns_per_laser_avg = 0.0
             phase2_sensor_lidar_detection_ratio_avg = 0.0
             phase2_sensor_lidar_effective_max_range_m_avg = 0.0
+            phase2_sensor_lidar_atmospheric_transmittance_avg = 0.0
+            phase2_sensor_lidar_backscatter_noise_ratio_avg = 0.0
+            phase2_sensor_lidar_reflectivity_detection_scale_avg = 0.0
+            phase2_sensor_lidar_beam_spot_size_cm_at_max_range_avg = 0.0
             phase2_sensor_radar_frame_count = 0
             phase2_sensor_radar_target_count_total = 0
             phase2_sensor_radar_ghost_target_count_total = 0
@@ -2013,6 +2017,44 @@ def discover_pipeline_manifests(scan_roots: list[Path], release_prefix: str) -> 
                         float(
                             _to_float_or_none(
                                 phase2_sensor_quality_summary_raw.get("lidar_effective_max_range_m_avg")
+                            )
+                            or 0.0
+                        ),
+                    )
+                    phase2_sensor_lidar_atmospheric_transmittance_avg = max(
+                        0.0,
+                        float(
+                            _to_float_or_none(
+                                phase2_sensor_quality_summary_raw.get("lidar_atmospheric_transmittance_avg")
+                            )
+                            or 0.0
+                        ),
+                    )
+                    phase2_sensor_lidar_backscatter_noise_ratio_avg = max(
+                        0.0,
+                        float(
+                            _to_float_or_none(
+                                phase2_sensor_quality_summary_raw.get("lidar_backscatter_noise_ratio_avg")
+                            )
+                            or 0.0
+                        ),
+                    )
+                    phase2_sensor_lidar_reflectivity_detection_scale_avg = max(
+                        0.0,
+                        float(
+                            _to_float_or_none(
+                                phase2_sensor_quality_summary_raw.get("lidar_reflectivity_detection_scale_avg")
+                            )
+                            or 0.0
+                        ),
+                    )
+                    phase2_sensor_lidar_beam_spot_size_cm_at_max_range_avg = max(
+                        0.0,
+                        float(
+                            _to_float_or_none(
+                                phase2_sensor_quality_summary_raw.get(
+                                    "lidar_beam_spot_size_cm_at_max_range_avg"
+                                )
                             )
                             or 0.0
                         ),
@@ -3007,6 +3049,18 @@ def discover_pipeline_manifests(scan_roots: list[Path], release_prefix: str) -> 
                     "phase2_sensor_lidar_detection_ratio_avg": phase2_sensor_lidar_detection_ratio_avg,
                     "phase2_sensor_lidar_effective_max_range_m_avg": (
                         phase2_sensor_lidar_effective_max_range_m_avg
+                    ),
+                    "phase2_sensor_lidar_atmospheric_transmittance_avg": (
+                        phase2_sensor_lidar_atmospheric_transmittance_avg
+                    ),
+                    "phase2_sensor_lidar_backscatter_noise_ratio_avg": (
+                        phase2_sensor_lidar_backscatter_noise_ratio_avg
+                    ),
+                    "phase2_sensor_lidar_reflectivity_detection_scale_avg": (
+                        phase2_sensor_lidar_reflectivity_detection_scale_avg
+                    ),
+                    "phase2_sensor_lidar_beam_spot_size_cm_at_max_range_avg": (
+                        phase2_sensor_lidar_beam_spot_size_cm_at_max_range_avg
                     ),
                     "phase2_sensor_radar_frame_count": phase2_sensor_radar_frame_count,
                     "phase2_sensor_radar_target_count_total": phase2_sensor_radar_target_count_total,
@@ -7404,6 +7458,31 @@ def summarize_phase2_sensor_fidelity(pipeline_manifests: list[dict[str, Any]]) -
                     0.0,
                     float(_to_float_or_none(manifest.get("phase2_sensor_lidar_effective_max_range_m_avg")) or 0.0),
                 ),
+                "lidar_atmospheric_transmittance_avg": max(
+                    0.0,
+                    float(
+                        _to_float_or_none(manifest.get("phase2_sensor_lidar_atmospheric_transmittance_avg")) or 0.0
+                    ),
+                ),
+                "lidar_backscatter_noise_ratio_avg": max(
+                    0.0,
+                    float(
+                        _to_float_or_none(manifest.get("phase2_sensor_lidar_backscatter_noise_ratio_avg")) or 0.0
+                    ),
+                ),
+                "lidar_reflectivity_detection_scale_avg": max(
+                    0.0,
+                    float(
+                        _to_float_or_none(manifest.get("phase2_sensor_lidar_reflectivity_detection_scale_avg")) or 0.0
+                    ),
+                ),
+                "lidar_beam_spot_size_cm_at_max_range_avg": max(
+                    0.0,
+                    float(
+                        _to_float_or_none(manifest.get("phase2_sensor_lidar_beam_spot_size_cm_at_max_range_avg"))
+                        or 0.0
+                    ),
+                ),
                 "radar_frame_count": max(0, _to_int(manifest.get("phase2_sensor_radar_frame_count"), default=0)),
                 "radar_target_count_total": max(
                     0,
@@ -7577,6 +7656,10 @@ def summarize_phase2_sensor_fidelity(pipeline_manifests: list[dict[str, Any]]) -
             "sensor_lidar_returns_per_laser_avg": 0.0,
             "sensor_lidar_detection_ratio_avg": 0.0,
             "sensor_lidar_effective_max_range_m_avg": 0.0,
+            "sensor_lidar_atmospheric_transmittance_avg": 0.0,
+            "sensor_lidar_backscatter_noise_ratio_avg": 0.0,
+            "sensor_lidar_reflectivity_detection_scale_avg": 0.0,
+            "sensor_lidar_beam_spot_size_cm_at_max_range_avg": 0.0,
             "sensor_radar_frame_count_total": 0,
             "sensor_radar_target_count_total": 0,
             "sensor_radar_ghost_target_count_total": 0,
@@ -7868,6 +7951,23 @@ def summarize_phase2_sensor_fidelity(pipeline_manifests: list[dict[str, Any]]) -
     )
     lidar_effective_max_range_m_weighted_total = sum(
         float(row.get("lidar_effective_max_range_m_avg", 0.0)) * float(int(row.get("lidar_frame_count", 0)))
+        for row in checked_rows
+    )
+    lidar_atmospheric_transmittance_weighted_total = sum(
+        float(row.get("lidar_atmospheric_transmittance_avg", 0.0)) * float(int(row.get("lidar_frame_count", 0)))
+        for row in checked_rows
+    )
+    lidar_backscatter_noise_ratio_weighted_total = sum(
+        float(row.get("lidar_backscatter_noise_ratio_avg", 0.0)) * float(int(row.get("lidar_frame_count", 0)))
+        for row in checked_rows
+    )
+    lidar_reflectivity_detection_scale_weighted_total = sum(
+        float(row.get("lidar_reflectivity_detection_scale_avg", 0.0)) * float(int(row.get("lidar_frame_count", 0)))
+        for row in checked_rows
+    )
+    lidar_beam_spot_size_cm_at_max_range_weighted_total = sum(
+        float(row.get("lidar_beam_spot_size_cm_at_max_range_avg", 0.0))
+        * float(int(row.get("lidar_frame_count", 0)))
         for row in checked_rows
     )
     radar_target_count_total = sum(int(row.get("radar_target_count_total", 0)) for row in checked_rows)
@@ -8229,6 +8329,26 @@ def summarize_phase2_sensor_fidelity(pipeline_manifests: list[dict[str, Any]]) -
         ),
         "sensor_lidar_effective_max_range_m_avg": (
             float(lidar_effective_max_range_m_weighted_total / float(lidar_frame_count_total))
+            if lidar_frame_count_total > 0
+            else 0.0
+        ),
+        "sensor_lidar_atmospheric_transmittance_avg": (
+            float(lidar_atmospheric_transmittance_weighted_total / float(lidar_frame_count_total))
+            if lidar_frame_count_total > 0
+            else 0.0
+        ),
+        "sensor_lidar_backscatter_noise_ratio_avg": (
+            float(lidar_backscatter_noise_ratio_weighted_total / float(lidar_frame_count_total))
+            if lidar_frame_count_total > 0
+            else 0.0
+        ),
+        "sensor_lidar_reflectivity_detection_scale_avg": (
+            float(lidar_reflectivity_detection_scale_weighted_total / float(lidar_frame_count_total))
+            if lidar_frame_count_total > 0
+            else 0.0
+        ),
+        "sensor_lidar_beam_spot_size_cm_at_max_range_avg": (
+            float(lidar_beam_spot_size_cm_at_max_range_weighted_total / float(lidar_frame_count_total))
             if lidar_frame_count_total > 0
             else 0.0
         ),
@@ -12481,6 +12601,18 @@ def main() -> int:
         phase2_sensor_lidar_detection_ratio_avg = float(
             phase2_sensor_fidelity_summary.get("sensor_lidar_detection_ratio_avg", 0.0) or 0.0
         )
+        phase2_sensor_lidar_atmospheric_transmittance_avg = float(
+            phase2_sensor_fidelity_summary.get("sensor_lidar_atmospheric_transmittance_avg", 0.0) or 0.0
+        )
+        phase2_sensor_lidar_backscatter_noise_ratio_avg = float(
+            phase2_sensor_fidelity_summary.get("sensor_lidar_backscatter_noise_ratio_avg", 0.0) or 0.0
+        )
+        phase2_sensor_lidar_reflectivity_detection_scale_avg = float(
+            phase2_sensor_fidelity_summary.get("sensor_lidar_reflectivity_detection_scale_avg", 0.0) or 0.0
+        )
+        phase2_sensor_lidar_beam_spot_size_cm_at_max_range_avg = float(
+            phase2_sensor_fidelity_summary.get("sensor_lidar_beam_spot_size_cm_at_max_range_avg", 0.0) or 0.0
+        )
         phase2_sensor_radar_false_positive_total = int(
             phase2_sensor_fidelity_summary.get("sensor_radar_false_positive_count_total", 0) or 0
         )
@@ -12541,7 +12673,15 @@ def main() -> int:
             "camera_flow_y_axis_dirs:"
             f"{phase2_sensor_camera_optical_flow_y_axis_direction_counts_total_text},"
             f"lidar_detection_ratio_avg:{phase2_sensor_lidar_detection_ratio_avg:.3f},"
-            f"radar_ghost_total:{phase2_sensor_radar_ghost_target_total}"
+            f"radar_ghost_total:{phase2_sensor_radar_ghost_target_total},"
+            "lidar_atmo_trans_avg:"
+            f"{phase2_sensor_lidar_atmospheric_transmittance_avg:.3f},"
+            "lidar_backscatter_avg:"
+            f"{phase2_sensor_lidar_backscatter_noise_ratio_avg:.3f},"
+            "lidar_reflectivity_scale_avg:"
+            f"{phase2_sensor_lidar_reflectivity_detection_scale_avg:.3f},"
+            "lidar_beam_spot_avg_cm:"
+            f"{phase2_sensor_lidar_beam_spot_size_cm_at_max_range_avg:.3f}"
         )
         phase2_sensor_rig_sweep_evaluated_count = int(
             phase2_sensor_fidelity_summary.get("rig_sweep_evaluated_manifest_count", 0) or 0

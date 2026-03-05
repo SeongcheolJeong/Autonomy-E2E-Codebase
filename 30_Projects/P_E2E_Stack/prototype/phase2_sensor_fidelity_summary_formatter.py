@@ -70,6 +70,14 @@ def format_phase2_sensor_fidelity_summary(
         f"camera_noise_avg_px={_to_float(payload.get('sensor_camera_noise_stddev_px_avg', 0.0)):.3f}",
         f"lidar_point_total={_to_int(payload.get('sensor_lidar_point_count_total', 0))}",
         f"lidar_point_avg={_to_float(payload.get('sensor_lidar_point_count_avg', 0.0)):.3f}",
+        "lidar_atmo_trans_avg="
+        f"{_to_float(payload.get('sensor_lidar_atmospheric_transmittance_avg', 0.0)):.3f}",
+        "lidar_backscatter_avg="
+        f"{_to_float(payload.get('sensor_lidar_backscatter_noise_ratio_avg', 0.0)):.3f}",
+        "lidar_reflectivity_scale_avg="
+        f"{_to_float(payload.get('sensor_lidar_reflectivity_detection_scale_avg', 0.0)):.3f}",
+        "lidar_beam_spot_avg_cm="
+        f"{_to_float(payload.get('sensor_lidar_beam_spot_size_cm_at_max_range_avg', 0.0)):.3f}",
         f"radar_fp_total={_to_int(payload.get('sensor_radar_false_positive_count_total', 0))}",
         f"radar_fp_avg={_to_float(payload.get('sensor_radar_false_positive_count_avg', 0.0)):.3f}",
         f"radar_fp_rate_avg={_to_float(payload.get('sensor_radar_false_positive_rate_avg', 0.0)):.6f}",

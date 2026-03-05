@@ -55,6 +55,10 @@ class Phase2SensorFidelitySummaryFormatterTests(unittest.TestCase):
             "sensor_camera_noise_stddev_px_avg": 0.09,
             "sensor_lidar_point_count_total": 8000,
             "sensor_lidar_point_count_avg": 8000.0,
+            "sensor_lidar_atmospheric_transmittance_avg": 0.82,
+            "sensor_lidar_backscatter_noise_ratio_avg": 0.14,
+            "sensor_lidar_reflectivity_detection_scale_avg": 0.96,
+            "sensor_lidar_beam_spot_size_cm_at_max_range_avg": 14.2,
             "sensor_radar_false_positive_count_total": 20,
             "sensor_radar_false_positive_count_avg": 20.0,
             "sensor_radar_false_positive_rate_avg": 0.005,
@@ -116,6 +120,10 @@ class Phase2SensorFidelitySummaryFormatterTests(unittest.TestCase):
             spaced=False,
         )
         self.assertIn("camera_rs_step_avg_us=27.100", compact)
+        self.assertIn("lidar_atmo_trans_avg=0.820", compact)
+        self.assertIn("lidar_backscatter_avg=0.140", compact)
+        self.assertIn("lidar_reflectivity_scale_avg=0.960", compact)
+        self.assertIn("lidar_beam_spot_avg_cm=14.200", compact)
         self.assertIn("fidelity_score_max=0.880(BATCH_MAIN)", compact)
         self.assertIn("camera_shroud_states=DYNAMIC:12", compact)
         self.assertIn("rig_sweep_best_camera_visibility_max=0.920(BATCH_SWEEP)", compact)
@@ -128,6 +136,10 @@ class Phase2SensorFidelitySummaryFormatterTests(unittest.TestCase):
             spaced=True,
         )
         self.assertIn("camera_rs_step_avg_us=27.100", spaced)
+        self.assertIn("lidar_atmo_trans_avg=0.820", spaced)
+        self.assertIn("lidar_backscatter_avg=0.140", spaced)
+        self.assertIn("lidar_reflectivity_scale_avg=0.960", spaced)
+        self.assertIn("lidar_beam_spot_avg_cm=14.200", spaced)
         self.assertIn("fidelity_score_max=0.880 (BATCH_MAIN)", spaced)
         self.assertIn("camera_shroud_states=DYNAMIC:12", spaced)
         self.assertIn("rig_sweep_best_camera_visibility_max=0.920 (BATCH_SWEEP)", spaced)

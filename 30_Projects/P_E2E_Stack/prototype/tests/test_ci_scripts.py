@@ -48971,6 +48971,10 @@ class BuildReleaseSummaryArtifactTests(unittest.TestCase):
                             "lidar_returns_per_laser_avg": 3.0,
                             "lidar_detection_ratio_avg": 0.85,
                             "lidar_effective_max_range_m_avg": 82.0,
+                            "lidar_atmospheric_transmittance_avg": 0.74,
+                            "lidar_backscatter_noise_ratio_avg": 0.18,
+                            "lidar_reflectivity_detection_scale_avg": 0.9,
+                            "lidar_beam_spot_size_cm_at_max_range_avg": 16.2,
                             "radar_frame_count": 1,
                             "radar_target_count_total": 4,
                             "radar_ghost_target_count_total": 2,
@@ -49323,6 +49327,30 @@ class BuildReleaseSummaryArtifactTests(unittest.TestCase):
                 0.85,
                 places=6,
             )
+            self.assertAlmostEqual(
+                float(phase2_sensor_fidelity_summary.get("sensor_lidar_atmospheric_transmittance_avg", 0.0) or 0.0),
+                0.74,
+                places=6,
+            )
+            self.assertAlmostEqual(
+                float(phase2_sensor_fidelity_summary.get("sensor_lidar_backscatter_noise_ratio_avg", 0.0) or 0.0),
+                0.18,
+                places=6,
+            )
+            self.assertAlmostEqual(
+                float(
+                    phase2_sensor_fidelity_summary.get("sensor_lidar_reflectivity_detection_scale_avg", 0.0) or 0.0
+                ),
+                0.9,
+                places=6,
+            )
+            self.assertAlmostEqual(
+                float(
+                    phase2_sensor_fidelity_summary.get("sensor_lidar_beam_spot_size_cm_at_max_range_avg", 0.0) or 0.0
+                ),
+                16.2,
+                places=6,
+            )
             self.assertEqual(
                 int(phase2_sensor_fidelity_summary.get("sensor_radar_ghost_target_count_total", 0) or 0),
                 2,
@@ -49479,6 +49507,7 @@ class BuildReleaseSummaryArtifactTests(unittest.TestCase):
                     "camera_shroud_enabled_total:2,camera_shroud_dirt_avg:0.800,camera_shroud_fog_avg:0.600,camera_shroud_occlusion_avg:0.310,camera_shroud_scatter_avg:0.420,camera_shroud_coverage_avg:0.280,camera_shroud_states:DYNAMIC:2",
                     "camera_depth_enabled_total:2,camera_depth_min_avg_m:0.500,camera_depth_max_avg_m:120.000,camera_depth_bit_depth_avg:16.000,camera_depth_modes:LOG:2",
                     "camera_flow_enabled_total:2,camera_flow_mag_avg_px:4.200,camera_flow_velocity_dirs:FORWARD:2,camera_flow_y_axis_dirs:UP:2,lidar_detection_ratio_avg:0.850,radar_ghost_total:2",
+                    "lidar_atmo_trans_avg:0.740,lidar_backscatter_avg:0.180,lidar_reflectivity_scale_avg:0.900,lidar_beam_spot_avg_cm:16.200",
                     "phase2_sensor_rig_sweep=evaluated:1,tier_counts:high:1,candidate_total:3,candidate_avg:3.000,candidate_max:3(BATCH_MAP),best_score_max:12.500(BATCH_MAP),best_rig_counts:rig_cam_lidar:1",
                     "quality_samples:1,best_camera_visibility_avg:0.880,best_camera_noise_avg_px:1.200,best_lidar_detection_avg:0.850,best_lidar_range_ratio_avg:0.683,best_radar_detect_ratio_avg:0.750,best_radar_fp_rate_avg:0.250000,best_radar_clutter_avg:0.120",
                     "best_camera_visibility_max:0.880(BATCH_MAP),best_lidar_detection_max:0.850(BATCH_MAP),best_radar_detect_max:0.750(BATCH_MAP),best_radar_fp_rate_min:0.250000(BATCH_MAP),best_radar_clutter_min:0.120(BATCH_MAP)",
@@ -53202,6 +53231,10 @@ class BuildNotificationPayloadTests(unittest.TestCase):
                             "sensor_camera_noise_stddev_px_avg": 1.2,
                             "sensor_lidar_point_count_total": 360,
                             "sensor_lidar_point_count_avg": 120.0,
+                            "sensor_lidar_atmospheric_transmittance_avg": 0.74,
+                            "sensor_lidar_backscatter_noise_ratio_avg": 0.18,
+                            "sensor_lidar_reflectivity_detection_scale_avg": 0.9,
+                            "sensor_lidar_beam_spot_size_cm_at_max_range_avg": 16.2,
                             "sensor_radar_false_positive_count_total": 1,
                             "sensor_radar_false_positive_count_avg": 1.0,
                             "sensor_radar_false_positive_rate_avg": 0.25,
@@ -53289,6 +53322,10 @@ class BuildNotificationPayloadTests(unittest.TestCase):
             self.assertIn("phase2_sensor_fidelity_summary=evaluated=1,tier_counts=high:1", payload.get("message_text", ""))
             self.assertIn("frame_total=6", str(payload.get("phase2_sensor_fidelity_summary_text", "")))
             self.assertIn("radar_fp_rate_avg=0.250000", str(payload.get("phase2_sensor_fidelity_summary_text", "")))
+            self.assertIn(
+                "lidar_atmo_trans_avg=0.740",
+                str(payload.get("phase2_sensor_fidelity_summary_text", "")),
+            )
             self.assertIn("camera_rs_step_avg_us=27.100", str(payload.get("phase2_sensor_fidelity_summary_text", "")))
             self.assertIn("camera_shroud_states=DYNAMIC:2", str(payload.get("phase2_sensor_fidelity_summary_text", "")))
             self.assertIn("camera_depth_enabled_total=2", str(payload.get("phase2_sensor_fidelity_summary_text", "")))
