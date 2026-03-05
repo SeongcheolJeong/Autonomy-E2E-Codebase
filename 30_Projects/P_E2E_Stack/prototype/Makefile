@@ -2879,6 +2879,7 @@ validate:
 	$(PYTHON) -m py_compile \
 		build_release_summary_artifact.py \
 		build_release_notification_payload.py \
+		phase2_sensor_fidelity_summary_formatter.py \
 		ci_commands.py \
 		ci_input_parsing.py \
 		ci_phases.py \

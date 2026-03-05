@@ -1,5 +1,13 @@
 # E2E Stack Progress Log
 
+## 2026-03-05
+
+- refactor: removed duplicated Phase2 sensor-fidelity summary string assembly by adding shared formatter module `phase2_sensor_fidelity_summary_formatter.py` and rewiring `build_release_notification_payload.py` / `render_release_summary_markdown.py` to use the common implementation with style controls (`spaced=False|True`).
+- feat: preserved existing output contracts while centralizing rig-sweep fields (evaluated/tier/candidate/score aggregates, best-rig quality averages, and extrema with batch provenance) behind one formatter path to reduce future drift between notification and markdown surfaces.
+- test: added dedicated regression file `tests/test_phase2_sensor_fidelity_summary_formatter.py` to pin compact/spaced rendering behavior and rig-sweep extrema formatting; existing notification/markdown integration tests continue asserting downstream token presence.
+- validation: `python3 -m py_compile phase2_sensor_fidelity_summary_formatter.py build_release_notification_payload.py render_release_summary_markdown.py tests/test_phase2_sensor_fidelity_summary_formatter.py` (pass; workdir `30_Projects/P_E2E_Stack/prototype`), `python3 -m unittest tests.test_phase2_sensor_fidelity_summary_formatter tests.test_ci_scripts.BuildNotificationPayloadTests.test_phase2_map_routing_warn_threshold_promotes_pass_to_warn tests.test_ci_scripts.RenderReleaseSummaryMarkdownTests.test_renders_markdown_from_summary_json` (3 tests, pass; workdir `30_Projects/P_E2E_Stack/prototype`), `make check-project-boundary` (pass; workdir `30_Projects/P_E2E_Stack/prototype`).
+- efficiency review: the same Phase2 rig-sweep summary contract was maintained in two large formatter functions, increasing regression risk and slowing feature additions; shared formatting collapses maintenance to one implementation while keeping surface-specific punctuation rules explicit.
+
 ## 2026-03-03
 
 - feat: extended camera geometry/distortion handling in `P_Sim-Engine/prototype/sensor_sim_bridge.py` with Applied Sensor Sim camera parameter alignment for `projection`, full intrinsics (`fx/fy/cx/cy`), OpenCV distortion (`k1..k6`, `p1/p2`), and radial distortion polynomial (`a_0..a_14`, `NORMALIZED|PIXELS|RADIANS`). Camera payload now includes `camera_geometry` with derived edge-shift estimates and principal-point offsets, and `sensor_quality_summary` now aggregates geometry metrics (`camera_distortion_edge_shift_px_avg`, `camera_principal_point_offset_norm_avg`, `camera_effective_focal_length_px_avg`, `camera_projection_mode_counts`).
