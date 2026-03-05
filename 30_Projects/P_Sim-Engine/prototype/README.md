@@ -163,6 +163,9 @@ Camera postprocess/system-lens effects inputs (Applied docs aligned subset):
 - `lens_params.vignetting.intensity|alpha|radius`
 - `sensor_params.bloom`
 - `system_params.gain`, `system_params.gamma`, `system_params.white_balance`
+- `system_params.auto_black_level_offset.stddev_to_subtract` (`0..6`)
+- `system_params.black_level_offset` (`r|g|b|a`, normalized)
+- `system_params.saturation` (`r|g|b|a`, normalized)
 - `fidelity.bloom.disable|level`, `fidelity.disable_tonemapper`
 
 Camera postprocess example:
@@ -173,6 +176,16 @@ python3 sensor_sim_bridge.py \
   --sensor-rig examples/sensor_rig_camera_postprocess_v0.json \
   --fidelity-tier high \
   --out runs/sensor_frames_camera_postprocess_v0.json
+```
+
+Camera tonemapping/black-level example:
+
+```bash
+python3 sensor_sim_bridge.py \
+  --world-state examples/world_state_adverse_weather_v0.json \
+  --sensor-rig examples/sensor_rig_camera_tonemapping_v0.json \
+  --fidelity-tier high \
+  --out runs/sensor_frames_camera_tonemapping_v0.json
 ```
 
 Camera depth/optical-flow inputs (Applied docs aligned subset):

@@ -141,6 +141,48 @@ def _as_dict(value: Any) -> dict[str, Any]:
     return value if isinstance(value, dict) else {}
 
 
+def _resolve_rgba_norm_channels(
+    raw_value: Any,
+    *,
+    default_r: float,
+    default_g: float,
+    default_b: float,
+    default_a: float,
+    minimum: float,
+    maximum: float,
+) -> dict[str, float]:
+    r = default_r
+    g = default_g
+    b = default_b
+    a = default_a
+    if isinstance(raw_value, dict):
+        r = _to_float(raw_value.get("r", raw_value.get("R", r)), default=r)
+        g = _to_float(raw_value.get("g", raw_value.get("G", g)), default=g)
+        b = _to_float(raw_value.get("b", raw_value.get("B", b)), default=b)
+        a = _to_float(raw_value.get("a", raw_value.get("A", a)), default=a)
+    elif isinstance(raw_value, (list, tuple)):
+        if len(raw_value) > 0:
+            r = _to_float(raw_value[0], default=r)
+        if len(raw_value) > 1:
+            g = _to_float(raw_value[1], default=g)
+        if len(raw_value) > 2:
+            b = _to_float(raw_value[2], default=b)
+        if len(raw_value) > 3:
+            a = _to_float(raw_value[3], default=a)
+    elif raw_value is not None and not isinstance(raw_value, bool):
+        scalar = _to_float(raw_value, default=default_r)
+        r = scalar
+        g = scalar
+        b = scalar
+        a = scalar
+    return {
+        "r": _clamp_float(r, minimum=minimum, maximum=maximum),
+        "g": _clamp_float(g, minimum=minimum, maximum=maximum),
+        "b": _clamp_float(b, minimum=minimum, maximum=maximum),
+        "a": _clamp_float(a, minimum=minimum, maximum=maximum),
+    }
+
+
 def _resolve_camera_dynamic_range_bounds(raw_value: Any) -> tuple[float, float]:
     min_ev = 4.0
     max_ev = 14.0
@@ -571,6 +613,9 @@ def _resolve_camera_postprocess_config(sensor_config: dict[str, Any]) -> dict[st
 
     vignetting = _as_dict(lens_params.get("vignetting"))
     fidelity_bloom = _as_dict(fidelity.get("bloom"))
+    auto_black_level_offset = _as_dict(system_params.get("auto_black_level_offset"))
+    black_level_offset_raw = system_params.get("black_level_offset", sensor_config.get("black_level_offset"))
+    saturation_raw = system_params.get("saturation", sensor_config.get("saturation"))
 
     explicit_input_present = any(
         key in lens_params
@@ -586,6 +631,9 @@ def _resolve_camera_postprocess_config(sensor_config: dict[str, Any]) -> dict[st
             "gain",
             "gamma",
             "white_balance",
+            "auto_black_level_offset",
+            "black_level_offset",
+            "saturation",
         )
     ) or any(
         key in fidelity
@@ -606,6 +654,9 @@ def _resolve_camera_postprocess_config(sensor_config: dict[str, Any]) -> dict[st
             "gain",
             "gamma",
             "white_balance",
+            "auto_black_level_offset",
+            "black_level_offset",
+            "saturation",
             "bloom",
             "bloom_disable",
             "bloom_level",
@@ -717,6 +768,35 @@ def _resolve_camera_postprocess_config(sensor_config: dict[str, Any]) -> dict[st
         minimum=1000.0,
         maximum=15000.0,
     )
+    auto_black_level_stddev_to_subtract = _clamp_float(
+        _to_float(
+            auto_black_level_offset.get(
+                "stddev_to_subtract",
+                sensor_config.get("auto_black_level_stddev_to_subtract", 0.0),
+            ),
+            default=0.0,
+        ),
+        minimum=0.0,
+        maximum=6.0,
+    )
+    black_level_offset = _resolve_rgba_norm_channels(
+        black_level_offset_raw,
+        default_r=0.0,
+        default_g=0.0,
+        default_b=0.0,
+        default_a=0.0,
+        minimum=0.0,
+        maximum=1.0,
+    )
+    saturation = _resolve_rgba_norm_channels(
+        saturation_raw,
+        default_r=1.0,
+        default_g=1.0,
+        default_b=1.0,
+        default_a=1.0,
+        minimum=0.0,
+        maximum=4.0,
+    )
     bloom_disable = _to_bool(
         sensor_config.get("bloom_disable", fidelity_bloom.get("disable", False)),
         default=False,
@@ -741,6 +821,9 @@ def _resolve_camera_postprocess_config(sensor_config: dict[str, Any]) -> dict[st
         "gain_db": float(gain_db),
         "gamma": float(gamma),
         "white_balance_kelvin": float(white_balance_kelvin),
+        "auto_black_level_stddev_to_subtract": float(auto_black_level_stddev_to_subtract),
+        "black_level_offset": black_level_offset,
+        "saturation": saturation,
         "bloom_disable": bool(bloom_disable),
         "bloom_level": bloom_level,
         "disable_tonemapper": bool(disable_tonemapper),
@@ -766,6 +849,17 @@ def _compute_camera_postprocess(
     gain_db = float(config["gain_db"])
     gamma = float(config["gamma"])
     white_balance_kelvin = float(config["white_balance_kelvin"])
+    auto_black_level_stddev_to_subtract = float(config["auto_black_level_stddev_to_subtract"])
+    black_level_offset = _as_dict(config.get("black_level_offset"))
+    saturation = _as_dict(config.get("saturation"))
+    black_level_offset_r = _to_non_negative_float(black_level_offset.get("r", 0.0))
+    black_level_offset_g = _to_non_negative_float(black_level_offset.get("g", 0.0))
+    black_level_offset_b = _to_non_negative_float(black_level_offset.get("b", 0.0))
+    black_level_offset_a = _to_non_negative_float(black_level_offset.get("a", 0.0))
+    saturation_r = _to_non_negative_float(saturation.get("r", 1.0))
+    saturation_g = _to_non_negative_float(saturation.get("g", 1.0))
+    saturation_b = _to_non_negative_float(saturation.get("b", 1.0))
+    saturation_a = _to_non_negative_float(saturation.get("a", 1.0))
     bloom_disable = bool(config["bloom_disable"])
     bloom_level = str(config["bloom_level"])
     disable_tonemapper = bool(config["disable_tonemapper"])
@@ -785,6 +879,31 @@ def _compute_camera_postprocess(
         minimum=-1.0,
         maximum=1.0,
     )
+    black_level_offset_rgb_avg = (
+        black_level_offset_r + black_level_offset_g + black_level_offset_b
+    ) / 3.0
+    black_level_lift_norm = _clamp_float(
+        black_level_offset_rgb_avg + (0.25 * black_level_offset_a),
+        minimum=0.0,
+        maximum=1.0,
+    )
+    auto_black_level_compensation = _clamp_float(
+        auto_black_level_stddev_to_subtract / 6.0,
+        minimum=0.0,
+        maximum=1.0,
+    )
+    effective_black_level_lift = _clamp_float(
+        black_level_lift_norm * (1.0 - (0.7 * auto_black_level_compensation)),
+        minimum=0.0,
+        maximum=1.0,
+    )
+    saturation_rgb_avg = (saturation_r + saturation_g + saturation_b) / 3.0
+    saturation_effective_scale = _clamp_float(
+        saturation_rgb_avg * saturation_a,
+        minimum=0.0,
+        maximum=4.0,
+    )
+    saturation_deviation = abs(saturation_effective_scale - 1.0)
     vignetting_radius_scale = _clamp_float((1.4 - vignetting_radius) / 1.4, minimum=0.0, maximum=1.0)
     vignetting_edge_darkening = _clamp_float(
         vignetting_intensity
@@ -823,7 +942,9 @@ def _compute_camera_postprocess(
         - (0.16 * vignetting_edge_darkening)
         - (0.04 * bloom_halo_strength)
         - (0.06 * flare_glare_ratio)
-        - (chromatic_aberration_shift_px / image_max_dim * 8.0),
+        - (chromatic_aberration_shift_px / image_max_dim * 8.0)
+        - (0.22 * effective_black_level_lift)
+        - (0.04 * saturation_deviation),
         minimum=0.65,
         maximum=1.0,
     )
@@ -831,7 +952,9 @@ def _compute_camera_postprocess(
         max(0.0, gain_linear - 1.0) * 0.35
         + (abs(gamma - 0.4545) * 0.12)
         + (0.1 * bloom_halo_strength)
-        + (0.002 * spot_size_rms),
+        + (0.002 * spot_size_rms)
+        + (0.22 * effective_black_level_lift)
+        + (0.05 * saturation_deviation),
         minimum=0.0,
         maximum=2.0,
     )
@@ -839,6 +962,8 @@ def _compute_camera_postprocess(
         (-0.42 * max(0.0, gain_linear - 1.0))
         - (0.22 * bloom_halo_strength)
         - (0.08 * flare_glare_ratio)
+        - (1.1 * effective_black_level_lift)
+        - (0.15 * max(0.0, saturation_effective_scale - 1.0))
         + (0.2 if disable_tonemapper else 0.0),
         minimum=-1.5,
         maximum=0.8,
@@ -846,7 +971,8 @@ def _compute_camera_postprocess(
     effective_luminance_gain = _clamp_float(
         gain_linear
         * (0.95 if disable_tonemapper else 1.0)
-        * _clamp_float(1.0 + (0.2 * white_balance_offset_norm), minimum=0.7, maximum=1.3),
+        * _clamp_float(1.0 + (0.2 * white_balance_offset_norm), minimum=0.7, maximum=1.3)
+        * _clamp_float(1.0 + (0.25 * effective_black_level_lift), minimum=0.7, maximum=1.35),
         minimum=0.05,
         maximum=8.0,
     )
@@ -858,6 +984,23 @@ def _compute_camera_postprocess(
         "gamma": float(gamma),
         "white_balance_kelvin": float(white_balance_kelvin),
         "white_balance_offset_norm": float(white_balance_offset_norm),
+        "auto_black_level_stddev_to_subtract": float(auto_black_level_stddev_to_subtract),
+        "black_level_offset": {
+            "r": float(black_level_offset_r),
+            "g": float(black_level_offset_g),
+            "b": float(black_level_offset_b),
+            "a": float(black_level_offset_a),
+        },
+        "black_level_offset_rgb_avg": float(black_level_offset_rgb_avg),
+        "black_level_lift_norm": float(effective_black_level_lift),
+        "saturation": {
+            "r": float(saturation_r),
+            "g": float(saturation_g),
+            "b": float(saturation_b),
+            "a": float(saturation_a),
+        },
+        "saturation_rgb_avg": float(saturation_rgb_avg),
+        "saturation_effective_scale": float(saturation_effective_scale),
         "chromatic_aberration_mm": float(chromatic_aberration_mm),
         "chromatic_aberration_shift_px_est": float(chromatic_aberration_shift_px),
         "lens_flare_intensity": float(lens_flare),
@@ -1758,6 +1901,10 @@ def _summarize_sensor_quality(frames: list[dict[str, Any]]) -> dict[str, Any]:
     camera_vignetting_edge_darkening_total = 0.0
     camera_bloom_halo_strength_total = 0.0
     camera_chromatic_aberration_shift_px_total = 0.0
+    camera_black_level_lift_norm_total = 0.0
+    camera_auto_black_level_stddev_to_subtract_total = 0.0
+    camera_saturation_rgb_avg_total = 0.0
+    camera_saturation_effective_scale_total = 0.0
     camera_tonemapper_disabled_frame_count = 0
     camera_bloom_level_counts: dict[str, int] = {}
     camera_depth_enabled_frame_count = 0
@@ -1845,6 +1992,18 @@ def _summarize_sensor_quality(frames: list[dict[str, Any]]) -> dict[str, Any]:
             )
             camera_chromatic_aberration_shift_px_total += _to_non_negative_float(
                 camera_postprocess.get("chromatic_aberration_shift_px_est", 0.0)
+            )
+            camera_black_level_lift_norm_total += _to_non_negative_float(
+                camera_postprocess.get("black_level_lift_norm", 0.0)
+            )
+            camera_auto_black_level_stddev_to_subtract_total += _to_non_negative_float(
+                camera_postprocess.get("auto_black_level_stddev_to_subtract", 0.0)
+            )
+            camera_saturation_rgb_avg_total += _to_non_negative_float(
+                camera_postprocess.get("saturation_rgb_avg", 0.0)
+            )
+            camera_saturation_effective_scale_total += _to_non_negative_float(
+                camera_postprocess.get("saturation_effective_scale", 0.0)
             )
             if bool(camera_postprocess.get("disable_tonemapper", False)):
                 camera_tonemapper_disabled_frame_count += 1
@@ -1984,6 +2143,26 @@ def _summarize_sensor_quality(frames: list[dict[str, Any]]) -> dict[str, Any]:
         if camera_frame_count > 0
         else 0.0
     )
+    camera_black_level_lift_norm_avg = (
+        camera_black_level_lift_norm_total / float(camera_frame_count)
+        if camera_frame_count > 0
+        else 0.0
+    )
+    camera_auto_black_level_stddev_to_subtract_avg = (
+        camera_auto_black_level_stddev_to_subtract_total / float(camera_frame_count)
+        if camera_frame_count > 0
+        else 0.0
+    )
+    camera_saturation_rgb_avg = (
+        camera_saturation_rgb_avg_total / float(camera_frame_count)
+        if camera_frame_count > 0
+        else 0.0
+    )
+    camera_saturation_effective_scale_avg = (
+        camera_saturation_effective_scale_total / float(camera_frame_count)
+        if camera_frame_count > 0
+        else 0.0
+    )
     camera_depth_min_m_avg = (
         camera_depth_min_m_total / float(camera_frame_count)
         if camera_frame_count > 0
@@ -2068,6 +2247,12 @@ def _summarize_sensor_quality(frames: list[dict[str, Any]]) -> dict[str, Any]:
         "camera_vignetting_edge_darkening_avg": float(camera_vignetting_edge_darkening_avg),
         "camera_bloom_halo_strength_avg": float(camera_bloom_halo_strength_avg),
         "camera_chromatic_aberration_shift_px_avg": float(camera_chromatic_aberration_shift_px_avg),
+        "camera_black_level_lift_norm_avg": float(camera_black_level_lift_norm_avg),
+        "camera_auto_black_level_stddev_to_subtract_avg": float(
+            camera_auto_black_level_stddev_to_subtract_avg
+        ),
+        "camera_saturation_rgb_avg": float(camera_saturation_rgb_avg),
+        "camera_saturation_effective_scale_avg": float(camera_saturation_effective_scale_avg),
         "camera_tonemapper_disabled_frame_count": int(camera_tonemapper_disabled_frame_count),
         "camera_bloom_level_counts": {
             key: camera_bloom_level_counts[key] for key in sorted(camera_bloom_level_counts.keys())

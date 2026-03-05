@@ -2054,6 +2054,10 @@ def run_phase2_hooks(args: argparse.Namespace) -> dict[str, Any]:
         "camera_vignetting_edge_darkening_avg": 0.0,
         "camera_bloom_halo_strength_avg": 0.0,
         "camera_chromatic_aberration_shift_px_avg": 0.0,
+        "camera_black_level_lift_norm_avg": 0.0,
+        "camera_auto_black_level_stddev_to_subtract_avg": 0.0,
+        "camera_saturation_rgb_avg": 0.0,
+        "camera_saturation_effective_scale_avg": 0.0,
         "camera_tonemapper_disabled_frame_count": 0,
         "camera_bloom_level_counts": {},
         "camera_depth_enabled_frame_count": 0,
@@ -2137,6 +2141,18 @@ def run_phase2_hooks(args: argparse.Namespace) -> dict[str, Any]:
             ),
             "camera_chromatic_aberration_shift_px_avg": _to_non_negative_float(
                 sensor_quality_summary_raw.get("camera_chromatic_aberration_shift_px_avg", 0.0)
+            ),
+            "camera_black_level_lift_norm_avg": _to_non_negative_float(
+                sensor_quality_summary_raw.get("camera_black_level_lift_norm_avg", 0.0)
+            ),
+            "camera_auto_black_level_stddev_to_subtract_avg": _to_non_negative_float(
+                sensor_quality_summary_raw.get("camera_auto_black_level_stddev_to_subtract_avg", 0.0)
+            ),
+            "camera_saturation_rgb_avg": _to_non_negative_float(
+                sensor_quality_summary_raw.get("camera_saturation_rgb_avg", 0.0)
+            ),
+            "camera_saturation_effective_scale_avg": _to_non_negative_float(
+                sensor_quality_summary_raw.get("camera_saturation_effective_scale_avg", 0.0)
             ),
             "camera_tonemapper_disabled_frame_count": _to_non_negative_int(
                 sensor_quality_summary_raw.get("camera_tonemapper_disabled_frame_count", 0)
@@ -2229,6 +2245,10 @@ def run_phase2_hooks(args: argparse.Namespace) -> dict[str, Any]:
         camera_vignetting_edge_darkening_total = 0.0
         camera_bloom_halo_strength_total = 0.0
         camera_chromatic_aberration_shift_px_total = 0.0
+        camera_black_level_lift_norm_total = 0.0
+        camera_auto_black_level_stddev_to_subtract_total = 0.0
+        camera_saturation_rgb_avg_total = 0.0
+        camera_saturation_effective_scale_total = 0.0
         camera_tonemapper_disabled_frame_count = 0
         camera_bloom_level_counts: dict[str, int] = {}
         camera_depth_enabled_frame_count = 0
@@ -2321,6 +2341,18 @@ def run_phase2_hooks(args: argparse.Namespace) -> dict[str, Any]:
                 )
                 camera_chromatic_aberration_shift_px_total += _to_non_negative_float(
                     camera_postprocess_payload.get("chromatic_aberration_shift_px_est", 0.0)
+                )
+                camera_black_level_lift_norm_total += _to_non_negative_float(
+                    camera_postprocess_payload.get("black_level_lift_norm", 0.0)
+                )
+                camera_auto_black_level_stddev_to_subtract_total += _to_non_negative_float(
+                    camera_postprocess_payload.get("auto_black_level_stddev_to_subtract", 0.0)
+                )
+                camera_saturation_rgb_avg_total += _to_non_negative_float(
+                    camera_postprocess_payload.get("saturation_rgb_avg", 0.0)
+                )
+                camera_saturation_effective_scale_total += _to_non_negative_float(
+                    camera_postprocess_payload.get("saturation_effective_scale", 0.0)
                 )
                 if bool(camera_postprocess_payload.get("disable_tonemapper", False)):
                     camera_tonemapper_disabled_frame_count += 1
@@ -2471,6 +2503,26 @@ def run_phase2_hooks(args: argparse.Namespace) -> dict[str, Any]:
             ),
             "camera_chromatic_aberration_shift_px_avg": (
                 float(camera_chromatic_aberration_shift_px_total / float(camera_frame_count))
+                if camera_frame_count > 0
+                else 0.0
+            ),
+            "camera_black_level_lift_norm_avg": (
+                float(camera_black_level_lift_norm_total / float(camera_frame_count))
+                if camera_frame_count > 0
+                else 0.0
+            ),
+            "camera_auto_black_level_stddev_to_subtract_avg": (
+                float(camera_auto_black_level_stddev_to_subtract_total / float(camera_frame_count))
+                if camera_frame_count > 0
+                else 0.0
+            ),
+            "camera_saturation_rgb_avg": (
+                float(camera_saturation_rgb_avg_total / float(camera_frame_count))
+                if camera_frame_count > 0
+                else 0.0
+            ),
+            "camera_saturation_effective_scale_avg": (
+                float(camera_saturation_effective_scale_total / float(camera_frame_count))
                 if camera_frame_count > 0
                 else 0.0
             ),

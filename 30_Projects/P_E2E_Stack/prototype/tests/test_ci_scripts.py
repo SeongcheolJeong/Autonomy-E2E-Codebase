@@ -1941,6 +1941,9 @@ class SensorSimBridgeTests(unittest.TestCase):
                                     "gain": 12.0,
                                     "gamma": 0.6,
                                     "white_balance": 4800.0,
+                                    "auto_black_level_offset": {"stddev_to_subtract": 2.0},
+                                    "black_level_offset": {"r": 0.08, "g": 0.06, "b": 0.04, "a": 0.1},
+                                    "saturation": {"r": 1.2, "g": 1.1, "b": 0.9, "a": 1.05},
                                 },
                                 "fidelity": {
                                     "bloom": {"disable": False, "level": "HIGH"},
@@ -1981,6 +1984,16 @@ class SensorSimBridgeTests(unittest.TestCase):
             self.assertGreater(float(camera_postprocess.get("vignetting_edge_darkening", 0.0) or 0.0), 0.0)
             self.assertGreater(float(camera_postprocess.get("bloom_halo_strength", 0.0) or 0.0), 0.0)
             self.assertGreater(float(camera_postprocess.get("chromatic_aberration_shift_px_est", 0.0) or 0.0), 0.0)
+            self.assertAlmostEqual(
+                float(camera_postprocess.get("auto_black_level_stddev_to_subtract", 0.0) or 0.0),
+                2.0,
+                places=6,
+            )
+            black_level_offset = camera_postprocess.get("black_level_offset", {})
+            self.assertIsInstance(black_level_offset, dict)
+            self.assertAlmostEqual(float(black_level_offset.get("r", 0.0) or 0.0), 0.08, places=6)
+            self.assertGreater(float(camera_postprocess.get("black_level_lift_norm", 0.0) or 0.0), 0.0)
+            self.assertGreater(float(camera_postprocess.get("saturation_effective_scale", 0.0) or 0.0), 1.0)
 
             self.assertGreater(float(camera_payload.get("camera_noise_stddev_px", 0.0) or 0.0), 1.2)
 
@@ -1993,6 +2006,19 @@ class SensorSimBridgeTests(unittest.TestCase):
             )
             self.assertEqual(int(sensor_quality_summary.get("camera_tonemapper_disabled_frame_count", 0) or 0), 1)
             self.assertEqual(sensor_quality_summary.get("camera_bloom_level_counts"), {"HIGH": 1})
+            self.assertGreater(
+                float(sensor_quality_summary.get("camera_black_level_lift_norm_avg", 0.0) or 0.0),
+                0.0,
+            )
+            self.assertAlmostEqual(
+                float(sensor_quality_summary.get("camera_auto_black_level_stddev_to_subtract_avg", 0.0) or 0.0),
+                2.0,
+                places=6,
+            )
+            self.assertGreater(
+                float(sensor_quality_summary.get("camera_saturation_effective_scale_avg", 0.0) or 0.0),
+                1.0,
+            )
 
     def test_camera_depth_and_optical_flow_inputs_are_reflected_in_payload(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -37155,6 +37181,8 @@ class RunE2EPipelineTests(unittest.TestCase):
             self.assertIn("camera_snr_db_avg", phase2_sensor_quality_summary)
             self.assertIn("camera_gain_db_avg", phase2_sensor_quality_summary)
             self.assertIn("camera_bloom_halo_strength_avg", phase2_sensor_quality_summary)
+            self.assertIn("camera_black_level_lift_norm_avg", phase2_sensor_quality_summary)
+            self.assertIn("camera_saturation_effective_scale_avg", phase2_sensor_quality_summary)
             self.assertIn("camera_bloom_level_counts", phase2_sensor_quality_summary)
             self.assertIn("camera_depth_enabled_frame_count", phase2_sensor_quality_summary)
             self.assertIn("camera_depth_mode_counts", phase2_sensor_quality_summary)
