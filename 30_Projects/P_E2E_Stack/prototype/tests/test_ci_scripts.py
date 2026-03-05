@@ -1820,6 +1820,117 @@ class SensorSimBridgeTests(unittest.TestCase):
             self.assertEqual(int(sensor_quality_summary.get("camera_tonemapper_disabled_frame_count", 0) or 0), 1)
             self.assertEqual(sensor_quality_summary.get("camera_bloom_level_counts"), {"HIGH": 1})
 
+    def test_camera_depth_and_optical_flow_inputs_are_reflected_in_payload(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp_path = Path(tmp)
+            world_state = tmp_path / "world_state.json"
+            sensor_rig = tmp_path / "sensor_rig.json"
+            out_path = tmp_path / "sensor_frames.json"
+
+            world_state.write_text(
+                json.dumps(
+                    {
+                        "world_state_schema_version": "world_state_v0",
+                        "frame_timestamp": "2026-02-27T04:25:00Z",
+                        "environment": {
+                            "precipitation_intensity": 0.2,
+                            "fog_density": 0.3,
+                            "ambient_light_lux": 3200.0,
+                        },
+                        "actors": [{"actor_id": "ego", "speed_mps": 18.0}, {"actor_id": "npc_001"}],
+                    }
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+            sensor_rig.write_text(
+                json.dumps(
+                    {
+                        "rig_schema_version": "sensor_rig_v0",
+                        "sensors": [
+                            {
+                                "sensor_id": "camera_front",
+                                "sensor_type": "camera",
+                                "image_width_px": 1920,
+                                "image_height_px": 1080,
+                                "sensor_params": {
+                                    "type": "DEPTH",
+                                    "color_depth": 10,
+                                    "optical_flow_2d_settings": {
+                                        "velocity_direction": "PREVIOUS_TO_CURRENT",
+                                        "y_axis_direction": "UP",
+                                    },
+                                },
+                                "system_params": {
+                                    "depth_params": {
+                                        "min": 0.5,
+                                        "max": 120.0,
+                                        "log_base": 350.0,
+                                        "type": "LOG",
+                                        "bit_depth": 16,
+                                    }
+                                },
+                            }
+                        ],
+                    }
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+
+            proc = run_script(
+                PROTOTYPE_DIR / "../../P_Sim-Engine/prototype/sensor_sim_bridge.py",
+                "--world-state",
+                str(world_state),
+                "--sensor-rig",
+                str(sensor_rig),
+                "--fidelity-tier",
+                "high",
+                "--out",
+                str(out_path),
+            )
+            self.assertIn("[ok] sensor_fidelity_tier=high", proc.stdout)
+
+            payload = read_json_file(self, file_path=out_path)
+            frames = payload.get("frames", [])
+            self.assertEqual(len(frames), 1)
+            camera_payload = frames[0].get("payload", {})
+            self.assertIsInstance(camera_payload, dict)
+            camera_depth = camera_payload.get("camera_depth", {})
+            self.assertIsInstance(camera_depth, dict)
+            self.assertTrue(bool(camera_depth.get("depth_enabled")))
+            self.assertEqual(str(camera_depth.get("depth_mode", "")), "LOG")
+            self.assertAlmostEqual(float(camera_depth.get("depth_min_m", 0.0) or 0.0), 0.5, places=6)
+            self.assertAlmostEqual(float(camera_depth.get("depth_max_m", 0.0) or 0.0), 120.0, places=6)
+            self.assertEqual(int(camera_depth.get("depth_bit_depth", 0) or 0), 16)
+            self.assertGreater(float(camera_depth.get("depth_resolution_m_at_max_est", 0.0) or 0.0), 0.0)
+
+            camera_optical_flow_2d = camera_payload.get("camera_optical_flow_2d", {})
+            self.assertIsInstance(camera_optical_flow_2d, dict)
+            self.assertTrue(bool(camera_optical_flow_2d.get("optical_flow_enabled")))
+            self.assertEqual(
+                str(camera_optical_flow_2d.get("velocity_direction", "")),
+                "PREVIOUS_TO_CURRENT",
+            )
+            self.assertEqual(str(camera_optical_flow_2d.get("y_axis_direction", "")), "UP")
+            self.assertGreater(
+                float(camera_optical_flow_2d.get("mean_flow_magnitude_px_est", 0.0) or 0.0),
+                0.0,
+            )
+
+            sensor_quality_summary = payload.get("sensor_quality_summary", {})
+            self.assertEqual(int(sensor_quality_summary.get("camera_depth_enabled_frame_count", 0) or 0), 1)
+            self.assertEqual(sensor_quality_summary.get("camera_depth_mode_counts"), {"LOG": 1})
+            self.assertEqual(int(sensor_quality_summary.get("camera_optical_flow_enabled_frame_count", 0) or 0), 1)
+            self.assertEqual(
+                sensor_quality_summary.get("camera_optical_flow_velocity_direction_counts"),
+                {"PREVIOUS_TO_CURRENT": 1},
+            )
+            self.assertEqual(
+                sensor_quality_summary.get("camera_optical_flow_y_axis_direction_counts"),
+                {"UP": 1},
+            )
+
     def test_invalid_sensor_type_is_reported_without_traceback(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             tmp_path = Path(tmp)
@@ -36671,6 +36782,10 @@ class RunE2EPipelineTests(unittest.TestCase):
             self.assertIn("camera_gain_db_avg", phase2_sensor_quality_summary)
             self.assertIn("camera_bloom_halo_strength_avg", phase2_sensor_quality_summary)
             self.assertIn("camera_bloom_level_counts", phase2_sensor_quality_summary)
+            self.assertIn("camera_depth_enabled_frame_count", phase2_sensor_quality_summary)
+            self.assertIn("camera_depth_mode_counts", phase2_sensor_quality_summary)
+            self.assertIn("camera_optical_flow_enabled_frame_count", phase2_sensor_quality_summary)
+            self.assertIn("camera_optical_flow_velocity_direction_counts", phase2_sensor_quality_summary)
             self.assertIn("lidar_detection_ratio_avg", phase2_sensor_quality_summary)
             self.assertIn("radar_ghost_target_count_total", phase2_sensor_quality_summary)
             self.assertTrue(sensor_out.exists())

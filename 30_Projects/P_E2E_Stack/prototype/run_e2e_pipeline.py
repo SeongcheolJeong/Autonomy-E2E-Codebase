@@ -2023,6 +2023,15 @@ def run_phase2_hooks(args: argparse.Namespace) -> dict[str, Any]:
                     continue
                 normalized[key] = _to_non_negative_int(raw_count)
         return {key: normalized[key] for key in sorted(normalized.keys())}
+    def _normalize_uppercase_mode_counts(raw_value: Any) -> dict[str, int]:
+        normalized: dict[str, int] = {}
+        if isinstance(raw_value, dict):
+            for raw_key, raw_count in raw_value.items():
+                key = str(raw_key).strip().upper()
+                if not key:
+                    continue
+                normalized[key] = _to_non_negative_int(raw_count)
+        return {key: normalized[key] for key in sorted(normalized.keys())}
 
     sensor_quality_summary_defaults = {
         "camera_frame_count": 0,
@@ -2047,6 +2056,15 @@ def run_phase2_hooks(args: argparse.Namespace) -> dict[str, Any]:
         "camera_chromatic_aberration_shift_px_avg": 0.0,
         "camera_tonemapper_disabled_frame_count": 0,
         "camera_bloom_level_counts": {},
+        "camera_depth_enabled_frame_count": 0,
+        "camera_depth_min_m_avg": 0.0,
+        "camera_depth_max_m_avg": 0.0,
+        "camera_depth_bit_depth_avg": 0.0,
+        "camera_depth_mode_counts": {},
+        "camera_optical_flow_enabled_frame_count": 0,
+        "camera_optical_flow_magnitude_px_avg": 0.0,
+        "camera_optical_flow_velocity_direction_counts": {},
+        "camera_optical_flow_y_axis_direction_counts": {},
         "lidar_frame_count": 0,
         "lidar_point_count_total": 0,
         "lidar_point_count_avg": 0.0,
@@ -2126,6 +2144,33 @@ def run_phase2_hooks(args: argparse.Namespace) -> dict[str, Any]:
             "camera_bloom_level_counts": _normalize_bloom_level_counts(
                 sensor_quality_summary_raw.get("camera_bloom_level_counts", {})
             ),
+            "camera_depth_enabled_frame_count": _to_non_negative_int(
+                sensor_quality_summary_raw.get("camera_depth_enabled_frame_count", 0)
+            ),
+            "camera_depth_min_m_avg": _to_non_negative_float(
+                sensor_quality_summary_raw.get("camera_depth_min_m_avg", 0.0)
+            ),
+            "camera_depth_max_m_avg": _to_non_negative_float(
+                sensor_quality_summary_raw.get("camera_depth_max_m_avg", 0.0)
+            ),
+            "camera_depth_bit_depth_avg": _to_non_negative_float(
+                sensor_quality_summary_raw.get("camera_depth_bit_depth_avg", 0.0)
+            ),
+            "camera_depth_mode_counts": _normalize_uppercase_mode_counts(
+                sensor_quality_summary_raw.get("camera_depth_mode_counts", {})
+            ),
+            "camera_optical_flow_enabled_frame_count": _to_non_negative_int(
+                sensor_quality_summary_raw.get("camera_optical_flow_enabled_frame_count", 0)
+            ),
+            "camera_optical_flow_magnitude_px_avg": _to_non_negative_float(
+                sensor_quality_summary_raw.get("camera_optical_flow_magnitude_px_avg", 0.0)
+            ),
+            "camera_optical_flow_velocity_direction_counts": _normalize_uppercase_mode_counts(
+                sensor_quality_summary_raw.get("camera_optical_flow_velocity_direction_counts", {})
+            ),
+            "camera_optical_flow_y_axis_direction_counts": _normalize_uppercase_mode_counts(
+                sensor_quality_summary_raw.get("camera_optical_flow_y_axis_direction_counts", {})
+            ),
             "lidar_frame_count": _to_non_negative_int(sensor_quality_summary_raw.get("lidar_frame_count", 0)),
             "lidar_point_count_total": _to_non_negative_int(
                 sensor_quality_summary_raw.get("lidar_point_count_total", 0)
@@ -2186,6 +2231,15 @@ def run_phase2_hooks(args: argparse.Namespace) -> dict[str, Any]:
         camera_chromatic_aberration_shift_px_total = 0.0
         camera_tonemapper_disabled_frame_count = 0
         camera_bloom_level_counts: dict[str, int] = {}
+        camera_depth_enabled_frame_count = 0
+        camera_depth_min_m_total = 0.0
+        camera_depth_max_m_total = 0.0
+        camera_depth_bit_depth_total = 0.0
+        camera_depth_mode_counts: dict[str, int] = {}
+        camera_optical_flow_enabled_frame_count = 0
+        camera_optical_flow_magnitude_px_total = 0.0
+        camera_optical_flow_velocity_direction_counts: dict[str, int] = {}
+        camera_optical_flow_y_axis_direction_counts: dict[str, int] = {}
         lidar_frame_count = 0
         lidar_point_total = 0
         lidar_returns_total = 0
@@ -2273,6 +2327,43 @@ def run_phase2_hooks(args: argparse.Namespace) -> dict[str, Any]:
                 bloom_level = str(camera_postprocess_payload.get("bloom_level", "")).strip().upper()
                 if bloom_level:
                     camera_bloom_level_counts[bloom_level] = camera_bloom_level_counts.get(bloom_level, 0) + 1
+                camera_depth_payload_raw = payload.get("camera_depth", {})
+                camera_depth_payload = (
+                    camera_depth_payload_raw if isinstance(camera_depth_payload_raw, dict) else {}
+                )
+                if bool(camera_depth_payload.get("depth_enabled", False)):
+                    camera_depth_enabled_frame_count += 1
+                camera_depth_min_m_total += _to_non_negative_float(camera_depth_payload.get("depth_min_m", 0.0))
+                camera_depth_max_m_total += _to_non_negative_float(camera_depth_payload.get("depth_max_m", 0.0))
+                camera_depth_bit_depth_total += _to_non_negative_float(
+                    camera_depth_payload.get("depth_bit_depth", 0.0)
+                )
+                depth_mode = str(camera_depth_payload.get("depth_mode", "")).strip().upper()
+                if depth_mode:
+                    camera_depth_mode_counts[depth_mode] = camera_depth_mode_counts.get(depth_mode, 0) + 1
+                camera_optical_flow_payload_raw = payload.get("camera_optical_flow_2d", {})
+                camera_optical_flow_payload = (
+                    camera_optical_flow_payload_raw if isinstance(camera_optical_flow_payload_raw, dict) else {}
+                )
+                if bool(camera_optical_flow_payload.get("optical_flow_enabled", False)):
+                    camera_optical_flow_enabled_frame_count += 1
+                camera_optical_flow_magnitude_px_total += _to_non_negative_float(
+                    camera_optical_flow_payload.get("mean_flow_magnitude_px_est", 0.0)
+                )
+                velocity_direction = str(
+                    camera_optical_flow_payload.get("velocity_direction", "")
+                ).strip().upper()
+                if velocity_direction:
+                    camera_optical_flow_velocity_direction_counts[velocity_direction] = (
+                        camera_optical_flow_velocity_direction_counts.get(velocity_direction, 0) + 1
+                    )
+                y_axis_direction = str(
+                    camera_optical_flow_payload.get("y_axis_direction", "")
+                ).strip().upper()
+                if y_axis_direction:
+                    camera_optical_flow_y_axis_direction_counts[y_axis_direction] = (
+                        camera_optical_flow_y_axis_direction_counts.get(y_axis_direction, 0) + 1
+                    )
             elif sensor_type == "lidar":
                 lidar_frame_count += 1
                 lidar_point_total += _to_non_negative_int(payload.get("point_count", 0))
@@ -2387,6 +2478,39 @@ def run_phase2_hooks(args: argparse.Namespace) -> dict[str, Any]:
             "camera_bloom_level_counts": {
                 key: camera_bloom_level_counts[key] for key in sorted(camera_bloom_level_counts.keys())
             },
+            "camera_depth_enabled_frame_count": int(camera_depth_enabled_frame_count),
+            "camera_depth_min_m_avg": (
+                float(camera_depth_min_m_total / float(camera_frame_count))
+                if camera_frame_count > 0
+                else 0.0
+            ),
+            "camera_depth_max_m_avg": (
+                float(camera_depth_max_m_total / float(camera_frame_count))
+                if camera_frame_count > 0
+                else 0.0
+            ),
+            "camera_depth_bit_depth_avg": (
+                float(camera_depth_bit_depth_total / float(camera_frame_count))
+                if camera_frame_count > 0
+                else 0.0
+            ),
+            "camera_depth_mode_counts": {
+                key: camera_depth_mode_counts[key] for key in sorted(camera_depth_mode_counts.keys())
+            },
+            "camera_optical_flow_enabled_frame_count": int(camera_optical_flow_enabled_frame_count),
+            "camera_optical_flow_magnitude_px_avg": (
+                float(camera_optical_flow_magnitude_px_total / float(camera_frame_count))
+                if camera_frame_count > 0
+                else 0.0
+            ),
+            "camera_optical_flow_velocity_direction_counts": {
+                key: camera_optical_flow_velocity_direction_counts[key]
+                for key in sorted(camera_optical_flow_velocity_direction_counts.keys())
+            },
+            "camera_optical_flow_y_axis_direction_counts": {
+                key: camera_optical_flow_y_axis_direction_counts[key]
+                for key in sorted(camera_optical_flow_y_axis_direction_counts.keys())
+            },
             "lidar_frame_count": int(lidar_frame_count),
             "lidar_point_count_total": int(lidar_point_total),
             "lidar_point_count_avg": (
@@ -2439,6 +2563,9 @@ def run_phase2_hooks(args: argparse.Namespace) -> dict[str, Any]:
             **sensor_quality_summary_defaults,
             "camera_projection_mode_counts": {},
             "camera_bloom_level_counts": {},
+            "camera_depth_mode_counts": {},
+            "camera_optical_flow_velocity_direction_counts": {},
+            "camera_optical_flow_y_axis_direction_counts": {},
         }
 
     sensor_sweep_runner = Path(args.sensor_sweep_runner).resolve()

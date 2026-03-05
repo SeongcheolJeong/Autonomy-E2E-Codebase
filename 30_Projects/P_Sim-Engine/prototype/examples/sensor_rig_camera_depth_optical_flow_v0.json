@@ -1,0 +1,29 @@
+{
+  "rig_schema_version": "sensor_rig_v0",
+  "sensors": [
+    {
+      "sensor_id": "camera_depth_flow_front",
+      "sensor_type": "camera",
+      "image_width_px": 1920,
+      "image_height_px": 1080,
+      "sensor_params": {
+        "type": "DEPTH",
+        "color_depth": 10,
+        "optical_flow_2d_settings": {
+          "velocity_direction": "PREVIOUS_TO_CURRENT",
+          "y_axis_direction": "UP"
+        }
+      },
+      "system_params": {
+        "data_type": "UINT",
+        "depth_params": {
+          "min": 0.5,
+          "max": 120.0,
+          "log_base": 350.0,
+          "type": "LOG",
+          "bit_depth": 16
+        }
+      }
+    }
+  ]
+}

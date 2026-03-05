@@ -539,6 +539,7 @@ def _compute_camera_physics(
         "rolling_shutter_num_exposure_samples_per_pixel": int(num_exposure_samples_per_pixel),
         "rolling_shutter_total_delay_ms": float(rolling_shutter_total_delay_sec * 1000.0),
         "rolling_shutter_fraction_of_frame": float(rolling_shutter_fraction),
+        "frame_rate_hz": float(frame_rate_hz),
         "focal_length_px_est": float(focal_length_px),
         "motion_blur_px_est": float(motion_blur_px_est),
         "camera_noise_stddev_px_delta": float(camera_noise_stddev_px_delta),
@@ -876,6 +877,193 @@ def _compute_camera_postprocess(
         "camera_noise_stddev_px_delta": float(camera_noise_stddev_px_delta),
         "dynamic_range_stops_delta": float(dynamic_range_stops_delta),
     }
+
+
+def _resolve_depth_mode(raw: Any) -> str:
+    value = str(raw if raw is not None else "").strip().upper()
+    if value in {"LINEAR", "LOG", "HYP_SPLINE", "RAW"}:
+        return value
+    return "LOG"
+
+
+def _resolve_optical_flow_velocity_direction(raw: Any) -> str:
+    value = str(raw if raw is not None else "").strip().upper()
+    if value in {"DEFAULT", "PREVIOUS_TO_CURRENT", "CURRENT_TO_NEXT"}:
+        return value
+    return "DEFAULT"
+
+
+def _resolve_optical_flow_y_axis_direction(raw: Any) -> str:
+    value = str(raw if raw is not None else "").strip().upper()
+    if value in {"DEFAULT", "DOWN", "UP"}:
+        return value
+    return "DEFAULT"
+
+
+def _resolve_camera_depth_and_optical_flow_config(sensor_config: dict[str, Any]) -> dict[str, Any]:
+    standard_params = _as_dict(sensor_config.get("standard_params"))
+    sensor_params = _as_dict(sensor_config.get("sensor_params"))
+    if not sensor_params:
+        sensor_params = _as_dict(standard_params.get("sensor_params"))
+    system_params = _as_dict(sensor_config.get("system_params"))
+    if not system_params:
+        system_params = _as_dict(standard_params.get("system_params"))
+    depth_params = _as_dict(system_params.get("depth_params"))
+    optical_flow_2d_settings = _as_dict(sensor_params.get("optical_flow_2d_settings"))
+    sensor_mode = str(
+        sensor_params.get(
+            "type",
+            sensor_config.get("camera_mode", sensor_config.get("mode", "")),
+        )
+    ).strip().upper()
+
+    depth_input_present = bool(depth_params) or ("depth_params" in system_params)
+    optical_flow_input_present = bool(optical_flow_2d_settings) or ("optical_flow_2d_settings" in sensor_params)
+    depth_enabled = bool(depth_input_present or (sensor_mode == "DEPTH"))
+    optical_flow_enabled = bool(optical_flow_input_present or (sensor_mode == "OPTICAL_FLOW_2D"))
+
+    depth_min_m = _clamp_float(_to_float(depth_params.get("min", 0.0), default=0.0), minimum=0.0, maximum=10000.0)
+    depth_max_m = _clamp_float(_to_float(depth_params.get("max", 1000.0), default=1000.0), minimum=0.1, maximum=100000.0)
+    if depth_max_m <= depth_min_m:
+        depth_max_m = depth_min_m + 0.1
+    depth_mode = _resolve_depth_mode(depth_params.get("type", "LOG"))
+    depth_log_base = _clamp_float(_to_float(depth_params.get("log_base", 300.0), default=300.0), minimum=1.01, maximum=100000.0)
+    color_depth = _to_non_negative_int(sensor_params.get("color_depth", 8))
+    depth_bit_depth = _to_non_negative_int(depth_params.get("bit_depth", color_depth))
+    if depth_bit_depth <= 0:
+        depth_bit_depth = 8
+    depth_bit_depth = min(32, depth_bit_depth)
+    data_type = str(system_params.get("data_type", "UINT")).strip().upper()
+    if data_type not in {"UINT", "FLOAT"}:
+        data_type = "UINT"
+
+    velocity_direction = _resolve_optical_flow_velocity_direction(
+        optical_flow_2d_settings.get("velocity_direction", "DEFAULT")
+    )
+    y_axis_direction = _resolve_optical_flow_y_axis_direction(
+        optical_flow_2d_settings.get("y_axis_direction", "DEFAULT")
+    )
+
+    return {
+        "depth_input_present": bool(depth_input_present),
+        "depth_enabled": bool(depth_enabled),
+        "depth_min_m": float(depth_min_m),
+        "depth_max_m": float(depth_max_m),
+        "depth_mode": depth_mode,
+        "depth_log_base": float(depth_log_base),
+        "depth_bit_depth": int(depth_bit_depth),
+        "depth_data_type": data_type,
+        "optical_flow_input_present": bool(optical_flow_input_present),
+        "optical_flow_enabled": bool(optical_flow_enabled),
+        "velocity_direction": velocity_direction,
+        "y_axis_direction": y_axis_direction,
+    }
+
+
+def _compute_camera_depth_and_optical_flow(
+    *,
+    sensor_config: dict[str, Any],
+    environment: dict[str, float],
+    camera_physics: dict[str, Any],
+    camera_geometry: dict[str, Any],
+) -> tuple[dict[str, Any], dict[str, Any]]:
+    config = _resolve_camera_depth_and_optical_flow_config(sensor_config)
+
+    depth_min_m = float(config["depth_min_m"])
+    depth_max_m = float(config["depth_max_m"])
+    depth_mode = str(config["depth_mode"])
+    depth_log_base = float(config["depth_log_base"])
+    depth_bit_depth = int(config["depth_bit_depth"])
+    depth_data_type = str(config["depth_data_type"])
+    depth_enabled = bool(config["depth_enabled"])
+
+    depth_range_m = max(0.1, depth_max_m - depth_min_m)
+    quantization_levels = max(1, (1 << depth_bit_depth) - 1)
+    if depth_mode in {"LINEAR", "RAW"}:
+        depth_resolution_m_at_max_est = depth_range_m / float(quantization_levels)
+    elif depth_mode == "LOG":
+        depth_resolution_m_at_max_est = (
+            depth_range_m / float(quantization_levels)
+        ) * max(1.0, math.log(depth_log_base))
+    else:
+        depth_resolution_m_at_max_est = (depth_range_m / float(quantization_levels)) * 1.6
+
+    precipitation_intensity = float(environment["precipitation_intensity"])
+    fog_density = float(environment["fog_density"])
+    weather_visibility_scale = _clamp_float(
+        1.0 - ((0.45 * fog_density) + (0.25 * precipitation_intensity)),
+        minimum=0.1,
+        maximum=1.0,
+    )
+    effective_depth_max_m_est = depth_min_m + (depth_range_m * weather_visibility_scale)
+    depth_clamp_ratio_est = _clamp_float(1.0 - weather_visibility_scale, minimum=0.0, maximum=1.0)
+
+    depth_payload = {
+        "depth_input_present": bool(config["depth_input_present"]),
+        "depth_enabled": bool(depth_enabled),
+        "depth_mode": depth_mode,
+        "depth_min_m": float(depth_min_m),
+        "depth_max_m": float(depth_max_m),
+        "depth_range_m": float(depth_range_m),
+        "depth_log_base": float(depth_log_base),
+        "depth_bit_depth": int(depth_bit_depth),
+        "depth_data_type": depth_data_type,
+        "depth_quantization_levels": int(quantization_levels),
+        "depth_resolution_m_at_max_est": float(depth_resolution_m_at_max_est),
+        "effective_depth_max_m_est": float(effective_depth_max_m_est),
+        "depth_clamp_ratio_est": float(depth_clamp_ratio_est),
+    }
+
+    optical_flow_enabled = bool(config["optical_flow_enabled"])
+    velocity_direction = str(config["velocity_direction"])
+    y_axis_direction = str(config["y_axis_direction"])
+    frame_rate_hz = _clamp_float(
+        _to_float(camera_physics.get("frame_rate_hz", 30.0), default=30.0),
+        minimum=1.0,
+        maximum=240.0,
+    )
+    dt_sec = 1.0 / frame_rate_hz
+    focal_length_px = _to_non_negative_float(camera_geometry.get("fx", 0.0))
+    if focal_length_px <= 0.0:
+        focal_length_px = _to_non_negative_float(camera_geometry.get("fy", 0.0))
+    if focal_length_px <= 0.0:
+        focal_length_px = _to_non_negative_float(camera_physics.get("focal_length_px_est", 960.0))
+
+    ego_speed_mps = float(environment["ego_speed_mps"])
+    flow_reference_depth_m = _clamp_float(
+        depth_min_m + max(2.0, (effective_depth_max_m_est - depth_min_m) * 0.35),
+        minimum=2.0,
+        maximum=max(2.0, depth_max_m),
+    )
+    flow_base_magnitude_px = (ego_speed_mps * dt_sec * focal_length_px) / max(flow_reference_depth_m, 0.1)
+    if not optical_flow_enabled:
+        flow_base_magnitude_px = 0.0
+    max_flow_magnitude_px_est = flow_base_magnitude_px * 2.5
+
+    horizontal_direction_sign = -1.0 if velocity_direction == "PREVIOUS_TO_CURRENT" else 1.0
+    if velocity_direction == "DEFAULT":
+        horizontal_direction_sign = 1.0
+    y_axis_sign = -1.0 if y_axis_direction == "UP" else 1.0
+    if y_axis_direction == "DEFAULT":
+        y_axis_sign = 1.0
+
+    horizontal_bias_px_est = horizontal_direction_sign * flow_base_magnitude_px
+    vertical_bias_px_est = y_axis_sign * (flow_base_magnitude_px * 0.08)
+
+    optical_flow_payload = {
+        "optical_flow_input_present": bool(config["optical_flow_input_present"]),
+        "optical_flow_enabled": bool(optical_flow_enabled),
+        "velocity_direction": velocity_direction,
+        "y_axis_direction": y_axis_direction,
+        "flow_reference_depth_m": float(flow_reference_depth_m),
+        "flow_scale_px_per_mps_est": float((dt_sec * focal_length_px) / max(flow_reference_depth_m, 0.1)),
+        "mean_flow_magnitude_px_est": float(flow_base_magnitude_px),
+        "max_flow_magnitude_px_est": float(max_flow_magnitude_px_est),
+        "horizontal_bias_px_est": float(horizontal_bias_px_est),
+        "vertical_bias_px_est": float(vertical_bias_px_est),
+    }
+
+    return depth_payload, optical_flow_payload
 
 
 def _resolve_camera_projection_mode(raw: Any) -> str:
@@ -1245,6 +1433,12 @@ class CameraStubPlugin(SensorPlugin):
             )
             visibility_score = _clamp_float(visibility_score, minimum=0.0, maximum=1.0)
             visible_actor_count = int(round(float(len(actors)) * visibility_score))
+        camera_depth, camera_optical_flow_2d = _compute_camera_depth_and_optical_flow(
+            sensor_config=sensor_config,
+            environment=environment,
+            camera_physics=camera_physics,
+            camera_geometry=camera_geometry,
+        )
         dynamic_range_stops = max(4.0, dynamic_range_stops)
         return {
             "modality": "camera",
@@ -1262,6 +1456,8 @@ class CameraStubPlugin(SensorPlugin):
             "camera_geometry": camera_geometry,
             "camera_physics": camera_physics,
             "camera_postprocess": camera_postprocess,
+            "camera_depth": camera_depth,
+            "camera_optical_flow_2d": camera_optical_flow_2d,
         }
 
 
@@ -1458,6 +1654,15 @@ def _summarize_sensor_quality(frames: list[dict[str, Any]]) -> dict[str, Any]:
     camera_chromatic_aberration_shift_px_total = 0.0
     camera_tonemapper_disabled_frame_count = 0
     camera_bloom_level_counts: dict[str, int] = {}
+    camera_depth_enabled_frame_count = 0
+    camera_depth_min_m_total = 0.0
+    camera_depth_max_m_total = 0.0
+    camera_depth_bit_depth_total = 0
+    camera_depth_mode_counts: dict[str, int] = {}
+    camera_optical_flow_enabled_frame_count = 0
+    camera_optical_flow_magnitude_px_total = 0.0
+    camera_optical_flow_velocity_direction_counts: dict[str, int] = {}
+    camera_optical_flow_y_axis_direction_counts: dict[str, int] = {}
     lidar_frame_count = 0
     lidar_point_count_total = 0
     lidar_returns_per_laser_total = 0
@@ -1540,6 +1745,35 @@ def _summarize_sensor_quality(frames: list[dict[str, Any]]) -> dict[str, Any]:
             bloom_level = str(camera_postprocess.get("bloom_level", "")).strip().upper()
             if bloom_level:
                 camera_bloom_level_counts[bloom_level] = camera_bloom_level_counts.get(bloom_level, 0) + 1
+            camera_depth = payload.get("camera_depth", {})
+            if not isinstance(camera_depth, dict):
+                camera_depth = {}
+            if bool(camera_depth.get("depth_enabled", False)):
+                camera_depth_enabled_frame_count += 1
+            camera_depth_min_m_total += _to_non_negative_float(camera_depth.get("depth_min_m", 0.0))
+            camera_depth_max_m_total += _to_non_negative_float(camera_depth.get("depth_max_m", 0.0))
+            camera_depth_bit_depth_total += _to_non_negative_int(camera_depth.get("depth_bit_depth", 0))
+            depth_mode = str(camera_depth.get("depth_mode", "")).strip().upper()
+            if depth_mode:
+                camera_depth_mode_counts[depth_mode] = camera_depth_mode_counts.get(depth_mode, 0) + 1
+            camera_optical_flow = payload.get("camera_optical_flow_2d", {})
+            if not isinstance(camera_optical_flow, dict):
+                camera_optical_flow = {}
+            if bool(camera_optical_flow.get("optical_flow_enabled", False)):
+                camera_optical_flow_enabled_frame_count += 1
+            camera_optical_flow_magnitude_px_total += _to_non_negative_float(
+                camera_optical_flow.get("mean_flow_magnitude_px_est", 0.0)
+            )
+            velocity_direction = str(camera_optical_flow.get("velocity_direction", "")).strip().upper()
+            if velocity_direction:
+                camera_optical_flow_velocity_direction_counts[velocity_direction] = (
+                    camera_optical_flow_velocity_direction_counts.get(velocity_direction, 0) + 1
+                )
+            y_axis_direction = str(camera_optical_flow.get("y_axis_direction", "")).strip().upper()
+            if y_axis_direction:
+                camera_optical_flow_y_axis_direction_counts[y_axis_direction] = (
+                    camera_optical_flow_y_axis_direction_counts.get(y_axis_direction, 0) + 1
+                )
         elif sensor_type == "lidar":
             lidar_frame_count += 1
             lidar_point_count_total += _to_non_negative_int(payload.get("point_count", 0))
@@ -1644,6 +1878,26 @@ def _summarize_sensor_quality(frames: list[dict[str, Any]]) -> dict[str, Any]:
         if camera_frame_count > 0
         else 0.0
     )
+    camera_depth_min_m_avg = (
+        camera_depth_min_m_total / float(camera_frame_count)
+        if camera_frame_count > 0
+        else 0.0
+    )
+    camera_depth_max_m_avg = (
+        camera_depth_max_m_total / float(camera_frame_count)
+        if camera_frame_count > 0
+        else 0.0
+    )
+    camera_depth_bit_depth_avg = (
+        float(camera_depth_bit_depth_total) / float(camera_frame_count)
+        if camera_frame_count > 0
+        else 0.0
+    )
+    camera_optical_flow_magnitude_px_avg = (
+        camera_optical_flow_magnitude_px_total / float(camera_frame_count)
+        if camera_frame_count > 0
+        else 0.0
+    )
     lidar_point_count_avg = (
         float(lidar_point_count_total) / float(lidar_frame_count)
         if lidar_frame_count > 0
@@ -1711,6 +1965,23 @@ def _summarize_sensor_quality(frames: list[dict[str, Any]]) -> dict[str, Any]:
         "camera_tonemapper_disabled_frame_count": int(camera_tonemapper_disabled_frame_count),
         "camera_bloom_level_counts": {
             key: camera_bloom_level_counts[key] for key in sorted(camera_bloom_level_counts.keys())
+        },
+        "camera_depth_enabled_frame_count": int(camera_depth_enabled_frame_count),
+        "camera_depth_min_m_avg": float(camera_depth_min_m_avg),
+        "camera_depth_max_m_avg": float(camera_depth_max_m_avg),
+        "camera_depth_bit_depth_avg": float(camera_depth_bit_depth_avg),
+        "camera_depth_mode_counts": {
+            key: camera_depth_mode_counts[key] for key in sorted(camera_depth_mode_counts.keys())
+        },
+        "camera_optical_flow_enabled_frame_count": int(camera_optical_flow_enabled_frame_count),
+        "camera_optical_flow_magnitude_px_avg": float(camera_optical_flow_magnitude_px_avg),
+        "camera_optical_flow_velocity_direction_counts": {
+            key: camera_optical_flow_velocity_direction_counts[key]
+            for key in sorted(camera_optical_flow_velocity_direction_counts.keys())
+        },
+        "camera_optical_flow_y_axis_direction_counts": {
+            key: camera_optical_flow_y_axis_direction_counts[key]
+            for key in sorted(camera_optical_flow_y_axis_direction_counts.keys())
         },
         "lidar_frame_count": int(lidar_frame_count),
         "lidar_point_count_total": int(lidar_point_count_total),

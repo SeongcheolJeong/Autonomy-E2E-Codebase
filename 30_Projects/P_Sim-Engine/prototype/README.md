@@ -175,6 +175,22 @@ python3 sensor_sim_bridge.py \
   --out runs/sensor_frames_camera_postprocess_v0.json
 ```
 
+Camera depth/optical-flow inputs (Applied docs aligned subset):
+
+- `system_params.depth_params.min|max|log_base|type|bit_depth`
+- `system_params.data_type` (`UINT|FLOAT`)
+- `sensor_params.optical_flow_2d_settings.velocity_direction|y_axis_direction`
+
+Depth + optical flow example:
+
+```bash
+python3 sensor_sim_bridge.py \
+  --world-state examples/world_state_adverse_weather_v0.json \
+  --sensor-rig examples/sensor_rig_camera_depth_optical_flow_v0.json \
+  --fidelity-tier high \
+  --out runs/sensor_frames_camera_depth_optical_flow_v0.json
+```
+
 ## Sensor rig sweep scaffold
 
 ```bash
