@@ -48466,6 +48466,15 @@ class BuildReleaseSummaryArtifactTests(unittest.TestCase):
                             {
                                 "rig_id": "rig_cam_lidar",
                                 "heuristic_score": 12.5,
+                                "metrics": {
+                                    "camera_visibility_score_avg": 0.88,
+                                    "camera_noise_stddev_px_avg": 1.2,
+                                    "lidar_detection_ratio_avg": 0.85,
+                                    "lidar_effective_range_ratio_avg": 0.683333,
+                                    "radar_target_detection_ratio_avg": 0.75,
+                                    "radar_false_positive_rate_avg": 0.25,
+                                    "radar_clutter_index_avg": 0.12,
+                                },
                             },
                             {
                                 "rig_id": "rig_cam_radar",
@@ -48715,6 +48724,51 @@ class BuildReleaseSummaryArtifactTests(unittest.TestCase):
                 phase2_sensor_fidelity_summary.get("rig_sweep_best_rig_id_counts"),
                 {"rig_cam_lidar": 1},
             )
+            self.assertEqual(int(phase2_sensor_fidelity_summary.get("rig_sweep_best_quality_sample_count", 0) or 0), 1)
+            self.assertAlmostEqual(
+                float(phase2_sensor_fidelity_summary.get("rig_sweep_best_camera_visibility_score_avg", 0.0) or 0.0),
+                0.88,
+                places=6,
+            )
+            self.assertAlmostEqual(
+                float(phase2_sensor_fidelity_summary.get("rig_sweep_best_camera_noise_stddev_px_avg", 0.0) or 0.0),
+                1.2,
+                places=6,
+            )
+            self.assertAlmostEqual(
+                float(phase2_sensor_fidelity_summary.get("rig_sweep_best_lidar_detection_ratio_avg", 0.0) or 0.0),
+                0.85,
+                places=6,
+            )
+            self.assertAlmostEqual(
+                float(
+                    phase2_sensor_fidelity_summary.get("rig_sweep_best_lidar_effective_range_ratio_avg", 0.0)
+                    or 0.0
+                ),
+                0.683333,
+                places=6,
+            )
+            self.assertAlmostEqual(
+                float(
+                    phase2_sensor_fidelity_summary.get(
+                        "rig_sweep_best_radar_target_detection_ratio_avg",
+                        0.0,
+                    )
+                    or 0.0
+                ),
+                0.75,
+                places=6,
+            )
+            self.assertAlmostEqual(
+                float(phase2_sensor_fidelity_summary.get("rig_sweep_best_radar_false_positive_rate_avg", 0.0) or 0.0),
+                0.25,
+                places=6,
+            )
+            self.assertAlmostEqual(
+                float(phase2_sensor_fidelity_summary.get("rig_sweep_best_radar_clutter_index_avg", 0.0) or 0.0),
+                0.12,
+                places=6,
+            )
             assert_text_file_contains(
                 self,
                 file_path=out_text,
@@ -48730,6 +48784,7 @@ class BuildReleaseSummaryArtifactTests(unittest.TestCase):
                     "camera_depth_enabled_total:2,camera_depth_min_avg_m:0.500,camera_depth_max_avg_m:120.000,camera_depth_bit_depth_avg:16.000,camera_depth_modes:LOG:2",
                     "camera_flow_enabled_total:2,camera_flow_mag_avg_px:4.200,camera_flow_velocity_dirs:FORWARD:2,camera_flow_y_axis_dirs:UP:2,lidar_detection_ratio_avg:0.850,radar_ghost_total:2",
                     "phase2_sensor_rig_sweep=evaluated:1,tier_counts:high:1,candidate_total:3,candidate_avg:3.000,candidate_max:3(BATCH_MAP),best_score_max:12.500(BATCH_MAP),best_rig_counts:rig_cam_lidar:1",
+                    "quality_samples:1,best_camera_visibility_avg:0.880,best_camera_noise_avg_px:1.200,best_lidar_detection_avg:0.850,best_lidar_range_ratio_avg:0.683,best_radar_detect_ratio_avg:0.750,best_radar_fp_rate_avg:0.250000,best_radar_clutter_avg:0.120",
                 ],
             )
 
